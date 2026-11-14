@@ -10,7 +10,6 @@ namespace PurrNet.Recording
 {
     internal static class RecordingObjectId
     {
-        // Keep the full Unity ID in caches and recordings; newer EntityIds cannot be cast to int.
         public static long Of(UnityEngine.Object obj)
         {
 #if UNITY_6000_4_OR_NEWER
@@ -21,10 +20,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Fixed-size row description of a struct: its unmanaged leaves packed without padding, plus the
-    /// fields that need a tagged encoding. Built once per type by reflection.
-    /// </summary>
     public sealed class RowLayout
     {
         public struct Column
@@ -57,12 +52,8 @@ namespace PurrNet.Recording
         public readonly List<ManagedField> managed = new List<ManagedField>();
 
         public bool hasManaged => managed.Count > 0;
-        /// <summary>In-place writers of <see cref="managed"/>, null entries where reflection is used.</summary>
         internal ManagedFieldWriter[] writers;
 
-        /// <summary>
-        /// Copies the unmanaged leaves of <paramref name="value"/> into <paramref name="row"/> at its end.
-        /// </summary>
         public unsafe void WriteFixed<T>(ref T value, RecordingBuffer row) where T : struct
         {
             row.Ensure(rowSize);
@@ -87,9 +78,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Field list of a class or struct written as a tagged object value.
-    /// </summary>
     public sealed class ObjectLayout
     {
         public int id;
@@ -98,20 +86,18 @@ namespace PurrNet.Recording
         public string[] names;
     }
 
-    /// <summary>
-    /// Assigns type ids and collects the TYPE records that still have to be written.
-    /// </summary>
     public sealed class RecordingTypeRegistry
     {
         const BindingFlags InstanceFields = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
         internal const int MaxDepth = 8;
+
+        internal Action<string, string> onError;
 
         readonly Dictionary<Type, RowLayout> _rows = new Dictionary<Type, RowLayout>();
         readonly Dictionary<Type, ObjectLayout> _objects = new Dictionary<Type, ObjectLayout>();
         readonly List<string> _pending = new List<string>();
         int _nextId = 1;
 
-        /// <summary>TYPE record payloads registered since the last call.</summary>
         public bool TakePending(List<string> into)
         {
             if (_pending.Count == 0)
@@ -282,7 +268,6 @@ namespace PurrNet.Recording
 
         public static string CleanName(string name)
         {
-            // Auto-property backing fields: "<speed>k__BackingField" -> "speed".
             if (name.Length > 0 && name[0] == '<')
             {
                 int end = name.IndexOf('>');
@@ -294,9 +279,6 @@ namespace PurrNet.Recording
 
         public static string TypeName(Type type) => (type.FullName ?? type.Name).Replace(", ", ",");
 
-        /// <summary>
-        /// Writes a self-describing tagged value (see FORMAT.md, "Tagged values").
-        /// </summary>
         readonly List<List<object>> _items = new List<List<object>>();
         readonly Dictionary<Type, TypedListWriter> _listWriters = new Dictionary<Type, TypedListWriter>();
         readonly RecordingBuffer _checkBuffer = new RecordingBuffer(256);
@@ -306,12 +288,11 @@ namespace PurrNet.Recording
         readonly Dictionary<Type, ObjectPlan> _objectPlans = new Dictionary<Type, ObjectPlan>();
         readonly Dictionary<long, string> _objectNames = new Dictionary<long, string>();
 
-        /// <summary>Plan for a struct stored inline (a row field, a list element), or null.</summary>
         internal ObjectPlan GetValuePlan(Type type)
         {
             if (_valuePlans.TryGetValue(type, out var plan))
                 return plan;
-            _valuePlans[type] = null; // recursion guard
+            _valuePlans[type] = null;
             plan = ObjectPlan.ForValue(this, type);
             _valuePlans[type] = plan;
             return plan;
@@ -321,7 +302,7 @@ namespace PurrNet.Recording
         {
             if (_objectPlans.TryGetValue(type, out var plan))
                 return plan;
-            _objectPlans[type] = null; // recursion guard
+            _objectPlans[type] = null;
             bool located = type.IsValueType ? ObjectMemory.boxedBase >= 0 : ObjectMemory.classBase >= 0;
             plan = located ? ObjectPlan.ForObject(this, type) : null;
             _objectPlans[type] = plan;
@@ -349,14 +330,12 @@ namespace PurrNet.Recording
 
         readonly List<string> _reflectionNotes = new List<string>();
 
-        /// <summary>Remembers once per type that it is recorded through reflection, which allocates every tick.</summary>
         void NoteReflection(Type type, string where)
         {
             if (_reflectionNoted.Add(type))
                 _reflectionNotes.Add($"{TypeName(type)} ({where})");
         }
 
-        /// <summary>The types recorded through reflection (they make garbage), as text; empty when there are none.</summary>
         internal string DescribeReflection() => _reflectionNotes.Count == 0
             ? ""
             : "  recorded through reflection (makes garbage): " + string.Join(", ", _reflectionNotes) + "\n";
@@ -398,16 +377,11 @@ namespace PurrNet.Recording
             return true;
         }
 
-        /// <summary>
-        /// A fast writer must produce exactly what the generic path does. Its first writes are redone generically and
-        /// compared; on any difference the generic bytes replace its output and it is not used again.
-        /// </summary>
         void SelfCheck(CheckedWriter writer, string what, RecordingBuffer buffer, int start, object value, Type type,
             int depth, HashSet<object> visiting)
         {
             _checkBuffer.Clear();
             _genericOnly = true;
-            // The caller already marked a reference value as being visited; the check writes it again.
             bool unmarked = !type.IsValueType && visiting.Remove(value);
             try { WriteTagged(_checkBuffer, value, depth, visiting); }
             finally
@@ -419,12 +393,11 @@ namespace PurrNet.Recording
             if (_checkBuffer.SameBytes(0, _checkBuffer.length, buffer.data, start, buffer.length - start))
                 return;
             writer.disabled = true;
-            UnityEngine.Debug.LogWarning($"[Recorder] The {what} for {TypeName(type)} disagreed with the generic path; using the generic path.");
+            onError?.Invoke("writer_mismatch", $"{what} for {TypeName(type)}");
             buffer.length = start;
             buffer.WriteBytes(_checkBuffer);
         }
 
-        /// <summary>Writes a value through the generic path only, for self-checks of writers outside the registry.</summary>
         internal void WriteGeneric(RecordingBuffer buffer, object value, int depth, HashSet<object> visiting)
         {
             _genericOnly = true;
@@ -455,7 +428,6 @@ namespace PurrNet.Recording
                 case byte[] bytes: buffer.WriteByte(13); buffer.WriteVarUInt((ulong)bytes.Length); buffer.WriteBytes(bytes, 0, bytes.Length); return;
                 case UnityEngine.Object unityObject:
                 {
-                    // Reading a name allocates, so each object's name is read once per recording.
                     bool alive = unityObject;
                     long id = alive ? RecordingObjectId.Of(unityObject) : 0;
                     if (!alive)
@@ -530,8 +502,6 @@ namespace PurrNet.Recording
                 {
                     if (!_genericOnly)
                         NoteReflection(type, "collection");
-                    // Struct collections such as a disposed DisposableList throw when enumerated, so the items are
-                    // read before anything is written. Lists are read by index: no boxed enumerator, no new list.
                     while (_items.Count <= depth)
                         _items.Add(new List<object>());
                     var items = _items[depth];
@@ -582,7 +552,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>Identity comparer for cycle detection in tagged values.</summary>
     public sealed class ReferenceComparer : IEqualityComparer<object>
     {
         public static readonly ReferenceComparer instance = new ReferenceComparer();

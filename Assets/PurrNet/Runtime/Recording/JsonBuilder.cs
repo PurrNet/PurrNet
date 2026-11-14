@@ -4,10 +4,6 @@ using System.Text;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Minimal JSON writer for the metadata records, writing UTF-8 straight into a reusable buffer: no strings, no
-    /// garbage. Keeps the recorder free of serializer dependencies.
-    /// </summary>
     public sealed class JsonBuilder
     {
         readonly RecordingBuffer _out = new RecordingBuffer(256);
@@ -16,7 +12,6 @@ namespace PurrNet.Recording
         public byte[] data => _out.data;
         public int length => _out.length;
 
-        /// <summary>Starts over, keeping the buffer.</summary>
         public JsonBuilder Clear()
         {
             _out.Clear();
@@ -88,13 +83,11 @@ namespace PurrNet.Recording
         public JsonBuilder Floats(string key, float x, float y, float z, float w) =>
             Key(key).BeginArray().Value(x).Value(y).Value(z).Value(w).EndArray();
 
-        /// <summary>A string value built from parts: <c>BeginString().Part("e").Part(12).EndString()</c>.</summary>
         public JsonBuilder BeginString() { Separator(); Ascii('"'); return this; }
         public JsonBuilder Part(string text) { AppendEscaped(text); return this; }
         public JsonBuilder Part(long value) { Integer(value); return this; }
         public JsonBuilder EndString() { Ascii('"'); _needComma = true; return this; }
 
-        /// <summary>Appends already-encoded JSON (a value) as is.</summary>
         public JsonBuilder RawValue(byte[] bytes, int count)
         {
             Separator();
@@ -183,7 +176,6 @@ namespace PurrNet.Recording
                             Ascii(c);
                         else
                         {
-                            // Non-ASCII: encode the whole run (keeps surrogate pairs together) without allocating.
                             int end = i + 1;
                             while (end < s.Length && s[end] >= 0x80)
                                 end++;
@@ -198,7 +190,6 @@ namespace PurrNet.Recording
 
         static char Hex(int v) => (char)(v < 10 ? '0' + v : 'a' + v - 10);
 
-        /// <summary>The JSON as a string. Allocates; for one-off records only.</summary>
         public override string ToString() => Encoding.UTF8.GetString(_out.data, 0, _out.length);
     }
 }

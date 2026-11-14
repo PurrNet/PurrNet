@@ -38,7 +38,7 @@ public class RecorderScenarioBeacon : NetworkBehaviour
 /// custom sample with a string) to a file of its own, and none of that goes over the connection. Devices are virtual and the HUD
 /// is built here, so it runs headless. One client joins after the recording started, one leaves and comes back
 /// during it. Files go to -recordingsDir (default: a folder under the persistent data path), with what the scene
-/// set next to them, for recording/purrrec.py and recording/ui_check.py to check.
+/// set next to them, for purrrec.py and ui_check.py to check.
 /// For lining the files up in time: the server moves a beacon whose value is its tick and every client's camera
 /// carries the value that client has; and a client's "press" (written to its part, sent to the server, which writes
 /// an "ack" into the recording when it arrives).
@@ -190,7 +190,7 @@ public class RecorderClientPartScenario : Scenario
         public override IRecordingContext clock => this;
 
         private NetworkManager manager => recorder.networkManager ? recorder.networkManager : NetworkManager.main;
-        public bool isReady => manager && manager.tickModule != null;
+        public new bool isReady => manager && manager.tickModule != null;
         public ulong localTick => manager.tickModule.localTick + Offset;
         public double viewTick => manager.tickModule.syncedPreciseTick + Offset;
         public bool isServer => manager.isServer;

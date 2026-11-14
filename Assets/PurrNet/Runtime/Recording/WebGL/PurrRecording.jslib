@@ -1,16 +1,8 @@
-// Browser side of RecordingFile (see WebRecording.cs). C# runs on the page's main thread in WebGL, so the work a
-// desktop build does on its writer thread happens in a Web Worker: compressing records (CompressionStream), storing
-// each recording in IndexedDB as it is written, keeping the store under its size cap, and uploading finished
-// recordings to the recordings service. The main thread only copies each record out of the WebAssembly heap.
-//
-// The worker is plain ES5 built from a function's source, so it needs no extra file next to the build and survives
-// Emscripten's minifier (it references nothing outside itself).
 var PurrNetRecordingLib = {
     $PurrNetRec: {
         worker: null,
         failed: false,
         next: 1,
-        // Per recording: [bytes stored, worker ms compressing, longest compression ms, deflate available].
         stats: {},
 
         start: function () {
@@ -30,31 +22,24 @@ var PurrNetRecordingLib = {
                             if (m.ms > s[2]) s[2] = m.ms;
                             s[3] = m.deflate ? 1 : 0;
                         }
-                    } else if (m.t === 'warn') {
-                        console.warn('[Recorder] ' + m.text);
                     }
                 };
                 worker.onerror = function (e) {
-                    console.warn('[Recorder] Recording worker failed: ' + (e && e.message ? e.message : e));
+                    if (e && e.preventDefault) e.preventDefault();
                 };
                 PurrNetRec.worker = worker;
             } catch (e) {
-                // No workers, or a page policy that forbids blob: workers.
                 PurrNetRec.failed = true;
             }
             return PurrNetRec.worker;
         },
 
-        // Runs inside the worker.
         main: function () {
             var STORE = 'PurrDiction.Recordings';
             var LOCK = 'purrrec:';
             var RETRY_MS = 60000, HELD_GAP_MS = 5000, TICKET_MS = 20000, FRESH_MS = 10000, STALE_MS = 120000;
-            // Files the service said "not now" to, and when each may be tried again: the others are sent meanwhile.
             var held = {};
-            // The file being sent, or whose sending was cut off: it goes first next time and is never trimmed.
             var sending = null;
-            // Files the service has answered for whose removal from the store failed: never sent again.
             var done = {};
             var locks = self.navigator && self.navigator.locks ? self.navigator.locks : null;
             var deflateOk = (function () {
@@ -62,9 +47,9 @@ var PurrNetRecordingLib = {
             })();
 
             var db = null;
-            var memory = {}; // used when IndexedDB cannot be opened: name -> { meta, parts }
-            var open = {};   // handle -> { meta, seq, failed, release }
-            var active = {}; // names this worker is writing
+            var memory = {};
+            var open = {};
+            var active = {};
             var chain = Promise.resolve();
             var uploads = null, idle = false, uploading = false, blocked = false, retryAt = 0, timer = 0, abort = null;
 
@@ -148,7 +133,6 @@ var PurrNetRecordingLib = {
                 return done(t);
             }
 
-            // Names some tab is still writing: held locks, or (without the Locks API) recently written.
             function writing() {
                 var names = {};
                 for (var k in active) names[k] = true;
@@ -165,7 +149,6 @@ var PurrNetRecordingLib = {
             function finished(meta, names) {
                 if (names[meta.name]) return false;
                 if (meta.state === 'done') return true;
-                // Left open by a tab that closed mid-match: the records written so far are a valid recording.
                 var age = Date.now() - meta.touched;
                 return age > (locks ? FRESH_MS : STALE_MS);
             }
@@ -186,7 +169,6 @@ var PurrNetRecordingLib = {
                 return new Response(cs.readable).arrayBuffer().then(function (b) { return new Uint8Array(b); });
             }
 
-            // kind byte (0x80: deflated), LEB128 length, payload.
             function frame(kind, payload) {
                 var head = [kind], n = payload.length;
                 while (n >= 0x80) {
@@ -200,8 +182,6 @@ var PurrNetRecordingLib = {
                 return out;
             }
 
-            // Deletes the oldest finished recordings until the store fits its cap: never the one being sent, and a
-            // client's parts (tiny next to a recording) only when deleting every other file was not enough.
             function trim(max) {
                 if (!(max > 0)) return Promise.resolve();
                 return Promise.all([listFiles(), writing()]).then(function (r) {
@@ -231,7 +211,6 @@ var PurrNetRecordingLib = {
                     });
                 }
                 if (m.t === 'link') {
-                    // What the upload request says about this file besides its name and size (recording id, part...).
                     var l = open[m.h];
                     if (!l) return;
                     try { l.meta.link = JSON.parse(m.json); } catch (e) { return; }
@@ -248,7 +227,6 @@ var PurrNetRecordingLib = {
                         var bytes = m.kind < 0 ? p : frame(compress ? (m.kind | 0x80) : m.kind, p);
                         self.postMessage({ t: 'stat', h: m.h, bytes: bytes.length, ms: ms, deflate: deflateOk });
                         return savePart(f.meta, f.seq++, bytes).catch(function (e) {
-                            // Usually the browser's storage quota: keep what was stored, drop the rest.
                             f.failed = true;
                             warn('Storing ' + f.meta.name + ' failed: ' + e);
                         });
@@ -277,8 +255,6 @@ var PurrNetRecordingLib = {
                 }
             }
 
-            // ---- Uploads: the same protocol and rules as RecordingUploader -------------------------------
-
             function schedule() {
                 if (timer) clearTimeout(timer);
                 timer = 0;
@@ -300,13 +276,11 @@ var PurrNetRecordingLib = {
             function refused(r, name) {
                 sending = null;
                 return r.text().then(function (text) {
-                    // Wrong key or the service is off for this project: stop until the next launch. A quota is "not now".
                     var quota = text && text.indexOf('quota') >= 0;
                     if (r.status === 401 || (r.status === 403 && !quota)) {
                         if (!blocked) warn('Uploads refused (' + r.status + '): ' + text);
                         blocked = true;
                     } else {
-                        // "Not now" for this file: it waits while the next one is tried after a short pause.
                         held[name] = Date.now() + RETRY_MS;
                         retryAt = Date.now() + HELD_GAP_MS;
                     }
@@ -314,7 +288,6 @@ var PurrNetRecordingLib = {
             }
 
             function sendOne(meta) {
-                // Cleared when the service has answered for this file; a sending that was cut off keeps it.
                 sending = meta.name;
                 var sent = function () {
                     sending = null;
@@ -328,7 +301,6 @@ var PurrNetRecordingLib = {
                     return post(uploads.endpoint + '/uploads', JSON.stringify(ticket)).then(function (r) {
                         if (r.status !== 200 && r.status !== 201) return refused(r, meta.name);
                         return r.json().then(function (ticket) {
-                            // Not wanted (sampling, a cap, a rejected file): sending it later would get the same answer.
                             if (ticket.skip || !ticket.url) return sent();
                             var a = abort = new AbortController();
                             return fetch(ticket.url, {
@@ -350,17 +322,14 @@ var PurrNetRecordingLib = {
                     var now = Date.now(), due = Infinity;
                     var files = r[0].filter(function (f) { return finished(f, r[1]); })
                         .filter(function (f) {
-                            // The service has it; all that is left is to remove it.
                             if (done[f.name]) { removeFile(f.name).then(function () { delete done[f.name]; }, function () {}); return false; }
                             if (!(held[f.name] > now)) return true;
                             due = Math.min(due, held[f.name]);
                             return false;
                         })
-                        // The newest first: the trim deletes from the other end.
                         .sort(function (a, b) { return b.created - a.created; });
                     var resumed = files.filter(function (f) { return f.name === sending; });
                     if (resumed.length) files = resumed;
-                    // Nothing to send, or only held files: back when the first of them is due.
                     if (files.length === 0) { retryAt = Math.min(due, now + RETRY_MS); return; }
                     return sendOne(files[0]);
                 });
@@ -370,7 +339,6 @@ var PurrNetRecordingLib = {
                 timer = 0;
                 if (!uploads || blocked || !idle || uploading) return;
                 uploading = true;
-                // One upload at a time across every tab of this game.
                 var run = locks
                     ? locks.request(LOCK + 'upload', { ifAvailable: true }, function (lock) { return lock ? sendOldest() : later(); })
                     : sendOldest();
@@ -385,7 +353,6 @@ var PurrNetRecordingLib = {
                 var m = e.data;
                 if (m.t === 'idle') {
                     idle = m.idle;
-                    // A session started: get off the network, the file is sent again later.
                     if (!idle && abort) abort.abort();
                     schedule();
                     return;
@@ -410,7 +377,6 @@ var PurrNetRecordingLib = {
     PurrNetRec_Append: function (h, kind, compress, ptr, length) {
         var worker = PurrNetRec.worker;
         if (!worker) return;
-        // A copy the worker takes over, so the WebAssembly buffer can be reused right away.
         var bytes = HEAPU8.slice(ptr, ptr + length);
         worker.postMessage({ t: 'append', h: h, kind: kind, compress: compress !== 0, bytes: bytes }, [bytes.buffer]);
     },

@@ -16,7 +16,6 @@ namespace PurrNet.Recording
         public const string UssClass = "dont-record";
 
         internal static readonly List<DontRecordUI> all = new List<DontRecordUI>();
-        /// <summary>Changes whenever a marker is enabled or disabled.</summary>
         internal static int version;
 
         void OnEnable()

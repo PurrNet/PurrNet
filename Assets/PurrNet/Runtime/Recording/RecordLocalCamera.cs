@@ -47,7 +47,6 @@ namespace PurrNet.Recording
 
         void LateUpdate()
         {
-            // Only when nothing has rendered recently (batchmode, minimized).
             if (Time.frameCount - _lastRenderFrame > 2 && target)
                 Sample(target);
         }

@@ -1284,7 +1284,11 @@ namespace PurrNet.Editor
             try
             {
                 EditorUtility.ClearProgressBar();
+#if UNITY_6000_6_OR_NEWER
+                UnityEditor.AssetPackage.Package.Import(packagePath, true);
+#else
                 AssetDatabase.ImportPackage(packagePath, true);
+#endif
             }
             catch (Exception e)
             {

@@ -10,7 +10,6 @@ using TMPro;
 
 namespace PurrNet.Recording
 {
-    // uGUI: canvases, their graphics (Image, RawImage, Text, TextMeshPro) and controls.
     public sealed partial class RecordLocalUI
     {
         sealed partial class Element
@@ -23,7 +22,6 @@ namespace PurrNet.Recording
             public CanvasRenderer renderer;
             public Selectable selectable;
             public Mask mask;
-            /// <summary>The input field whose typed text this graphic shows.</summary>
             public Selectable input;
             public UnityAction onDirty;
             public Matrix4x4 worldToRoot;
@@ -31,7 +29,6 @@ namespace PurrNet.Recording
             public float textSize;
             public int graphicCount = -1;
             public bool redacted;
-            /// <summary>Never written: under a <see cref="DontRecordUI"/>, or a part of another graphic.</summary>
             public bool excluded;
             public bool part;
 
@@ -42,8 +39,6 @@ namespace PurrNet.Recording
             }
         }
 
-        // The registry's canvases are read through its private dictionary: there is no public list of canvases,
-        // and searching the scene allocates. Without the field (another uGUI version) the scene is searched instead.
         static readonly FieldInfo RegistryGraphics =
             typeof(GraphicRegistry).GetField("m_Graphics", BindingFlags.Instance | BindingFlags.NonPublic);
 
@@ -63,7 +58,6 @@ namespace PurrNet.Recording
 
         void EnableCanvases()
         {
-            // The registry lays canvases out from the same event; created first, it runs before this does.
             _ = CanvasUpdateRegistry.instance;
             Canvas.willRenderCanvases += OnWillRenderCanvases;
             try
@@ -105,8 +99,6 @@ namespace PurrNet.Recording
             element.graphic.UnregisterDirtyMaterialCallback(element.onDirty);
         }
 
-        // ---- Finding canvases, graphics and controls ----------------------------------------------------
-
         void DiscoverCanvases()
         {
             int count = _canvasCount;
@@ -120,7 +112,9 @@ namespace PurrNet.Recording
             else if (Time.unscaledTime >= _nextCanvasSearch)
             {
                 _nextCanvasSearch = Time.unscaledTime + CanvasSearchInterval;
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
+                _canvases = FindObjectsByType<Canvas>();
+#elif UNITY_2023_1_OR_NEWER
                 _canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
 #else
                 _canvases = FindObjectsOfType<Canvas>();
@@ -151,7 +145,6 @@ namespace PurrNet.Recording
                 }
             }
 
-            // Controls without a graphic of their own (a slider, a toggle) are elements too.
             int selectableCount = Selectable.allSelectableCount;
             if (selectableCount == _selectableCount && !rescan)
                 return;
@@ -194,8 +187,6 @@ namespace PurrNet.Recording
             element.canvas = canvas;
             element.content = true;
             _byCanvas[canvas] = element;
-            // The root draws its nested canvases' graphics but may have none of its own, so the registry has not
-            // heard of it.
             var root = canvas.rootCanvas;
             if (root != null && !ReferenceEquals(root, canvas) && !_byCanvas.ContainsKey(root))
                 TrackCanvas(root);
@@ -211,7 +202,6 @@ namespace PurrNet.Recording
             element.content = true;
             _byGraphic[graphic] = element;
 #if PURRNET_TMP
-            // The pieces a TextMeshPro text or input field draws itself with.
             element.part = graphic is TMP_SubMeshUI || graphic is TMP_SelectionCaret;
 #endif
             if (element.part)
@@ -228,7 +218,6 @@ namespace PurrNet.Recording
             element.input = InputOf(graphic);
         }
 
-        /// <summary>The input field that shows what was typed into it through <paramref name="graphic"/>, if any.</summary>
         static Selectable InputOf(Graphic graphic)
         {
             if (graphic is Text)
@@ -265,7 +254,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>The object is gone, or has nothing left to record.</summary>
         void Release(Element element)
         {
             Drop(element);
@@ -280,8 +268,6 @@ namespace PurrNet.Recording
             _rescan = true;
         }
 
-        // ---- Reading an element -----------------------------------------------------------------------
-
         void CaptureCanvasElement(Element element)
         {
             var transform = element.transform;
@@ -291,7 +277,6 @@ namespace PurrNet.Recording
                 return;
             }
 
-            // A component removed from an object that lives on.
             var graphic = element.graphic;
             if (graphic is not null && graphic == null)
             {
@@ -327,7 +312,6 @@ namespace PurrNet.Recording
             Element parent = null;
             if (shown)
             {
-                // The nearest recorded element above; parents are read first so a new subtree arrives top-down.
                 for (var above = transform.parent; above is not null; above = above.parent)
                 {
                     if (!_byTransform.TryGetValue(above, out var candidate))
@@ -338,7 +322,6 @@ namespace PurrNet.Recording
                     parent = candidate;
                     break;
                 }
-                // Only a canvas can be a root.
                 shown = parent != null || canvas is not null;
             }
             if (!shown)
@@ -440,7 +423,6 @@ namespace PurrNet.Recording
             return new Vector2(point.x - bounds.xMin, bounds.yMax - point.y);
         }
 
-        /// <summary>A root canvas: where it is on screen, or in the world.</summary>
         void CaptureRoot(Element element, ref UISample sample, ref UIFlags flags)
         {
             var canvas = element.canvas;
@@ -462,7 +444,6 @@ namespace PurrNet.Recording
             }
             else
             {
-                // Overlay and camera canvases cover their pixel rectangle whatever the camera does.
                 var pixels = canvas.pixelRect;
                 float width = _screenWidth > 0 ? _screenWidth : 1f, height = _screenHeight > 0 ? _screenHeight : 1f;
                 element.screenX = pixels.x / width;
@@ -479,7 +460,6 @@ namespace PurrNet.Recording
             sample.height = element.screenHeight;
         }
 
-        /// <summary>What the element shows: read when it appears and when uGUI says its graphic changed.</summary>
         void ReadContent(Element element, ref UISample sample)
         {
             var graphic = element.graphic;
@@ -573,7 +553,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Whether what was typed into <paramref name="input"/> stays out of the recording.</summary>
         bool Redacts(Selectable input)
         {
             if (input is null || input == null)

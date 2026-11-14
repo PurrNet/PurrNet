@@ -8,7 +8,7 @@ using UnityEngine;
 namespace PurrNet.Recording
 {
     /// <summary>
-    /// Records a match to a .purrrec file (see recording/FORMAT.md) on the server or host: every spawned network
+    /// Records a match to a .purrrec file on the server or host: every spawned network
     /// identity's transform, colliders and recorded sync types (SyncVar, SyncList, SyncTimer) per tick, and the players.
     /// Add one next to the <see cref="NetworkManager"/>. Other packages add their data through
     /// <see cref="RecorderExtension"/>s (with PurrDiction: every predicted component's state and input), so a match is
@@ -21,9 +21,11 @@ namespace PurrNet.Recording
     public sealed class NetworkRecorder : MonoBehaviour, IRecordingContext
     {
         [SerializeField] private NetworkManager _networkManager;
-        [Tooltip("Start recording as soon as this machine is the server. Never on CI machines (the CI environment variable and the like).")]
+        [Tooltip("Start recording as soon as this machine is the server, in release builds. Never on CI machines (the " +
+                 "CI environment variable and the like). StartRecording() records anywhere.")]
         [SerializeField] private bool _recordOnServer = true;
-        [Tooltip("Also record play sessions in the editor (kept on disk, never uploaded). Off: editor sessions are development, not gameplay.")]
+        [Tooltip("Also start on their own in the editor (kept on disk, never uploaded) and in development builds. " +
+                 "Off: those sessions are development, not gameplay.")]
         [SerializeField] private bool _recordInEditor;
         [Tooltip("Record the camera each player renders with. Clients write it to a file of their own, uploaded by them.")]
         [SerializeField] private bool _recordCamera = true;
@@ -85,16 +87,13 @@ namespace PurrNet.Recording
 
         public event Action<string> onRecordingFinished;
 
-        /// <summary>What the recorder keeps about one object.</summary>
         sealed class EntityData
         {
             public RecordedEntity entity;
             public readonly List<Component> components = new List<Component>(2);
-            // Kept between collider checks so Unity's C# objects for them are not made again (see RecordedEntity).
             public readonly List<NetworkIdentity> found = new List<NetworkIdentity>(2);
         }
 
-        /// <summary>One network identity (component) of an object and its recorded modules.</summary>
         sealed class Component
         {
             public NetworkIdentity identity;
@@ -102,7 +101,6 @@ namespace PurrNet.Recording
             public int index;
             public readonly List<NetworkModule> modules = new List<NetworkModule>(4);
             public readonly List<StreamRows> rows = new List<StreamRows>(4);
-            // The modules that are asked every tick; the others say when they change (see life).
             public readonly List<int> polled = new List<int>(4);
             public readonly RecordedLife life = new RecordedLife();
         }
@@ -114,7 +112,6 @@ namespace PurrNet.Recording
             public int GetHashCode(NetworkIdentity identity) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(identity);
         }
 
-        /// <summary>What <see cref="DontRecordAttribute"/> says about an identity class.</summary>
         sealed class TypeRules
         {
             public bool excluded;
@@ -148,7 +145,6 @@ namespace PurrNet.Recording
 
             public override string name => "purrnet";
 
-            /// <summary>Whether <paramref name="go"/> has a network identity that is recorded.</summary>
             bool Records(GameObject go)
             {
                 if (!go.TryGetComponent<NetworkIdentity>(out var first))
@@ -207,11 +203,9 @@ namespace PurrNet.Recording
         RecordingSession _session;
         Source _source;
         readonly List<RecorderExtension> _extensions = new List<RecorderExtension>();
-        // The clock in use, and the one the current file started with (null: network ticks).
         IRecordingContext _clock, _clockAtStart;
         HierarchyFactory _hierarchy;
         TickManager _tickManager;
-        // By reference: destroyed Unity objects all compare equal to each other.
         readonly Dictionary<NetworkIdentity, Component> _components = new Dictionary<NetworkIdentity, Component>(IdentityComparer.instance);
         readonly List<NetworkIdentity> _identityList = new List<NetworkIdentity>();
         Component[] _slots = new Component[64];
@@ -292,7 +286,6 @@ namespace PurrNet.Recording
             return null;
         }
 
-        /// <summary>The clock an extension brings, if any has one right now.</summary>
         IRecordingContext CurrentClock()
         {
             foreach (var extension in _extensions)
@@ -325,7 +318,6 @@ namespace PurrNet.Recording
             if (!context.isReady)
                 return;
 
-            // A file has one clock from start to end.
             if (isRecording && !_session.isPart && !ReferenceEquals(_clock, _clockAtStart))
                 StopFile();
 
@@ -353,7 +345,6 @@ namespace PurrNet.Recording
             ConfigureUploads();
         }
 
-        /// <summary>What a client's part of a recording (see RecordingSession.Parts) takes from this recorder.</summary>
         void ApplyPartSettings()
         {
             _session.partDirectory = _directory;
@@ -395,17 +386,14 @@ namespace PurrNet.Recording
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;
-            // A recorder on the NetworkManager usually lives in DontDestroyOnLoad; the match is in the active scene.
             var scene = gameObject.scene;
             if (!scene.IsValid() || scene.buildIndex < 0 && scene.name == "DontDestroyOnLoad")
                 scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            // A host's own client is usually still connecting when its recording starts.
             bool host = context.isClient || (_networkManager && _networkManager.clientState != ConnectionState.Disconnected);
             _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, host);
             foreach (var extension in _extensions)
                 extension.OnRecordingStarted();
 
-            // On network ticks the recorder ticks itself; an extension's clock calls RecordTick.
             if (_clockAtStart == null)
             {
                 _tickManager = _networkManager.tickModule;
@@ -427,7 +415,6 @@ namespace PurrNet.Recording
             if (!isRecording)
                 return;
 
-            // A client's part of the server's recording: nothing of the recorder's own is in it.
             if (_session.isPart)
             {
                 _session.Stop(null);
@@ -448,8 +435,6 @@ namespace PurrNet.Recording
             _prefabNames.Clear();
         }
 
-        // ---- Samples --------------------------------------------------------------------------------
-
         /// <summary>
         /// Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into
         /// that client's part of it, a file of its own that the client uploads. Nothing is sent to the server.
@@ -465,8 +450,6 @@ namespace PurrNet.Recording
 
         /// <summary>The last finished recording's size and the recorder's cost per section, as text.</summary>
         public string DescribeLastRecording() => _session.DescribeLastRecording();
-
-        // ---- Ticks ------------------------------------------------------------------------------------
 
         void OnPostTick() => RecordTick(_tickManager.localTick);
 
@@ -550,7 +533,6 @@ namespace PurrNet.Recording
                     if (identity is null || !identity || !identity.isSpawned)
                         continue;
 
-                    // Identities mostly keep their place from tick to tick, so the one found there last is tried first.
                     if (slot >= _slots.Length)
                         Array.Resize(ref _slots, Math.Max(slot + 1, _slots.Length * 2));
                     var component = _slots[slot];
@@ -571,7 +553,6 @@ namespace PurrNet.Recording
                     var modules = component.modules;
                     var rows = component.rows;
                     var life = component.life;
-                    // Every row on a chunk's first tick, after a change, and when the last tick was missed.
                     if (chunkStart || life.changed || life.tick + 1 != tick)
                     {
                         life.changed = false;
@@ -594,7 +575,6 @@ namespace PurrNet.Recording
             _session.DespawnUnseen(_source, tick);
         }
 
-        /// <summary>Starts recording an identity: a new entity, our part of another source's entity, or one more component.</summary>
         Component Track(NetworkIdentity identity, ulong tick)
         {
             var go = identity.gameObject;
@@ -602,7 +582,6 @@ namespace PurrNet.Recording
             {
                 if (entity.DataOf(_source) is EntityData ours)
                 {
-                    // Spawned after the others on its object.
                     var added = Declare(ours, identity, ours.components.Count);
                     var json = _session.BeginAttachRecord(entity, _source, tick);
                     WriteComponent(json.Key("components").BeginArray(), added);
@@ -657,7 +636,6 @@ namespace PurrNet.Recording
             return data;
         }
 
-        /// <summary>Declares the streams of every spawned, recorded network identity on the object.</summary>
         void DeclareAll(EntityData data, GameObject go)
         {
             go.GetComponents(_identityList);
@@ -720,7 +698,6 @@ namespace PurrNet.Recording
             json.EndArray().EndObject();
         }
 
-        /// <summary>Retires the components' streams (dropped after their last flush) and pools them.</summary>
         void ReleaseData(EntityData data)
         {
             if (data == null)

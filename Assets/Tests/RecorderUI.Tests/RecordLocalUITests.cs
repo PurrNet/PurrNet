@@ -21,7 +21,7 @@ using Toggle = UnityEngine.UI.Toggle;
 
 /// <summary>
 /// Records a host's UI (uGUI, TextMeshPro, UI Toolkit) while it changes and writes what the scene set, tick by tick,
-/// next to the recording. "python recording/purrrec.py ui-check file.expect.json" compares the two.
+/// next to the recording. "python purrrec.py ui-check file.expect.json" compares the two.
 /// </summary>
 public partial class RecordLocalUITests
 {

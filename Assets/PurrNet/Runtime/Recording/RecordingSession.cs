@@ -12,15 +12,6 @@ using Stopwatch = System.Diagnostics.Stopwatch;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms,
-    /// colliders and streams, players, and custom streams such as each player's camera. A recorder owns one and feeds
-    /// it every tick; <see cref="RecordingSource"/>s say which scene objects belong to which entity. On a client it
-    /// writes that client's own part of the server's recording (see RecordingSession.Parts); nothing but the
-    /// server's start and stop announcement travels over the game's connection.
-    /// Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed
-    /// fields are read in place.
-    /// </summary>
     public sealed partial class RecordingSession
     {
         readonly struct CustomKey : IEquatable<CustomKey>
@@ -43,7 +34,6 @@ namespace PurrNet.Recording
             public override int GetHashCode() => (_stream?.GetHashCode() ?? 0) * 31 + _player.GetHashCode() + (_hasPlayer ? 1 : 0);
         }
 
-        /// <summary>A chunk's log on its way to the writer thread, encoded there.</summary>
         sealed class ChunkJob : IStepwiseRecordProducer
         {
             public readonly RecordingSession owner;
@@ -82,7 +72,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>A BATCH of metadata records on its way to the writer thread.</summary>
         sealed class MetaBatch : IRecordProducer
         {
             public RecordingSession owner;
@@ -98,16 +87,13 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>The session clients' samples go to (the last one created that is still alive).</summary>
         public static RecordingSession active { get; private set; }
 
         readonly IRecordingContext _context;
         readonly string _logName;
 
-        /// <summary>Free-form labels written into the header (map, mode, build hash...). Set before recording starts.</summary>
         public readonly Dictionary<string, string> labels;
 
-        // Settings, read when a recording starts.
         public float chunkSeconds = 10f;
         public int maxLocalMegabytes = 1024;
         public float colliderCheckBudgetMs = 0.1f;
@@ -115,16 +101,7 @@ namespace PurrNet.Recording
         public ulong localTick => _context.isReady ? _context.localTick : 0;
 
         public bool isRecording => _file != null;
-        /// <summary>
-        /// Whether the tick being recorded is the first of a chunk. Every per-tick stream needs a row in each chunk
-        /// it lives in, so a recorder that only writes rows when they change writes them all on this tick.
-        /// </summary>
         public bool chunkStart { get; private set; }
-        /// <summary>
-        /// 0 while <see cref="WriteSample{T}"/> would drop a sample; otherwise a number that changes whenever samples
-        /// start landing in a new chunk. A sample stream that only writes changes writes its full state again when
-        /// this changes, so every chunk can be read on its own.
-        /// </summary>
         public int sampleEpoch => !_context.isReady ? 0
             : _context.isServer ? (isRecording && !isPart && _context.localPlayer.HasValue ? _sampleEpoch : 0)
             : _partOffered ? _sampleEpoch : 0;
@@ -148,20 +125,15 @@ namespace PurrNet.Recording
         readonly RecordingBuffer _check = new RecordingBuffer(256);
         readonly JsonBuilder _json = new JsonBuilder();
 
-        // Pools: the session reuses everything it creates per spawn, stream and chunk.
         readonly Stack<RecordedEntity> _entityPool = new Stack<RecordedEntity>(256);
         readonly Stack<StreamRows> _streamPool = new Stack<StreamRows>(1024);
         readonly Stack<ChunkJob> _jobPool = new Stack<ChunkJob>();
-        // Arrays the session's big buffers (chunk logs, metadata batches) grew out of, kept for the next buffer that
-        // grows: a new log starts with the largest, so growing never makes garbage.
         static readonly ByteShelf Shelf = ByteShelf.shared;
         readonly Stack<MetaBatch> _metaPool = new Stack<MetaBatch>();
         readonly ChunkEncoder _encoder = new ChunkEncoder();
-        // The chunk being collected: its log and the streams that have rows in it (by slot).
         ChunkJob _job;
         readonly List<StreamRows> _slots = new List<StreamRows>();
 
-        // Unity allocates a new string each time a name is read, so names are read once and kept.
         const int MaxCachedNames = 4096;
         readonly Dictionary<long, string> _names = new Dictionary<long, string>(MaxCachedNames);
         readonly Dictionary<Type, string> _typeNames = new Dictionary<Type, string>();
@@ -180,7 +152,6 @@ namespace PurrNet.Recording
         ulong _chunkFirstTick;
         ulong _lastTick;
         ulong _ticksRecorded;
-        // The finished recording's entity count, for its report (the live counter starts over when it stops).
         int _lastEntities;
         int _chunkTicks;
         int _chunks;
@@ -189,13 +160,6 @@ namespace PurrNet.Recording
         int _maxTickBytes;
         int _logStart;
 
-        /// <param name="context">Clocks and identity of this machine.</param>
-        /// <param name="logName">How the recorder calls itself in its report and warnings.</param>
-        /// <param name="labels">Header labels; a new dictionary when null.</param>
-        /// <param name="recorderSections">
-        /// The recorder's own sections of the cost report (players, identities...), listed after the tick; get them
-        /// with <see cref="Section"/>.
-        /// </param>
         public RecordingSession(IRecordingContext context, string logName, Dictionary<string, string> labels = null,
             params string[] recorderSections)
         {
@@ -216,10 +180,8 @@ namespace PurrNet.Recording
             _statFlush = _stats.Add("flush");
         }
 
-        /// <summary>A section of the cost report, by name.</summary>
         public RecorderStats.Section Section(string name) => _stats.Find(name);
 
-        /// <summary>Stops recording and stops being the session clients' samples go to.</summary>
         public bool isDisposed { get; private set; }
 
         public void Dispose()
@@ -237,9 +199,6 @@ namespace PurrNet.Recording
                 _sources.Add(source);
         }
 
-        // ---- Network ----------------------------------------------------------------------------------
-
-        /// <summary>Announces recordings to <paramref name="manager"/>'s clients (the server side) and listens for them (a client).</summary>
         public void SubscribeNetwork(NetworkManager manager)
         {
             if (_networkManager == manager)
@@ -260,41 +219,27 @@ namespace PurrNet.Recording
 
         public bool subscribedNetwork => _networkManager;
 
-        /// <summary>Once per frame: looks after a client's part and, on WebGL, encodes queued chunks.</summary>
         public void Update(bool isServer)
         {
             UpdatePart(isServer);
 
-            // WebGL has no writer thread: queued chunks are encoded here, one per frame (a no-op elsewhere).
             _file?.Pump();
         }
 
-        // ---- Uploads ----------------------------------------------------------------------------------
-
-        /// <summary>Whether matches start recording on their own here: not on CI, and in the editor only when asked.</summary>
-        public static bool RecordsAutomatically(bool recordInEditor) =>
-            !RecordingUploader.runningOnCI && (!Application.isEditor || recordInEditor);
+        public static bool RecordsAutomatically(bool recordInDevelopment) =>
+            !RecordingUploader.runningOnCI && (!Debug.isDebugBuild || recordInDevelopment);
 
         public static string ResolveDirectory(string directory) => Path.IsPathRooted(directory)
             ? directory
             : Path.Combine(Application.persistentDataPath, directory);
 
-        /// <summary>
-        /// Sends finished recordings in <paramref name="directory"/> to <paramref name="endpoint"/> with the project key
-        /// (empty uses the project linked through PurrServices). Never from the editor or CI.
-        /// </summary>
         public static void ConfigureUploads(bool upload, string endpoint, string projectKey, string directory, int maxLocalMegabytes)
         {
             string key = string.IsNullOrWhiteSpace(projectKey) ? PurrServicesProjectLink.projectKey : projectKey.Trim();
-            // Editor and CI sessions are development and tests, not gameplay: they stay out of the data pool.
             if (upload && !Application.isEditor && !RecordingUploader.runningOnCI && !string.IsNullOrEmpty(key) && !string.IsNullOrEmpty(endpoint))
                 RecordingUploader.Configure(endpoint, key, ResolveDirectory(directory), (long)maxLocalMegabytes * 1024 * 1024);
         }
 
-        // ---- Lifetime ---------------------------------------------------------------------------------
-
-        /// <summary>Opens a recording file and writes its header and the static world.</summary>
-        /// <param name="host">Whether this machine is also a client (written as the recorder kind).</param>
         public void Start(string directory, string fileName, int tickRate, ulong firstTick, string scene, bool host)
         {
             if (isRecording)
@@ -305,8 +250,7 @@ namespace PurrNet.Recording
             foreach (char c in Path.GetInvalidFileNameChars())
                 fileName = fileName.Replace(c, '_');
 
-            // Every file is self-contained, so type ids and records start over.
-            _types = new RecordingTypeRegistry();
+            _types = new RecordingTypeRegistry { onError = AddError };
             _baseColumns.Clear();
             _file = new RecordingFile(Path.Combine(directory, fileName), (long)maxLocalMegabytes * 1024 * 1024);
             RecordingUploader.SetActiveRecording(_file.path);
@@ -334,7 +278,6 @@ namespace PurrNet.Recording
 #endif
         }
 
-        /// <summary>Flushes and closes the current recording. <paramref name="footer"/> adds properties to its FOOTER.</summary>
         public void Stop(Action<JsonBuilder> footer)
         {
             if (_file == null)
@@ -352,6 +295,14 @@ namespace PurrNet.Recording
                 .Prop("lastTick", _lastTick).Prop("ticks", _ticksRecorded).Prop("entities", _nextEntityId - 1)
                 .Prop("streams", _nextStreamId - 1).Prop("chunks", _chunks);
             footer?.Invoke(_json);
+            if (_errors.Count > 0)
+            {
+                _json.Key("errors").BeginArray();
+                foreach (var (kind, detail) in _errors)
+                    _json.BeginObject().Prop("kind", kind).Prop("detail", detail).EndObject();
+                _json.EndArray();
+                _errors.Clear();
+            }
             EnqueueJson(RecordKind.Footer, _json.EndObject(), true);
 
             var file = _file;
@@ -382,10 +333,16 @@ namespace PurrNet.Recording
             onRecordingFinished?.Invoke(file.path);
         }
 
-        // The session logs nothing. What the last recording cost is built only when asked for (tests, benchmarks).
+        readonly List<(string kind, string detail)> _errors = new List<(string, string)>();
+
+        public void AddError(string kind, string detail)
+        {
+            if (_file != null && !_errors.Contains((kind, detail)))
+                _errors.Add((kind, detail));
+        }
+
         RecordingFile _lastFile;
 
-        /// <summary>The last finished recording's size and the recorder's cost per section, as text.</summary>
         public string DescribeLastRecording()
         {
             var file = _lastFile;
@@ -420,7 +377,6 @@ namespace PurrNet.Recording
             EnqueueJson(RecordKind.Header, json, false);
         }
 
-        /// <summary>Queues a JSON record from the builder's bytes through a pooled buffer (no string is made).</summary>
         void EnqueueJson(RecordKind kind, JsonBuilder json, bool compress)
         {
             MetaBatch batch;
@@ -432,15 +388,9 @@ namespace PurrNet.Recording
             _file.Enqueue(kind, batch, compress);
         }
 
-        // ---- Ticks ------------------------------------------------------------------------------------
-
-        /// <summary>Starts recording <paramref name="tick"/>: ends the chunk when it is full.</summary>
         public void BeginTick(ulong tick)
         {
             _stats.Begin(_statTick);
-            // A chunk also ends early when its log could not take another tick within the reservation (whatever array
-            // the log holds): the memory reserved at the start, and the writer's working memory sized for it, is all
-            // the session uses.
             var log = _job.log.bytes;
             if (tick - _chunkFirstTick >= (ulong)_chunkTicks || (log.length > 0 && log.length + 2 * _maxTickBytes > _logCapacity))
             {
@@ -450,7 +400,6 @@ namespace PurrNet.Recording
                 log = _job.log.bytes;
             }
             _logStart = log.length;
-            // The first chunk starts at the first tick, unless samples (a host's camera, say) were already written before it.
             if (_ticksRecorded == 0 && _slots.Count == 0)
                 _chunkFirstTick = tick;
 
@@ -458,10 +407,8 @@ namespace PurrNet.Recording
             _ticksRecorded++;
         }
 
-        /// <summary>Ends the tick <see cref="BeginTick"/> started.</summary>
         public void EndTick()
         {
-            // A game bigger than the reservation (one tick fills half of it) gets a bigger one, once.
             _maxTickBytes = Math.Max(_maxTickBytes, _job.log.bytes.length - _logStart);
             if (_maxTickBytes * 2 > _logCapacity)
             {
@@ -473,14 +420,10 @@ namespace PurrNet.Recording
             _stats.CommitTick();
         }
 
-        /// <summary>
-        /// Reserves the log being filled, a spare for when it is handed to the writer, and the writer's working memory.
-        /// </summary>
         void ReserveChunkMemory()
         {
             _job ??= TakeJob();
             _job.log.bytes.Reserve(_logCapacity);
-            // Metadata (spawns, streams, collider sets) between two chunks.
             _meta.Reserve(_logCapacity / 8);
             lock (_jobPool)
             {
@@ -489,8 +432,6 @@ namespace PurrNet.Recording
                 foreach (var job in _jobPool)
                     job.log.bytes.Reserve(_logCapacity);
             }
-            // The writer owns the encoder and its output while records are queued; reserve only while none are (it
-            // otherwise grows them itself, once).
             if (!_file.busy)
             {
                 _encoder.Reserve(_logCapacity);
@@ -498,19 +439,12 @@ namespace PurrNet.Recording
             }
         }
 
-        // ---- Entities ---------------------------------------------------------------------------------
-
         public int entityCount => _entities.Count;
         public RecordedEntity GetEntityAt(int index) => _entities[index];
 
         public bool TryGetEntity(GameObject go, out RecordedEntity entity) =>
             _entitiesByGameObject.TryGetValue(RecordingObjectId.Of(go), out entity);
 
-        /// <summary>
-        /// Starts an entity for <paramref name="go"/>, created by <paramref name="source"/>. The source then declares its
-        /// streams, calls <see cref="CreateTransformStream"/>, writes the ENTITY record and finishes with
-        /// <see cref="EndSpawn"/>. When the object is already an entity, use <see cref="Attach"/> instead.
-        /// </summary>
         public RecordedEntity BeginSpawn(RecordingSource source, GameObject go, object data)
         {
             _stats.Begin(_statSpawn);
@@ -528,17 +462,12 @@ namespace PurrNet.Recording
             return entity;
         }
 
-        /// <summary>
-        /// Adds <paramref name="source"/>'s part to an entity another source created. The source then declares its
-        /// streams and writes an ATTACH record (see <see cref="BeginAttachRecord"/>).
-        /// </summary>
         public void Attach(RecordedEntity entity, RecordingSource source, object data)
         {
             if (!entity.Has(source))
                 entity.Add(source, data);
         }
 
-        /// <summary>Starts an ATTACH record's JSON; the source adds its components and ends it with <see cref="EndAttachRecord"/>.</summary>
         public JsonBuilder BeginAttachRecord(RecordedEntity entity, RecordingSource source, ulong tick)
         {
             FlushPendingTypes();
@@ -547,7 +476,6 @@ namespace PurrNet.Recording
 
         public void EndAttachRecord(JsonBuilder json) => WriteMeta(RecordKind.Attach, json.EndObject());
 
-        /// <summary>The entity's world pose stream; <paramref name="baseStream"/> holds the same pose under other column names.</summary>
         public void CreateTransformStream(RecordedEntity entity, StreamRows baseStream = null, (string, string)[] baseColumns = null)
         {
             entity.transform = CreateStream(typeof(RecordedTransform),
@@ -555,7 +483,6 @@ namespace PurrNet.Recording
                 baseColumns != null ? baseStream : null, baseColumns);
         }
 
-        /// <summary>Records the entity's colliders and renderers; the ENTITY record must be written before.</summary>
         public void EndSpawn(RecordedEntity entity, ulong tick)
         {
 #if UNITY_PHYSICS_3D
@@ -566,10 +493,6 @@ namespace PurrNet.Recording
             _stats.End(_statSpawn);
         }
 
-        /// <summary>
-        /// Marks <paramref name="source"/>'s part of the entity seen this tick and writes the entity's world pose, once
-        /// per tick. Returns the position, or false when the pose was already written this tick.
-        /// </summary>
         public unsafe bool RecordTransform(RecordedEntity entity, RecordingSource source, ulong tick, out Vector3 position)
         {
             entity.Touch(source, tick);
@@ -585,7 +508,6 @@ namespace PurrNet.Recording
             pose.scale = t.lossyScale;
             pose.visible = Visibility(entity);
             position = pose.position;
-            // The pose the stream already has in this chunk: nothing to add (compared bit for bit).
             var rows = entity.transform;
             if (rows.slot >= 0 && pose.visible == entity.lastPose.visible)
             {
@@ -601,7 +523,6 @@ namespace PurrNet.Recording
             return true;
         }
 
-        /// <summary>Releases <paramref name="source"/>'s part of every entity it did not see this tick.</summary>
         public void DespawnUnseen(RecordingSource source, ulong tick)
         {
             for (int i = _entities.Count - 1; i >= 0; i--)
@@ -616,10 +537,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>
-        /// Releases <paramref name="source"/>'s part of the entity: a DETACH record while other sources still hold it,
-        /// a DESPAWN once none does.
-        /// </summary>
         public void Release(RecordedEntity entity, RecordingSource source, ulong tick)
         {
             if (!entity.Has(source))
@@ -635,7 +552,6 @@ namespace PurrNet.Recording
                 .Prop("entity", entity.id).Prop("tick", tick).Prop("source", source.name).EndObject());
         }
 
-        /// <summary>Despawns the entity for every source holding it.</summary>
         public void Despawn(RecordedEntity entity, ulong tick)
         {
             int index = _entities.IndexOf(entity);
@@ -649,7 +565,6 @@ namespace PurrNet.Recording
                 _entitiesByGameObject.Remove(RecordingObjectId.Of(entity.gameObject));
             else
             {
-                // The GameObject was destroyed; drop whichever key still points at this entity.
                 long stale = 0;
                 bool found = false;
                 foreach (var pair in _entitiesByGameObject)
@@ -663,7 +578,6 @@ namespace PurrNet.Recording
             ReleaseEntity(entity);
         }
 
-        /// <summary>Retires the entity's streams (dropped after their last flush) and pools the entity.</summary>
         void ReleaseEntity(RecordedEntity entity)
         {
             entity.transform?.Retire();
@@ -688,12 +602,6 @@ namespace PurrNet.Recording
             _entityPool.Push(entity);
         }
 
-        // ---- Sources ----------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Records the rows of every source except <paramref name="driver"/>, the recorder driving the session. Called
-        /// by the driver once per tick, after its own rows and before <see cref="RecordColliders"/>.
-        /// </summary>
         public void RecordSources(ulong tick, RecordingSource driver)
         {
             for (int i = 0; i < _sources.Count; i++)
@@ -701,7 +609,6 @@ namespace PurrNet.Recording
                     _sources[i].RecordTick(tick);
         }
 
-        /// <summary>Stops recording <paramref name="source"/>: its part of every entity is released now.</summary>
         public void RemoveSource(RecordingSource source)
         {
             if (!_sources.Remove(source) || !isRecording)
@@ -713,21 +620,18 @@ namespace PurrNet.Recording
 
         public bool HasSource(RecordingSource source) => _sources.Contains(source);
 
-        /// <summary>The nearest object on or above <paramref name="t"/> that is an entity of any source, or null.</summary>
         public Transform NearestEntity(Transform t, bool includeInactive)
         {
             Transform nearest = null;
             for (int i = 0; i < _sources.Count; i++)
             {
                 var found = _sources[i].NearestEntity(t, includeInactive);
-                // Both are on or above t, so the deeper one is under the other.
                 if (found && (!nearest || found.IsChildOf(nearest)))
                     nearest = found;
             }
             return nearest;
         }
 
-        /// <summary>The recorded entity nearest above <paramref name="parent"/> (an entity's parent), or null.</summary>
         public RecordedEntity ParentEntity(Transform parent, bool includeInactive)
         {
             if (!parent)
@@ -752,13 +656,6 @@ namespace PurrNet.Recording
             return false;
         }
 
-        // ---- Streams ----------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Declares a stream of <paramref name="type"/> rows. A <paramref name="forwardFill"/> stream repeats its last row
-        /// on ticks without one. A stream with a <paramref name="baseStream"/> stores its <paramref name="baseColumns"/>
-        /// (own column, base column) as differences against that stream.
-        /// </summary>
         public StreamRows CreateStream(Type type, in RecordedStreamInfo info, bool forwardFill = false,
             StreamRows baseStream = null, (string, string)[] baseColumns = null)
         {
@@ -868,11 +765,6 @@ namespace PurrNet.Recording
             throw new ArgumentException($"{layout.type} has no column {name}");
         }
 
-        /// <summary>
-        /// Adds a row for <paramref name="tick"/> to <paramref name="rows"/>. A per-tick stream's row is only written
-        /// when it differs from the stream's last one (or is its first in the chunk); the stream still has that row
-        /// on this tick.
-        /// </summary>
         public unsafe void AppendRow<T>(StreamRows rows, ulong tick, ref T value) where T : struct
         {
             rows.aliveTick = tick;
@@ -882,14 +774,12 @@ namespace PurrNet.Recording
                 return;
             var chunk = _job.log;
             var log = chunk.bytes;
-            // The entry is written, and taken back when it turns out to repeat the stream's last one.
             int start = log.length;
             bool hadTick = chunk.hasTick;
             ulong lastTick = chunk.lastTick;
             BeginRow(rows, tick, chunk);
             int at = log.length;
             layout.WriteFixed(ref value, log);
-            // Whether the entry is needed: always for other streams and for the first row in a chunk.
             bool write = !rows.forwardFill || first || !SameBytes(log.data, at, rows.lastOffset, layout.rowSize);
             if (layout.hasManaged)
                 write |= WriteManaged(rows, ref value, first, log);
@@ -904,7 +794,6 @@ namespace PurrNet.Recording
             rows.rowCount--;
         }
 
-        /// <summary>Whether every managed value of the row comes from the string or list, unchanged, of the stream's last row.</summary>
         unsafe bool SameSources<T>(StreamRows rows, ref T value) where T : struct
         {
             var writers = _types.GetManagedWriters(rows.layout);
@@ -919,7 +808,6 @@ namespace PurrNet.Recording
             return writers.Length > 0;
         }
 
-        /// <summary>Writes a row's managed values to the log; returns whether any differs from the stream's last row.</summary>
         unsafe bool WriteManaged<T>(StreamRows rows, ref T value, bool first, RecordingBuffer log) where T : struct
         {
             bool measured = _stats.enabled;
@@ -932,15 +820,12 @@ namespace PurrNet.Recording
             for (int i = 0; i < writers.Length; i++)
             {
                 var writer = writers[i];
-                // The string or list the stream's last value was written from, unchanged: the same value, without
-                // writing it out to compare.
                 object source = null;
                 int version = 0;
                 bool known = writer != null && !writer.disabled && writer.Identify(row, out source, out version);
                 var kept = rows.lastBytes[i];
                 if (known && ReferenceEquals(source, rows.lastObject[i]) && version == rows.lastVersion[i])
                 {
-                    // A chunk's first row has nothing to refer back to: it gets the bytes kept from the last time.
                     if (first)
                     {
                         log.WriteInt32(kept.length);
@@ -978,7 +863,6 @@ namespace PurrNet.Recording
                     rows.lastObject[i] = source;
                     rows.lastVersion[i] = version;
                 }
-                // The same value as this stream's previous row in the chunk is stored as a back-reference.
                 if (!first && kept != null && kept.SameBytes(_scratch))
                 {
                     log.WriteInt32(-1);
@@ -1002,7 +886,6 @@ namespace PurrNet.Recording
                 return UnsafeUtility.MemCmp(p + a, p + b, length) == 0;
         }
 
-        /// <summary>Starts a log entry: the stream's slot in this chunk, and the tick when it differs from the last entry's.</summary>
         void BeginRow(StreamRows rows, ulong tick, ChunkLog log)
         {
             if (rows.slot < 0)
@@ -1022,7 +905,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>The first values of an in-place field writer are compared with the reflection path.</summary>
         void CheckManagedField<T>(StreamRows rows, ref T value, int field, ManagedFieldWriter writer) where T : struct
         {
             _check.Clear();
@@ -1031,12 +913,10 @@ namespace PurrNet.Recording
             if (_check.SameBytes(_scratch))
                 return;
             writer.disabled = true;
-            Debug.LogWarning($"[{_logName}] The field writer for {rows.layout.managed[field].name} of " +
-                             $"{TypeName(rows.layout.type)} disagreed with the reflection path; using reflection.");
+            AddError("field_writer_mismatch", $"{rows.layout.managed[field].name} of {TypeName(rows.layout.type)}");
             _scratch.CopyFrom(_check);
         }
 
-        /// <summary>One box per stream, overwritten in place: a boxed struct is laid out like a class with one field of it.</summary>
         static object Box<T>(StreamRows rows, ref T value) where T : struct
         {
             object boxed = rows.box;
@@ -1079,11 +959,9 @@ namespace PurrNet.Recording
 
             if (_slots.Count > 0)
             {
-                // Tagged values may have registered object types while this chunk was collected.
                 FlushPendingTypes();
                 FlushMeta();
 
-                // Encoding takes milliseconds, so the log goes to the writer thread and the encode happens there.
                 var log = _job.log;
                 _peakLogBytes = Math.Max(_peakLogBytes, log.bytes.length);
                 log.firstTick = _chunkFirstTick;
@@ -1110,7 +988,6 @@ namespace PurrNet.Recording
             }
             _slots.Clear();
 
-            // Streams whose owner is gone (their last rows just left) are reused for new streams.
             int kept = 0;
             for (int i = 0; i < _streams.Count; i++)
             {
@@ -1131,15 +1008,8 @@ namespace PurrNet.Recording
             _sampleEpoch++;
         }
 
-        // ---- Samples --------------------------------------------------------------------------------
-
-        /// <summary>The stream clients' cameras are recorded under.</summary>
         public const string CameraStream = "camera";
 
-        /// <summary>
-        /// Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into
-        /// that client's part of the recording, a file of its own (see RecordingSession.Parts). Nothing is sent.
-        /// </summary>
         public void WriteSample<T>(string stream, in T sample) where T : struct
         {
             if (!_context.isReady)
@@ -1155,7 +1025,6 @@ namespace PurrNet.Recording
 
             if (_context.isServer)
             {
-                // A dedicated server has no local player; a host's id is unknown for its first frames.
                 if (_context.localPlayer.HasValue)
                     WriteServerSample(stream, _context.localPlayer, ref envelope);
                 return;
@@ -1164,10 +1033,6 @@ namespace PurrNet.Recording
             WritePartSample(stream, ref envelope);
         }
 
-        /// <summary>
-        /// Server only. Adds a sample to a custom stream on behalf of <paramref name="player"/>, for players that have
-        /// no client of their own (bots) or data the server observes about a player.
-        /// </summary>
         public void WriteSampleFor<T>(string stream, PlayerID player, in T sample) where T : struct
         {
             if (!_context.isReady || !_context.isServer)
@@ -1183,8 +1048,6 @@ namespace PurrNet.Recording
             WriteServerSample(stream, player, ref envelope);
         }
 
-        // The clock is read once per frame: every sample of a frame carries the same time (the frame's first
-        // sample's), which also keeps the column small.
         int _clientTimeFrame = -1;
         double _clientTime;
 
@@ -1224,12 +1087,6 @@ namespace PurrNet.Recording
             return rows;
         }
 
-        // ---- Metadata ---------------------------------------------------------------------------------
-
-        // Metadata records are small and frequent (every bullet spawn writes several), so they are collected and
-        // written as one compressed BATCH record right before each chunk, which keeps them ahead of the rows using them.
-
-        /// <summary>The builder metadata records are written with; each use starts with <see cref="JsonBuilder.Clear"/>.</summary>
         public JsonBuilder json => _json;
 
         public void WriteMeta(RecordKind kind, JsonBuilder json)
@@ -1261,15 +1118,11 @@ namespace PurrNet.Recording
             lock (_metaPool)
                 batch = _metaPool.Count > 0 ? _metaPool.Pop() : null;
             batch ??= new MetaBatch { owner = this };
-            // Hand the filled buffer over and continue with the batch's empty one.
             (batch.buffer, _meta) = (_meta, batch.buffer);
             _meta.Reserve(_logCapacity / 8);
             _file.Enqueue(RecordKind.Batch, batch, true);
         }
 
-        // ---- Names ------------------------------------------------------------------------------------
-
-        /// <summary>An object's name, read from Unity once per recording (each read allocates).</summary>
         public string Name(UnityEngine.Object o)
         {
             long id = RecordingObjectId.Of(o);
@@ -1282,7 +1135,6 @@ namespace PurrNet.Recording
 
         readonly List<string> _pathParts = new List<string>(16);
 
-        /// <summary>Writes "root/child/object" as a JSON string from the cached names, without building it.</summary>
         public void WritePath(JsonBuilder json, Transform t)
         {
             for (var p = t; p; p = p.parent)
@@ -1305,13 +1157,6 @@ namespace PurrNet.Recording
             return name;
         }
 
-        // ---- Renderers --------------------------------------------------------------------------------
-
-        /// <summary>
-        /// 1 when any mesh, skinned or sprite renderer of the entity is enabled on an active object, 0 when it has such
-        /// renderers but all are hidden (a bullet waiting for its hit effect to end), 2 when it has none.
-        /// Particles, trails and lines do not count: they are effects, not the object.
-        /// </summary>
         static bool IsBodyRenderer(Renderer renderer) =>
             renderer is MeshRenderer || renderer is SkinnedMeshRenderer || renderer is SpriteRenderer;
 
@@ -1332,15 +1177,11 @@ namespace PurrNet.Recording
 
         readonly List<Renderer> _rendererList = new List<Renderer>();
 
-        /// <summary>Refreshes the entity's body renderers; returns whether entities are nested inside it.</summary>
         bool RefreshEntityRenderers(RecordedEntity entity)
         {
             var root = entity.gameObject;
-            // Renderers and colliders under a nested entity belong to that entity. Without nested entities (the usual
-            // case) everything under the root is the entity's, and no owner has to be looked up.
             bool nested = HasNestedEntities(entity);
 
-            // The renderer list changes with the hierarchy, so it is refreshed on the collider cadence.
             entity.renderers.Clear();
             entity.rendererObjects.Clear();
             root.GetComponentsInChildren(true, entity.foundRenderers);
@@ -1355,7 +1196,6 @@ namespace PurrNet.Recording
                 }
             }
 
-            // Graphics moved out of the entity's hierarchy (an unparented visual) still show this entity.
             entity.detachedGraphics.Clear();
             for (int i = 0, parts = entity.partCount; i < parts; i++)
                 entity.SourceAt(i).GetDetachedGraphics(entity, entity.detachedGraphics);
@@ -1380,7 +1220,6 @@ namespace PurrNet.Recording
         }
 
 #if UNITY_PHYSICS_3D
-        // ---- Colliders --------------------------------------------------------------------------------
 
         const ulong ColliderCheckTicks = 10;
         const ulong StaticColliderCheckTicks = 60;
@@ -1407,10 +1246,6 @@ namespace PurrNet.Recording
             return false;
         }
 
-        /// <summary>
-        /// Colliders on a dynamic rigidbody that no source drives (debris, ragdoll bits) are simulated by each machine
-        /// on its own: not part of the game's simulation, so they are treated as visual effects and not recorded.
-        /// </summary>
         bool IsLocalPhysics(Collider collider)
         {
             var body = collider.attachedRigidbody;
@@ -1422,18 +1257,10 @@ namespace PurrNet.Recording
             return true;
         }
 
-        /// <summary>
-        /// Looks for collider changes on entities and in the scene within the collider check budget, and samples
-        /// colliders moving within their entity. Called once per tick after the entities were recorded.
-        /// </summary>
         public void RecordColliders(ulong tick)
         {
             _stats.Begin(_statColliders);
 
-            // Colliders appear, toggle, and animate after spawn (a map scaling its pieces in, say), so each entity's
-            // set is re-checked every few ticks and the scene's every few seconds. Looking for changes is the only
-            // recorder work that grows with the scene and is not data, so it gets a fixed slice of time per tick:
-            // a bigger scene notices changes later instead of making ticks slower.
             _checkDeadline = Stopwatch.GetTimestamp() + (long)(colliderCheckBudgetMs * 0.001 * Stopwatch.Frequency);
             _stats.Begin(_statChecks);
             CheckEntityColliders(tick);
@@ -1443,7 +1270,6 @@ namespace PurrNet.Recording
                 ContinueStaticCheck(tick);
             _stats.End(_statChecks);
 
-            // Colliders moving relative to their entity (a drawbridge tilting, a door) are sampled every tick.
             foreach (var entity in _entities)
             {
                 if (entity.movingColliders > 0 && entity.gameObject)
@@ -1454,16 +1280,11 @@ namespace PurrNet.Recording
             _stats.End(_statColliders);
         }
 
-        /// <summary>
-        /// Re-checks entities' colliders round robin: a full pass every <see cref="ColliderCheckTicks"/> ticks when the
-        /// time budget allows, and at least one entity per tick when it does not.
-        /// </summary>
         void CheckEntityColliders(ulong tick)
         {
             int count = _entities.Count;
             if (count == 0)
                 return;
-            // Owed checks carry over while over budget, but never more than a pass.
             _entityChecksOwed = Math.Min(count, _entityChecksOwed + (float)count / ColliderCheckTicks);
             bool first = true;
             while (_entityChecksOwed >= 1f && (first || !OverBudget))
@@ -1472,7 +1293,6 @@ namespace PurrNet.Recording
                 if (_entityCheckCursor >= _entities.Count)
                     _entityCheckCursor = 0;
                 var entity = _entities[_entityCheckCursor++];
-                // Spawned this tick: its colliders were just read.
                 if (entity.spawnTick != tick)
                     RefreshEntityColliders(entity, tick);
                 _entityChecksOwed -= 1f;
@@ -1481,7 +1301,6 @@ namespace PurrNet.Recording
 
         void RefreshStaticColliders(ulong tick)
         {
-            // Every enabled collider of the loaded scenes that no entity owns.
             _colliderList.Clear();
             for (int s = 0; s < SceneManager.sceneCount; s++)
             {
@@ -1510,10 +1329,6 @@ namespace PurrNet.Recording
         readonly List<TrackedCollider> _staticColliders = new List<TrackedCollider>();
         int _staticMovingColliders;
 
-        // A map can have thousands of static colliders, too many to check in one tick without a hitch, so the periodic
-        // check is spread over about StaticCheckSpreadTicks ticks. The scene is walked depth first a slice at a time (in
-        // the order GetComponentsInChildren uses) and each collider's shape key is compared with the last written set
-        // as it is found; when nothing changed, the poses are then checked a slice at a time.
         const int StaticCheckSpreadTicks = 45;
         const int StaticCheckMinimumWork = 32;
         enum StaticCheck { Idle, Scan, Poses }
@@ -1522,8 +1337,6 @@ namespace PurrNet.Recording
         readonly List<Transform> _staticStack = new List<Transform>();
         readonly List<Collider> _staticFound = new List<Collider>();
         readonly List<Collider> _nodeColliders = new List<Collider>();
-        // Everything the last scan and the current one touched (transforms, objects, colliders), so Unity's C# objects
-        // for them stay alive from one scan to the next instead of being made again (see RecordedEntity.foundColliders).
         List<UnityEngine.Object> _scanned = new List<UnityEngine.Object>(256), _scanning = new List<UnityEngine.Object>(256);
         int _staticNext;
         int _staticBudget;
@@ -1536,7 +1349,6 @@ namespace PurrNet.Recording
         {
             _staticStack.Clear();
             _staticFound.Clear();
-            // A stack: pushed last to first, so the first root of the first scene is walked first.
             for (int s = SceneManager.sceneCount - 1; s >= 0; s--)
             {
                 var scene = SceneManager.GetSceneAt(s);
@@ -1552,14 +1364,11 @@ namespace PurrNet.Recording
             _staticKeyMatched = 0;
             _staticChanged = false;
             _staticWork = 0;
-            // The last check's work (objects and colliders walked, then poses), spread over the ticks.
             _staticBudget = Math.Max(256, (_lastStaticWork + _staticColliders.Count) / StaticCheckSpreadTicks + 1);
         }
 
         void ContinueStaticCheck(ulong tick)
         {
-            // The work budget spreads a check over about StaticCheckSpreadTicks ticks; the time budget (shared with the
-            // entity checks) may stretch it further. Some work is always done, so a check always finishes.
             int budget = _staticBudget;
             int minimum = budget - StaticCheckMinimumWork;
             if (_staticCheck == StaticCheck.Scan)
@@ -1572,13 +1381,11 @@ namespace PurrNet.Recording
                     _staticStack.RemoveAt(_staticStack.Count - 1);
                     budget--;
                     _staticWork++;
-                    // Destroyed since the check began; whatever it held is compared at the end.
                     if (!t)
                         continue;
                     var go = t.gameObject;
                     _scanning.Add(t);
                     _scanning.Add(go);
-                    // Inactive objects and everything an entity owns are not static colliders.
                     if (!go.activeSelf || IsEntityObject(go))
                         continue;
 
@@ -1616,7 +1423,6 @@ namespace PurrNet.Recording
                     : _staticFound.Count > 0;
                 if (changed)
                 {
-                    // Rare (the map changed): the whole set is compared and written now.
                     for (int i = _staticFound.Count - 1; i >= 0; i--)
                         if (!_staticFound[i])
                             _staticFound.RemoveAt(i);
@@ -1663,11 +1469,6 @@ namespace PurrNet.Recording
         readonly Stack<TrackedCollider> _trackedPool = new Stack<TrackedCollider>(256);
         const int StillChecksBeforeIdle = 2;
 
-        /// <summary>
-        /// Writes a COLLIDERS record when the set's shapes change (compared through a compact binary key, so an
-        /// unchanged set costs no strings), and otherwise checks each collider's pose: a collider that moved relative
-        /// to its entity gets a pose stream. An empty set that was never written does not count as a change.
-        /// </summary>
         void RefreshColliderSet(List<Collider> colliders, Transform space, Matrix4x4 worldToSpace, RecordingBuffer lastKey,
             ref bool hasKey, List<TrackedCollider> tracked, ref int moving, int entity, ulong tick)
         {
@@ -1682,7 +1483,6 @@ namespace PurrNet.Recording
                 lastKey.CopyFrom(key);
                 hasKey = true;
 
-                // Keep the trackers (and pose streams) of colliders that stay in the set.
                 _trackedScratch.Clear();
                 _trackedById.Clear();
                 foreach (var t in tracked)
@@ -1703,13 +1503,10 @@ namespace PurrNet.Recording
                         t.moving = false;
                         t.stillChecks = 0;
                     }
-                    // World bounds (terrain and the like) have no pose of their own to follow, and a collider on the
-                    // entity's own object is always at the entity's pose.
                     t.streamable = HasShapePose(collider) && !ReferenceEquals(collider.transform, space);
                     RoundedPose(collider, worldToSpace, out t.position, out t.rotation, out t.scale);
                     _trackedScratch.Add(t);
                 }
-                // What is left in the map is gone from the set.
                 tracked.Clear();
                 foreach (var pair in _trackedById)
                     tracked.Add(pair.Value);
@@ -1735,7 +1532,6 @@ namespace PurrNet.Recording
             CheckColliderPoses(tracked, 0, tracked.Count, worldToSpace, ref moving, entity);
         }
 
-        /// <summary>Checks the poses of <c>tracked[from..to)</c>: a collider that moved gets a pose stream sampled every tick.</summary>
         void CheckColliderPoses(List<TrackedCollider> tracked, int from, int to, Matrix4x4 worldToSpace, ref int moving,
             int entity)
         {
@@ -1745,7 +1541,6 @@ namespace PurrNet.Recording
                 if (!t.streamable || !t.collider)
                     continue;
                 RoundedPose(t.collider, worldToSpace, out var position, out var rotation, out var scale);
-                // Exact comparison (Unity's == on vectors and quaternions is approximate).
                 bool moved = !position.Equals(t.position) || !rotation.Equals(t.rotation) || !scale.Equals(t.scale);
                 t.position = position;
                 t.rotation = rotation;
@@ -1755,7 +1550,6 @@ namespace PurrNet.Recording
                     t.stillChecks = moved ? 0 : t.stillChecks + 1;
                     if (t.stillChecks >= StillChecksBeforeIdle)
                     {
-                        // Its stream keeps the last pose; sampling resumes when it moves again.
                         t.moving = false;
                         moving--;
                     }
@@ -1814,12 +1608,10 @@ namespace PurrNet.Recording
             scale = new Vector3(Round(s.x), Round(s.y), Round(s.z));
         }
 
-        /// <summary>False for colliders recorded as world bounds, which carry no pose of their own.</summary>
         static bool HasShapePose(Collider collider) =>
             collider is BoxCollider || collider is SphereCollider || collider is CapsuleCollider ||
             collider is CharacterController || collider is MeshCollider;
 
-        /// <summary>Everything a COLLIDERS record holds about a collider except its pose (that is tracked apart).</summary>
         void ShapeKey(RecordingBuffer key, Collider collider)
         {
             key.WriteVarInt(RecordingObjectId.Of(collider));
@@ -1851,7 +1643,6 @@ namespace PurrNet.Recording
                 }
                 default:
                 {
-                    // Written as world bounds, so the bounds are its shape.
                     var b = collider.bounds;
                     key.WriteByte(6); KeyVector(key, b.center); KeyVector(key, b.size);
                     break;
@@ -1932,7 +1723,6 @@ namespace PurrNet.Recording
                 }
                 default:
                 {
-                    // Terrain, wheel and other colliders: world bounds as a box.
                     var b = collider.bounds;
                     BeginCollider(json, "bounds", collider, worldToSpace);
                     json.Floats("center", b.center.x, b.center.y, b.center.z).Floats("size", b.size.x, b.size.y, b.size.z);
@@ -1948,8 +1738,6 @@ namespace PurrNet.Recording
             Vector3 p = pose.GetColumn(3);
             var r = pose.ValidTRS() ? pose.rotation : Quaternion.identity;
             var s = pose.lossyScale;
-            // Poses come out of a world-to-local multiply with ~1e-7 noise; rounding to 0.1 mm keeps an unchanged
-            // set byte-identical so it is not re-written every check.
             json.BeginObject().Prop("shape", shape).Prop("id", RecordingObjectId.Of(collider))
                 .Key("pose").BeginObject()
                 .Floats("p", Round(p.x), Round(p.y), Round(p.z)).Floats("r", Round(r.x), Round(r.y), Round(r.z), Round(r.w))
@@ -1977,10 +1765,6 @@ namespace PurrNet.Recording
             return length;
         }
 
-        /// <summary>
-        /// Writes a triangle mesh straight from Unity's native mesh data into the metadata batch: a map's collision
-        /// mesh can have hundreds of thousands of vertices, and no managed copy of them is made.
-        /// </summary>
         unsafe bool WriteMeshNative(Mesh mesh, int id)
         {
             using var meshes = Mesh.AcquireReadOnlyMeshData(mesh);
@@ -2009,7 +1793,6 @@ namespace PurrNet.Recording
             return true;
         }
 
-        /// <summary>The same bytes as the managed path: little-endian floats and 32-bit indices.</summary>
         unsafe void WriteMeshRecord(int id, string name, NativeArray<Vector3> vertices, NativeArray<int> indices)
         {
             int vertexCount = vertices.Length;
@@ -2042,10 +1825,6 @@ namespace PurrNet.Recording
             public bool failed;
         }
 
-        /// <summary>
-        /// Starts reading a mesh without Read/Write from its vertex and index buffers on the GPU. The mesh's colliders
-        /// are written as bounds until the data arrives; their sets are then written again with the mesh.
-        /// </summary>
         int ReadMeshFromGpu(Mesh mesh, long key)
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null || !SystemInfo.supportsAsyncGPUReadback)
@@ -2193,7 +1972,6 @@ namespace PurrNet.Recording
                 bool written;
                 try
                 {
-                    // Everything is read before anything is written, so a failure leaves the batch as it was.
                     written = WriteMeshNative(mesh, id);
                 }
                 catch (Exception)
@@ -2203,8 +1981,6 @@ namespace PurrNet.Recording
                 if (written)
                     return id;
 
-                // Other topologies (quads, say): Unity converts them to triangles. Once per mesh per recording; the
-                // vertex and index lists are reused.
                 mesh.GetVertices(_meshVertices);
                 _meshIndices.Clear();
                 for (int sub = 0; sub < mesh.subMeshCount; sub++)
@@ -2244,7 +2020,6 @@ namespace PurrNet.Recording
 #else
         int _entityCheckCursor;
 
-        /// <summary>Without the physics module there are no colliders: entities' renderers are refreshed instead.</summary>
         public void RecordColliders(ulong tick) { }
 #endif
     }

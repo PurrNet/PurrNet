@@ -6,15 +6,10 @@ using Unity.Profiling;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Main-thread cost of recording, per section and tick. Shows up in the Unity profiler through the markers and is
-    /// summarized in the log when a recording finishes, so a player build can be measured without the profiler.
-    /// Fixed-size histograms: measuring makes no garbage.
-    /// </summary>
     public sealed class RecorderStats
     {
         const double BucketMs = 0.005;
-        const int Buckets = 4000; // up to 20 ms, then one overflow bucket
+        const int Buckets = 4000;
 
         public sealed class Section
         {
@@ -24,7 +19,6 @@ namespace PurrNet.Recording
             internal int ticks;
             internal double sumMs;
             internal double maxMs;
-            /// <summary>Heap growth seen during the section (process-wide, 4 KB granular).</summary>
             internal long allocated;
             internal int ticksWithAllocation;
             internal double pendingMs;
@@ -33,7 +27,6 @@ namespace PurrNet.Recording
             internal long start;
             internal long startMemory;
             internal long startCounted;
-            /// <summary>Exact bytes from Unity's GC allocation counter, when it is available (development builds).</summary>
             internal long counted;
             internal int ticksWithCounted;
             internal long pendingCounted;
@@ -46,27 +39,20 @@ namespace PurrNet.Recording
         }
 
         readonly List<Section> _sections = new List<Section>();
-        // Allocation over time (first section), per 30 s: shows whether pools have warmed up.
         const int TimelineSlots = 240;
         readonly long[] _timelineBytes = new long[TimelineSlots];
         readonly int[] _timelineTicks = new int[TimelineSlots];
         readonly Stopwatch _since = new Stopwatch();
         ProfilerRecorder _gcAllocated;
         bool _counted;
-        /// <summary>Heap growth is process-wide; while the writer thread works it is not attributed to the recorder.</summary>
         public RecordingFile file;
         readonly Stopwatch _clock = Stopwatch.StartNew();
         int _collectionsAtStart;
 
         readonly string _prefix;
 
-        /// <summary>
-        /// Whether time and allocations are measured. Off, sections only show up in the Unity profiler and the
-        /// summary is empty. Set before a recording starts.
-        /// </summary>
         public bool enabled;
 
-        /// <param name="prefix">Start of the profiler marker names (the recorder's name).</param>
         public RecorderStats(string prefix)
         {
             _prefix = prefix;
@@ -116,12 +102,10 @@ namespace PurrNet.Recording
             section.marker.End();
             section.pendingMs += elapsed * 1000.0 / Stopwatch.Frequency;
             section.touched = true;
-            // A collection in between makes the delta negative.
             if (memory > 0)
                 section.pendingAllocated += memory;
         }
 
-        /// <summary>Ends a tick: every section that ran during it gets one sample, the sum of its calls.</summary>
         public void CommitTick()
         {
             if (!enabled)

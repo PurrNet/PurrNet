@@ -1,6 +1,4 @@
 #if UNITY_WEBGL && !UNITY_EDITOR
-// Browsers run C# on one thread: records are encoded on the main thread and handed to a Web Worker that compresses,
-// stores (IndexedDB) and uploads them. See WebRecording and Plugins/WebGL/PurrRecording.jslib.
 #define PURRREC_WEB
 #endif
 using System;
@@ -33,35 +31,20 @@ namespace PurrNet.Recording
         Part = 14
     }
 
-    /// <summary>
-    /// A record payload that can also be built in steps (a browser has no writer thread, so a big chunk is encoded
-    /// over several frames). <see cref="IRecordProducer.Produce"/> finishes whatever is left.
-    /// </summary>
     interface IStepwiseRecordProducer : IRecordProducer
     {
         void Begin();
 
-        /// <summary>Works until done (true) or until the Stopwatch passes <paramref name="deadline"/> (false).</summary>
         bool Step(long deadline);
     }
 
-    /// <summary>A record payload built on the writer thread from pooled data.</summary>
     public interface IRecordProducer
     {
-        /// <summary>The payload; read before <see cref="Release"/>.</summary>
         RecordingBuffer Produce();
 
-        /// <summary>Called on the writer thread once the payload is written (or dropped).</summary>
         void Release();
     }
 
-    /// <summary>
-    /// Writes the .purrrec container. Records are framed on the caller's thread; compression and disk
-    /// writes happen on a background thread so a host does not hitch when a chunk is flushed.
-    /// On WebGL, which has no C# threads, queued records are encoded by <see cref="Pump"/> on the main thread (one
-    /// chunk per call) and a Web Worker compresses and stores them in the browser (IndexedDB); <see cref="path"/> is
-    /// then only the recording's name there.
-    /// </summary>
     public sealed class RecordingFile : IDisposable
     {
         struct PendingRecord
@@ -72,50 +55,34 @@ namespace PurrNet.Recording
             public bool compress;
         }
 
-        // A plain queue under a lock: it reuses its array, where a BlockingCollection allocates as records pass.
         readonly Queue<PendingRecord> _queue = new Queue<PendingRecord>(64);
         long _rawBytes;
         volatile Exception _error;
         volatile bool _busy;
-        // Writer thread CPU spent producing (encoding) and compressing records, in Stopwatch ticks.
         long _produceTicks, _maxRecordTicks;
 #if !PURRREC_WEB
         bool _completed;
         readonly Thread _thread;
         readonly FileStream _stream;
         long _bytesWritten, _compressTicks;
-        // Writer thread only: compressed output, reused between records.
         readonly BufferStream _compressed = new BufferStream(new RecordingBuffer(ByteShelf.shared, 1 << 16));
-        // Lets the native deflate callback find the output buffer without allocating per record.
         GCHandle _compressedHandle;
 #endif
 
-        /// <summary>
-        /// Main-thread milliseconds per frame the browser writer may spend encoding (WebGL only); a chunk that needs
-        /// more is finished over the next frames.
-        /// </summary>
         public double pumpBudgetMs { get; set; } = 1.0;
 
-        /// <summary>
-        /// Writer-thread milliseconds spent encoding chunks and compressing records, and the longest record. On WebGL:
-        /// main-thread milliseconds spent encoding, and the longest frame's share.
-        /// </summary>
         public double produceMs => Interlocked.Read(ref _produceTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         public double maxRecordMs => Interlocked.Read(ref _maxRecordTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
 #if PURRREC_WEB
-        // Reported back by the worker, so they trail the records just handed to it.
         public double compressMs => WebRecording.Stat(_web, WebRecording.StatCompressMs);
-        /// <summary>False when the browser cannot deflate (no CompressionStream): records are then stored uncompressed.</summary>
         public bool nativeDeflate => _web != 0 && WebRecording.Stat(_web, WebRecording.StatDeflate) != 0;
         public long bytesWritten => (long)WebRecording.Stat(_web, WebRecording.StatBytes);
 #else
         public double compressMs => Interlocked.Read(ref _compressTicks) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        /// <summary>False once a record had to be compressed with DeflateStream (it allocates per record).</summary>
         public bool nativeDeflate { get; private set; } = true;
         public long bytesWritten => Interlocked.Read(ref _bytesWritten);
 #endif
 
-        /// <summary>True while the writer thread encodes or compresses a record (it allocates while doing so).</summary>
         public bool busy
         {
             get
@@ -127,7 +94,6 @@ namespace PurrNet.Recording
 
         public string path { get; }
 
-        /// <summary>True where records are encoded on the main thread (WebGL) rather than on a writer thread.</summary>
 #if PURRREC_WEB
         public static bool encodesOnMainThread => true;
 #else
@@ -136,15 +102,9 @@ namespace PurrNet.Recording
         public long rawBytes => Interlocked.Read(ref _rawBytes);
 
 #if PURRREC_WEB
-        // The worker's handle for this recording; 0 when the browser cannot run the worker (records are dropped).
         readonly int _web;
         readonly RecordingBuffer _header = new RecordingBuffer(16);
 
-        /// <summary>
-        /// Starts a recording at <paramref name="path"/>. In a browser, finished recordings beyond
-        /// <paramref name="maxLocalBytes"/> (0: no cap) are deleted oldest first; elsewhere the uploader keeps the folder
-        /// under its cap.
-        /// </summary>
         public RecordingFile(string path, long maxLocalBytes)
         {
             this.path = path;
@@ -153,17 +113,13 @@ namespace PurrNet.Recording
                 return;
             var magic = new RecordingBuffer(16);
             magic.WriteBytes(Encoding.ASCII.GetBytes("PURRREC\0"), 0, 8);
-            magic.WriteByte(1); // version u16 LE
+            magic.WriteByte(1);
             magic.WriteByte(0);
             WebRecording.Append(_web, -1, false, magic.data, magic.length);
         }
 
         bool _stepping;
 
-        /// <summary>
-        /// Writes queued records for up to <see cref="pumpBudgetMs"/> of main-thread time: a chunk that needs longer
-        /// to encode continues on the next call. Call once per frame.
-        /// </summary>
         public void Pump()
         {
             long start = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -191,7 +147,6 @@ namespace PurrNet.Recording
                 _maxRecordTicks = spent;
         }
 #else
-        /// <summary>Called once per frame; records are written by the writer thread here, so there is nothing to do.</summary>
         public void Pump() { }
 
         public RecordingFile(string path, long maxLocalBytes)
@@ -201,7 +156,7 @@ namespace PurrNet.Recording
             _stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
             var magic = Encoding.ASCII.GetBytes("PURRREC\0");
             _stream.Write(magic, 0, magic.Length);
-            _stream.WriteByte(1); // version u16 LE
+            _stream.WriteByte(1);
             _stream.WriteByte(0);
             _bytesWritten = 10;
             _compressedHandle = GCHandle.Alloc(_compressed.buffer);
@@ -211,7 +166,6 @@ namespace PurrNet.Recording
 
         void WriteLoop()
         {
-            // Visible in the Unity profiler as its own thread.
             UnityEngine.Profiling.Profiler.BeginThreadProfiling("PurrDiction", "Recording writer");
             try
             {
@@ -219,8 +173,6 @@ namespace PurrNet.Recording
                 while (Take(out var record))
                 {
                     WriteRecord(record, header);
-                    // Handed to the system whenever the writer has caught up, so a game that is killed loses the
-                    // chunk it was collecting and nothing that was already written.
                     bool idle;
                     lock (_queue)
                         idle = _queue.Count == 0;
@@ -235,7 +187,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Waits for the next record; false once the file is closing and every record is written.</summary>
         bool Take(out PendingRecord record)
         {
             lock (_queue)
@@ -250,21 +201,14 @@ namespace PurrNet.Recording
                     Monitor.Wait(_queue);
                 }
                 record = _queue.Dequeue();
-                // Under the lock, so a caller that sees the writer idle knows it stays idle until it queues a record.
                 _busy = true;
                 return true;
             }
         }
 #endif
 
-        /// <summary>A recording at <paramref name="path"/> with no size cap; see <see cref="RecordingFile(string, long)"/>.</summary>
         public RecordingFile(string path) : this(path, 0) { }
 
-        /// <summary>
-        /// What the upload service needs to tie this file to its match (recording id, main file or client part, player
-        /// and token), as JSON. A browser's worker keeps it with the stored file; elsewhere the uploader reads the
-        /// same from the file's HEADER.
-        /// </summary>
         public void SetLink(string json)
         {
 #if PURRREC_WEB
@@ -278,7 +222,6 @@ namespace PurrNet.Recording
             Enqueue(kind, Encoding.UTF8.GetBytes(json), compress);
         }
 
-        /// <summary>Sizes the compressed-output buffer before records are queued, so compressing does not grow it.</summary>
         public void ReserveOutput(int bytes)
         {
 #if !PURRREC_WEB
@@ -294,10 +237,6 @@ namespace PurrNet.Recording
             Add(new PendingRecord { kind = kind, payload = payload, compress = compress });
         }
 
-        /// <summary>
-        /// Queues a record whose payload is produced on the writer thread, in order with the other records. The
-        /// producer is released once its bytes are written, so it and its buffers can be pooled.
-        /// </summary>
         public void Enqueue(RecordKind kind, IRecordProducer producer, bool compress)
         {
             if (_error != null)
@@ -321,7 +260,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Encodes, compresses and writes one record (on the writer thread, or in <see cref="Pump"/>).</summary>
         void WriteRecord(in PendingRecord record, RecordingBuffer header)
         {
             if (_error != null)
@@ -344,7 +282,6 @@ namespace PurrNet.Recording
                     Interlocked.Add(ref _rawBytes, length);
                 }
 #if PURRREC_WEB
-                // The worker compresses, frames and stores it; the bytes are copied out before this returns.
                 if (_web != 0)
                     WebRecording.Append(_web, (int)record.kind, record.compress, payload, length);
 #else
@@ -394,7 +331,6 @@ namespace PurrNet.Recording
         public void Dispose()
         {
 #if PURRREC_WEB
-            // The rest at once: the match is over.
             long start = System.Diagnostics.Stopwatch.GetTimestamp();
             while (_queue.Count > 0)
                 WriteRecord(_queue.Dequeue(), _header);
@@ -412,12 +348,9 @@ namespace PurrNet.Recording
                 _compressedHandle.Free();
             _stream.Dispose();
 #endif
-            if (_error != null)
-                Debug.LogError($"[Recorder] Writing {path} failed: {_error}");
         }
     }
 
-    /// <summary>A write-only stream into a <see cref="RecordingBuffer"/>, so compressed output reuses shelf arrays.</summary>
     sealed class BufferStream : Stream
     {
         public readonly RecordingBuffer buffer;
@@ -442,12 +375,6 @@ namespace PurrNet.Recording
     }
 
 #if !PURRREC_WEB
-    /// <summary>
-    /// Raw deflate through the zlib helper Unity's runtimes ship (the one <see cref="DeflateStream"/> itself calls, with
-    /// the same default level, so the bytes are identical). DeflateStream allocates handles and buffers for every
-    /// record; this reuses one callback and one handle, so compressing makes no garbage. Falls back to DeflateStream
-    /// where the helper is missing.
-    /// </summary>
     static class NativeDeflate
     {
         delegate int Feeder(IntPtr buffer, int length, IntPtr state);
@@ -463,7 +390,6 @@ namespace PurrNet.Recording
 
         static readonly Feeder FeederDelegate = Feed;
         static IntPtr _feeder;
-        // 0: not tried yet, 1: works, -1: unavailable.
         static volatile int _state;
 
         public static bool available => _state >= 0;
@@ -483,7 +409,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Appends the raw deflate of <paramref name="payload"/> to the buffer behind <paramref name="output"/>.</summary>
         public static unsafe bool TryCompress(byte[] payload, int length, IntPtr output)
         {
             if (_state < 0)
@@ -512,7 +437,6 @@ namespace PurrNet.Recording
             }
             catch (Exception)
             {
-                // DllNotFoundException, EntryPointNotFoundException: no helper on this platform.
                 _state = -1;
                 return false;
             }

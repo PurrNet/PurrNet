@@ -6,10 +6,6 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Where managed objects keep their fields, found once by experiment so plans can read objects in place.
-    /// Unity's garbage collector does not move objects, so an object's address stays valid while it is referenced.
-    /// </summary>
     static unsafe class ObjectMemory
     {
         sealed class ClassProbe { public long a; public long b; }
@@ -18,9 +14,7 @@ namespace PurrNet.Recording
         const long MarkA = 0x0123456789ABCDEF;
         const long MarkB = 0x7EDCBA9876543210;
 
-        /// <summary>Bytes from a class object's address to where <see cref="UnsafeUtility.GetFieldOffset"/> counts from.</summary>
         public static readonly int classBase = -1;
-        /// <summary>Bytes from a boxed struct's address to the struct's data.</summary>
         public static readonly int boxedBase = -1;
 
         static ObjectMemory()
@@ -65,10 +59,8 @@ namespace PurrNet.Recording
             return UnsafeUtility.As<IntPtr, object>(ref pointer);
         }
 
-        /// <summary>Whether a List's change counter can be read in place (checked once on a list of ints).</summary>
         public static readonly bool listVersions;
 
-        /// <summary>Where a List type keeps the counter it raises on every change, or -1.</summary>
         public static int ListVersionOffset(Type listType)
         {
             var field = listType.GetField("_version", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -102,7 +94,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>Something that writes tagged values without reflection, re-checked against the generic path at first.</summary>
     abstract class CheckedWriter
     {
         const int SelfChecks = 4;
@@ -110,7 +101,6 @@ namespace PurrNet.Recording
         int _trivialChecksLeft = 16;
         public bool disabled;
 
-        /// <summary>Checks until <see cref="SelfChecks"/> non-trivial values matched; trivial ones prove little.</summary>
         public bool NeedsSelfCheck(bool trivial)
         {
             if (_checksLeft <= 0)
@@ -122,11 +112,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// The tagged encoding of a value as a flat list of reads from its memory. Primitive fields are read in place,
-    /// references are handed to <see cref="RecordingTypeRegistry.WriteTagged"/> (no boxing for those), and struct
-    /// fields that are lists go to a typed list writer.
-    /// </summary>
     sealed class ObjectPlan : CheckedWriter
     {
         enum Op : byte { Object, Bool, F32, F64, Signed, Unsigned, Enum, Nullable, Reference, InlineList }
@@ -138,21 +123,14 @@ namespace PurrNet.Recording
             public int size;
             public bool signed;
             public int layoutId;
-            /// <summary>Nullable: steps of the value, skipped when it has none.</summary>
             public int skip;
-            /// <summary>Nesting below the plan's root (its fields are at 1).</summary>
             public int level;
             public InlineListWriter list;
         }
 
         readonly List<Step> _steps = new List<Step>();
-        /// <summary>Deepest level written directly; deeper values make the caller use the generic path.</summary>
         public int depth;
 
-        /// <summary>
-        /// True when the encoding depends on nothing but the value's own bytes (no references, no lists), so equal
-        /// bytes always encode the same.
-        /// </summary>
         public bool readsOnlyItself
         {
             get
@@ -164,14 +142,12 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>A struct value stored inline (a row field or a list element).</summary>
         public static ObjectPlan ForValue(RecordingTypeRegistry types, Type type)
         {
             var plan = new ObjectPlan();
             return type.IsValueType && plan.AddValue(types, type, 0, 0) ? plan : null;
         }
 
-        /// <summary>The fields of a class object or boxed struct, counting offsets from its field origin.</summary>
         public static ObjectPlan ForObject(RecordingTypeRegistry types, Type type)
         {
             var plan = new ObjectPlan();
@@ -194,12 +170,11 @@ namespace PurrNet.Recording
             {
                 var underlying = Enum.GetUnderlyingType(type);
                 if (underlying == typeof(ulong))
-                    return false; // the generic path converts to long, which can throw
+                    return false;
                 _steps.Add(new Step { op = Op.Enum, offset = offset, size = UnsafeUtility.SizeOf(underlying), signed = IsSigned(underlying), level = level });
                 return true;
             }
 
-            // A boxed Nullable<T> is null or a boxed T, so the generic path writes null or the plain value.
             var inner = Nullable.GetUnderlyingType(type);
             if (inner != null)
             {
@@ -277,7 +252,6 @@ namespace PurrNet.Recording
 
         static bool IsSigned(Type t) => t == typeof(sbyte) || t == typeof(short) || t == typeof(int) || t == typeof(long);
 
-        /// <summary>Writes the value at <paramref name="p"/> as the generic path would at <paramref name="baseDepth"/>.</summary>
         public unsafe void Write(byte* p, RecordingTypeRegistry types, RecordingBuffer buffer, int baseDepth,
             HashSet<object> visiting)
         {
@@ -355,7 +329,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>Finds the single <see cref="IList{T}"/> a type implements.</summary>
     static class ListTypes
     {
         public static Type Element(Type listType)
@@ -366,14 +339,13 @@ namespace PurrNet.Recording
                 if (!i.IsGenericType || i.GetGenericTypeDefinition() != typeof(IList<>))
                     continue;
                 if (element != null)
-                    return null; // ambiguous
+                    return null;
                 element = i.GetGenericArguments()[0];
             }
             return element;
         }
     }
 
-    /// <summary>Writes one list element: plain structs through their plan, everything else as a tagged value.</summary>
     static class ElementWriter<T>
     {
         public static unsafe void Write(ObjectPlan plan, RecordingTypeRegistry types, RecordingBuffer buffer, ref T item,
@@ -381,7 +353,6 @@ namespace PurrNet.Recording
         {
             if (plan != null && depth + plan.depth <= RecordingTypeRegistry.MaxDepth)
             {
-                // Plans exist only for structs, so this is the item's own memory (a local, it does not move).
                 fixed (byte* p = &UnsafeUtility.As<T, byte>(ref item))
                     plan.Write(p, types, buffer, depth, visiting);
             }
@@ -395,13 +366,8 @@ namespace PurrNet.Recording
         ObjectPlan plan { set; }
     }
 
-    /// <summary>
-    /// Writes an <see cref="IList{T}"/> object (a List, an array, a boxed DisposableList) as a tagged list, by index,
-    /// without a boxed enumerator.
-    /// </summary>
     abstract class TypedListWriter : CheckedWriter
     {
-        /// <summary>Returns false when the list could not be read (the caller writes null, as the generic path does).</summary>
         public abstract bool Write(RecordingTypeRegistry types, RecordingBuffer buffer, object list, int depth,
             HashSet<object> visiting);
 
@@ -418,7 +384,6 @@ namespace PurrNet.Recording
             }
             catch
             {
-                // AOT platforms may not have the generic instantiation; the generic path still works.
                 return null;
             }
         }
@@ -448,7 +413,6 @@ namespace PurrNet.Recording
             int count;
             try
             {
-                // Read everything first: a disposed list throws, and then nothing may have been written.
                 count = list.Count;
                 for (int i = 0; i < count; i++)
                     _ = list[i];
@@ -474,7 +438,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>A struct list (a DisposableList) stored inline in another value, read in place without boxing it.</summary>
     abstract class InlineListWriter
     {
         public abstract unsafe bool WriteAt(RecordingTypeRegistry types, RecordingBuffer buffer, byte* at, int depth,
@@ -521,16 +484,13 @@ namespace PurrNet.Recording
         public override unsafe bool WriteAt(RecordingTypeRegistry types, RecordingBuffer buffer, byte* at, int depth,
             HashSet<object> visiting)
         {
-            // The generic path writes deeper values as a depth marker; leave those to it.
             if (depth > RecordingTypeRegistry.MaxDepth)
             {
                 buffer.WriteByte(12);
                 return true;
             }
 
-            // Constrained calls on the struct in place: no box.
             ref TList list = ref UnsafeUtility.AsRef<TList>(at);
-            // A disposed DisposableList throws on every read; exceptions allocate, so ask first.
             if (_disposable && UnsafeUtility.As<TList, PurrNet.Pooling.DisposableList<T>>(ref list).isDisposed)
                 return false;
             int count;
@@ -561,12 +521,6 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Remembers how the previous list's elements were encoded, by their bytes. Lists that mostly repeat from one tick
-    /// to the next (the hierarchy's spawned prefabs, an inventory) then copy each unchanged element's encoding instead
-    /// of building it again. Only for unmanaged elements whose plan reads nothing but their own bytes, so equal bytes
-    /// mean an equal encoding; the output is the same as without it.
-    /// </summary>
     sealed unsafe class ElementMemo
     {
         readonly int _size;
@@ -583,10 +537,8 @@ namespace PurrNet.Recording
                 ? new ElementMemo(UnsafeUtility.SizeOf(typeof(T)))
                 : null;
 
-        /// <summary>The memo to use for a list of <paramref name="count"/> items at <paramref name="depth"/>, or null.</summary>
         public static ElementMemo Use(ElementMemo memo, ObjectPlan plan, int count, int depth)
         {
-            // Deeper items go through the generic path (see ElementWriter), which the memo does not reproduce.
             if (memo == null || depth + plan.depth > RecordingTypeRegistry.MaxDepth)
                 return null;
             memo.Begin(count, depth);
@@ -603,7 +555,6 @@ namespace PurrNet.Recording
             _cursor = 0;
             _nextCount = 0;
             _nextEncoded.Clear();
-            // Power-of-two sizes: lists that grow over a match reach their size in few steps.
             if (_nextRaw.Length < count * _size)
                 _nextRaw = new byte[Math.Max(UnityEngine.Mathf.NextPowerOfTwo(count * _size), _nextRaw.Length * 2)];
             if (_nextStart.Length < count + 1)
@@ -613,7 +564,6 @@ namespace PurrNet.Recording
         public void Write<T>(ref T item, ObjectPlan plan, RecordingTypeRegistry types, RecordingBuffer buffer, int depth,
             HashSet<object> visiting)
         {
-            // Memos exist only for structs, so this is the item's own memory (a local, it does not move).
             fixed (byte* p = &UnsafeUtility.As<T, byte>(ref item))
                 Write(p, plan, types, buffer, depth, visiting);
         }
@@ -637,10 +587,6 @@ namespace PurrNet.Recording
             _nextStart[++_nextCount] = _nextEncoded.length;
         }
 
-        /// <summary>
-        /// The previous list's element equal to the one at <paramref name="p"/>, looked for where this list has got to
-        /// in it: the same position, or the next one when an element was removed before it.
-        /// </summary>
         int Find(byte* p)
         {
             if (_cursor >= _count)
@@ -664,17 +610,11 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Writes one managed field of a row in place: a reference is read from the row and written as a tagged value,
-    /// a struct (a DisposableList, say) through its plan. No box of the row or the field.
-    /// </summary>
     sealed class ManagedFieldWriter : CheckedWriter
     {
         readonly int _offset;
         readonly bool _reference;
         readonly ObjectPlan _plan;
-        // Where the field's List keeps its change counter; -1 for a string (it never changes), -2 when the field is
-        // neither or the list's items can change without the list knowing (classes, structs holding references).
         readonly int _version = -2;
 
         ManagedFieldWriter(int offset, bool reference, ObjectPlan plan, Type type = null)
@@ -694,10 +634,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>
-        /// The object the field holds and its change counter, when both being the same as before means the value is
-        /// the same: a string, or a list of strings or plain data. False for anything else and for null.
-        /// </summary>
         public unsafe bool Identify(byte* row, out object source, out int version)
         {
             source = null;

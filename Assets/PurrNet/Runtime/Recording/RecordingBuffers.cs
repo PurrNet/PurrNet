@@ -4,14 +4,10 @@ using System.Text;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Growable byte buffer with the little-endian and LEB128 writers the format uses.
-    /// </summary>
     public sealed class RecordingBuffer
     {
         public byte[] data;
         public int length;
-        /// <summary>When set, growing takes the larger array from here and leaves the old one for the next buffer.</summary>
         readonly ByteShelf _shelf;
 
         public RecordingBuffer(int capacity = 256)
@@ -19,7 +15,6 @@ namespace PurrNet.Recording
             data = new byte[Math.Max(16, capacity)];
         }
 
-        /// <summary>A buffer whose arrays come from (and go back to) <paramref name="shelf"/>, so growing makes no garbage.</summary>
         public RecordingBuffer(ByteShelf shelf, int capacity)
         {
             _shelf = shelf;
@@ -28,7 +23,6 @@ namespace PurrNet.Recording
 
         public void Clear() => length = 0;
 
-        /// <summary>Grows the array now (a load moment) so later writes up to <paramref name="capacity"/> do not.</summary>
         public void Reserve(int capacity)
         {
             if (data.Length < capacity)
@@ -79,14 +73,12 @@ namespace PurrNet.Recording
             length += count;
         }
 
-        /// <summary>Replaces the contents with <paramref name="other"/>'s, keeping this buffer's array when it fits.</summary>
         public void CopyFrom(RecordingBuffer other)
         {
             length = 0;
             WriteBytes(other.data, 0, other.length);
         }
 
-        /// <summary>Writes a string's UTF-8 bytes (no length prefix) without allocating.</summary>
         public void WriteUtf8(string value)
         {
             Ensure(Encoding.UTF8.GetMaxByteCount(value.Length));
@@ -177,22 +169,12 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Byte arrays that buffers grew out of, kept for the next buffer that needs one. Chunk logs grow to megabytes
-    /// early in a match; with a shelf the arrays they leave behind are reused instead of becoming garbage, so the
-    /// recorder never triggers a collection by growing.
-    /// </summary>
     public sealed class ByteShelf
     {
-        /// <summary>The recorder's shelf: chunk logs, metadata batches, the encoder and compressed output share it.</summary>
         public static readonly ByteShelf shared = new ByteShelf();
 
         readonly System.Collections.Generic.List<byte[]> _free = new System.Collections.Generic.List<byte[]>();
 
-        /// <summary>
-        /// The smallest kept array of at least <paramref name="size"/> bytes, or a new one. Arrays more than four times
-        /// too big are left for buffers that need them, so a small buffer never holds megabytes.
-        /// </summary>
         public byte[] Take(int size)
         {
             lock (_free)

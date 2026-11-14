@@ -31,7 +31,11 @@ public class PlayerSpawnerLocalTransportTests
                 yield return null;
         }
 
+#if UNITY_6000_4_OR_NEWER
+        foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include))
+#else
         foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+#endif
         {
             if (identity)
                 Object.DestroyImmediate(identity.gameObject);
@@ -104,7 +108,11 @@ public class PlayerSpawnerLocalTransportTests
     int CountSpawnedPlayersOwnedBy(PlayerID? owner)
     {
         int count = 0;
+#if UNITY_6000_4_OR_NEWER
+        foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include))
+#else
         foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+#endif
         {
             if (identity.gameObject != _prefab && identity.isSpawned && identity.name.StartsWith(_prefab.name) && identity.owner == owner)
                 count++;

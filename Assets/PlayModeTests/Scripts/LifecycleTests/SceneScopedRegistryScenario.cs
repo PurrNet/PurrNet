@@ -423,7 +423,11 @@ public class SceneScopedRegistryScenario : Scenario
     private static int CountScopedSpawned(CycleState state)
     {
         var count = 0;
+#if UNITY_6000_4_OR_NEWER
+        var identities = FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Exclude);
+#else
         var identities = FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#endif
 
         for (var i = 0; i < identities.Length; i++)
         {

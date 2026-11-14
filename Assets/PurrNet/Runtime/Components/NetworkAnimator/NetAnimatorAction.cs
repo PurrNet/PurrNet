@@ -321,7 +321,9 @@ namespace PurrNet
 
         public void Apply(Animator anim)
         {
+#pragma warning disable CS0618
             anim.animatePhysics = value;
+#pragma warning restore CS0618
         }
     }
 

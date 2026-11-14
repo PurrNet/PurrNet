@@ -3,11 +3,6 @@ using System.Runtime.InteropServices;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// The browser side of recording (Plugins/WebGL/PurrRecording.jslib). A Web Worker compresses records
-    /// (CompressionStream), stores each recording in IndexedDB as it is written, and uploads finished ones, so the
-    /// main thread only encodes and copies bytes. Calls take pointers and numbers, so they make no C# garbage.
-    /// </summary>
     static class WebRecording
     {
         public const int StatBytes = 0, StatCompressMs = 1, StatDeflate = 3;
@@ -33,28 +28,14 @@ namespace PurrNet.Recording
         [DllImport("__Internal")]
         static extern void PurrNetRec_SetIdle(int idle);
 
-        static bool _warned;
+        public static int Open(string name, long maxLocalBytes) => PurrNetRec_Open(name, maxLocalBytes);
 
-        /// <summary>A handle for a new recording, or 0 when this browser cannot run the worker.</summary>
-        public static int Open(string name, long maxLocalBytes)
-        {
-            int handle = PurrNetRec_Open(name, maxLocalBytes);
-            if (handle == 0 && !_warned)
-            {
-                _warned = true;
-                UnityEngine.Debug.LogWarning("[Recorder] This browser cannot run the recording worker; matches are not recorded.");
-            }
-            return handle;
-        }
-
-        /// <summary>Hands one record to the worker (kind -1: raw bytes, no framing). The bytes are copied before this returns.</summary>
         public static unsafe void Append(int handle, int kind, bool compress, byte[] data, int length)
         {
             fixed (byte* p = data)
                 PurrNetRec_Append(handle, kind, compress ? 1 : 0, p, length);
         }
 
-        /// <summary>What the worker adds to this recording's upload request (see RecordingFile.SetLink).</summary>
         public static void Link(int handle, string json) => PurrNetRec_Link(handle, json);
 
         public static void Close(int handle) => PurrNetRec_Close(handle);

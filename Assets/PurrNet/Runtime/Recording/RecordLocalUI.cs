@@ -22,7 +22,6 @@ namespace PurrNet.Recording
     [AddComponentMenu("PurrNet/Recording/Record Local UI")]
     public sealed partial class RecordLocalUI : MonoBehaviour
     {
-        /// <summary>The stream the UI is recorded under.</summary>
         public const string Stream = "ui";
 
         [Tooltip("Most time per tick, in milliseconds, spent looking for UI changes that are not announced (elements " +
@@ -52,17 +51,13 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>One recorded element: a uGUI object or a UI Toolkit element.</summary>
         sealed partial class Element
         {
             public int id;
             public bool toolkit;
-            /// <summary>Whether the file has this element (its last row was not a removal).</summary>
             public bool live;
             public bool queued;
-            /// <summary>Found changing without being announced: looked at every tick until it stops.</summary>
             public bool hot;
-            /// <summary>Whether what the element shows (text, sprite, colours) has to be read again.</summary>
             public bool content = true;
             public bool dropped;
             public int pass;
@@ -70,7 +65,6 @@ namespace PurrNet.Recording
             public Element parent;
             public Element root;
 
-            // A root's space: its rectangle in its own units, and where that is on screen (as fractions).
             public Rect rootRect;
             public float screenX, screenY, screenWidth = 1, screenHeight = 1;
         }
@@ -92,18 +86,12 @@ namespace PurrNet.Recording
         bool _recheckAll;
         bool _anyDropped;
 
-        // What recording cost, for tests and benchmarks.
         public int passes { get; private set; }
         public long rows { get; private set; }
         public long checks { get; private set; }
         public double totalMs { get; private set; }
         public double maxMs { get; private set; }
         public int elementCount => _elements.Count;
-        /// <summary>
-        /// Managed memory allocated while passes ran, while <see cref="measureAllocations"/> is set. From Unity's
-        /// allocation counter (the editor and development builds), which counts every thread: a chunk the writer
-        /// thread encodes at the same moment is counted too.
-        /// </summary>
         public long allocatedBytes { get; private set; }
         public long maxAllocatedBytes { get; private set; }
         public int passesAllocating { get; private set; }
@@ -146,7 +134,6 @@ namespace PurrNet.Recording
                 _allocations.Dispose();
         }
 
-        /// <summary>Lets go of every element; they are found again when a recording starts.</summary>
         void Clear()
         {
 #if PURRNET_UGUI
@@ -164,8 +151,6 @@ namespace PurrNet.Recording
 
         void LateUpdate()
         {
-            // Canvases are laid out right before they render, so with them the pass runs there; without (no canvas,
-            // no uGUI) it runs here.
             if (Time.frameCount - _lastRenderFrame > 2)
                 Pass();
         }
@@ -176,7 +161,6 @@ namespace PurrNet.Recording
             int epoch = session != null ? session.sampleEpoch : 0;
             if (epoch == 0)
             {
-                // Nothing is watched while nothing is recorded.
                 if (_epoch != 0)
                     Clear();
                 return;
@@ -199,8 +183,7 @@ namespace PurrNet.Recording
             }
             catch (System.Exception e)
             {
-                // Recording must never get in the game's way: the UI is left out from here on.
-                UnityEngine.Debug.LogException(e, this);
+                session.AddError("ui_exception", e.ToString());
                 enabled = false;
             }
             finally
@@ -223,7 +206,6 @@ namespace PurrNet.Recording
             long start = Stopwatch.GetTimestamp();
             _pass++;
 
-            // Nothing of a new recording is in its file yet; a new chunk gets every element again.
             bool starting = _epoch == 0;
             bool snapshot = epoch != _epoch;
             _epoch = epoch;
@@ -272,8 +254,6 @@ namespace PurrNet.Recording
 #endif
             Drain();
 
-            // The elements that changed without being announced the last time they were looked at (something is
-            // moving or fading them): every tick, until they stop.
             for (int i = _hot.Count - 1; i >= 0; i--)
             {
                 var element = _hot[i];
@@ -292,8 +272,6 @@ namespace PurrNet.Recording
                 _hot.RemoveAt(_hot.Count - 1);
             }
 
-            // The other elements nothing was announced about, as many as the budget allows, continuing where the
-            // last pass stopped.
             long deadline = everything
                 ? long.MaxValue
                 : Stopwatch.GetTimestamp() + (long)(_checkBudgetMs * 0.001 * Stopwatch.Frequency);
@@ -340,7 +318,6 @@ namespace PurrNet.Recording
                 maxMs = ms;
         }
 
-        /// <summary>Records every element something was announced about, and the ones found while doing so.</summary>
         void Drain()
         {
             for (int i = 0; i < _dirty.Count; i++)
@@ -384,14 +361,12 @@ namespace PurrNet.Recording
 #endif
         }
 
-        /// <summary>Captures <paramref name="element"/> now if this pass has not yet (parents go before children).</summary>
         void CaptureFirst(Element element)
         {
             if (element.pass != _pass && !element.dropped)
                 Capture(element);
         }
 
-        /// <summary>Writes the element's row when it differs from its last one.</summary>
         void Commit(Element element, ref UISample sample)
         {
             sample.op = UIOp.Update;
@@ -405,7 +380,6 @@ namespace PurrNet.Recording
             Write(ref sample);
         }
 
-        /// <summary>The element is not shown any more; it keeps its id for when it is again.</summary>
         void Hide(Element element)
         {
             if (!element.live)
@@ -415,7 +389,6 @@ namespace PurrNet.Recording
             Write(ref sample);
         }
 
-        /// <summary>The element's object is gone.</summary>
         void Drop(Element element)
         {
             if (element.dropped)
@@ -431,7 +404,6 @@ namespace PurrNet.Recording
             rows++;
         }
 
-        /// <summary>Recording stopped: the next file starts from nothing.</summary>
         void Forget()
         {
             _epoch = 0;
@@ -444,12 +416,6 @@ namespace PurrNet.Recording
             }
         }
 
-        // ---- Rectangles -------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Sets the sample's rectangle from three of its corners, given in the root's units from the top left of
-        /// the root's rectangle with y down.
-        /// </summary>
         static void SetRect(Element root, Vector2 topLeft, Vector2 topRight, Vector2 bottomLeft, ref UISample sample)
         {
             var across = topRight - topLeft;
@@ -479,8 +445,6 @@ namespace PurrNet.Recording
 
         static byte ToByte(float value) => (byte)(value <= 0f ? 0 : value >= 1f ? 255 : (int)(value * 255f + 0.5f));
 
-        // A rectangle is written again when it moved by more than this (a tenth of a pixel on a 4K screen):
-        // elements under a moving world-space canvas would otherwise change by rounding alone.
         const float RectTolerance = 0.00002f;
 
         static bool Near(float a, float b)
@@ -510,7 +474,6 @@ namespace PurrNet.Recording
 
         static bool Same(string a, string b) => ReferenceEquals(a, b) || string.Equals(a, b);
 
-        // Type names, read once per type.
         static readonly Dictionary<System.Type, string> TypeNames = new Dictionary<System.Type, string>();
 
         static string TypeName(System.Type type)

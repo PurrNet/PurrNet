@@ -8,7 +8,6 @@ using UnityEngine.UIElements;
 
 namespace PurrNet.Recording
 {
-    // UI Toolkit: the runtime panels (UIDocuments) and every element in them.
     public sealed partial class RecordLocalUI
     {
         sealed partial class Element
@@ -18,12 +17,9 @@ namespace PurrNet.Recording
             public UIWidget control;
             public bool panel;
             public int paintOrder;
-            /// <summary>The element's opacity times that of everything above it.</summary>
             public float opacity = 1f;
         }
 
-        // UI Toolkit has no public list of its runtime panels; its own sorted list is read instead. Without it
-        // (another Unity version) the scene is searched for UIDocuments.
         static readonly Func<IList> PlayerPanels = FindPlayerPanels();
 
         static Func<IList> FindPlayerPanels()
@@ -57,8 +53,6 @@ namespace PurrNet.Recording
             _byVisual.Clear();
         }
 
-        // ---- Finding panels and elements ----------------------------------------------------------------
-
         void DiscoverPanels()
         {
             IList panels = null;
@@ -77,7 +71,9 @@ namespace PurrNet.Recording
             else if (Time.unscaledTime >= _nextDocumentSearch)
             {
                 _nextDocumentSearch = Time.unscaledTime + 0.25f;
-#if UNITY_2023_1_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
+                var documents = FindObjectsByType<UIDocument>();
+#elif UNITY_2023_1_OR_NEWER
                 var documents = FindObjectsByType<UIDocument>(FindObjectsSortMode.None);
 #else
                 var documents = FindObjectsOfType<UIDocument>();
@@ -99,7 +95,6 @@ namespace PurrNet.Recording
             var element = AddVisual(tree);
             element.panel = true;
             _panels.Add(element);
-            // Text changes are announced by an event that passes through the panel's root.
             _onTextChanged ??= OnTextChanged;
             tree.RegisterCallback(_onTextChanged, TrickleDown.TrickleDown);
         }
@@ -110,7 +105,6 @@ namespace PurrNet.Recording
                 Queue(element);
         }
 
-        /// <summary>Starts recording an element and everything in it.</summary>
         Element AddVisual(VisualElement visual)
         {
             var element = Add(true);
@@ -147,7 +141,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>The element left its panel: it and everything in it is forgotten.</summary>
         void DropTree(Element element)
         {
             var children = element.visual.hierarchy;
@@ -165,7 +158,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Hides everything in the element (it stopped being shown), or queues it (it is shown again).</summary>
         void SetTreeShown(Element element, bool shown)
         {
             var children = element.visual.hierarchy;
@@ -183,8 +175,6 @@ namespace PurrNet.Recording
                 }
             }
         }
-
-        // ---- Reading an element -----------------------------------------------------------------------
 
         void CaptureToolkit(Element element)
         {
@@ -289,7 +279,6 @@ namespace PurrNet.Recording
                 sample.value = ValueOf(visual);
             }
 
-            // What fills the rectangle: a background image (or an Image element's picture), else the background colour.
             UnityEngine.Object picture;
             Color fill;
             if (visual is Image image)
@@ -323,7 +312,6 @@ namespace PurrNet.Recording
             var text = element.textElement;
             if (text != null)
             {
-                // What is typed into a field is its inner text element's text; a password is never read.
                 ITextEdition edition = text;
                 if (edition.isPassword || (_redactTextInput && !edition.isReadOnly))
                     flags |= UIFlags.Redacted;
@@ -356,7 +344,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Whether <paramref name="visual"/> is the root of a document that has a <see cref="DontRecordUI"/>.</summary>
         static bool MarkedDocument(VisualElement visual)
         {
             var markers = DontRecordUI.all;
@@ -375,7 +362,6 @@ namespace PurrNet.Recording
             return 0;
         }
 
-        /// <summary>World-space panels are not recorded: their place in the world is not readable from here.</summary>
         static bool InWorld(VisualElement tree)
         {
 #if UNITY_6000_4_OR_NEWER
@@ -385,12 +371,6 @@ namespace PurrNet.Recording
             return false;
         }
 
-        // ---- Paint order ------------------------------------------------------------------------------
-
-        /// <summary>
-        /// Numbers every element in the order its panel paints them (depth first), after elements were added, removed
-        /// or moved. Elements whose number changed are written again.
-        /// </summary>
         void RenumberPanels()
         {
             if (!_orderChanged)

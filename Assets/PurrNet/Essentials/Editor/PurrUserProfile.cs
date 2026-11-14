@@ -69,7 +69,10 @@ namespace PurrNet.Essentials
             try
             {
                 var request = UnityWebRequestTexture.GetTexture(url);
-                await request.SendWebRequest();
+                var tcs = new System.Threading.Tasks.TaskCompletionSource<bool>();
+                var operation = request.SendWebRequest();
+                operation.completed += _ => tcs.TrySetResult(true);
+                await tcs.Task;
 
                 if (request.result != UnityWebRequest.Result.Success) return;
 

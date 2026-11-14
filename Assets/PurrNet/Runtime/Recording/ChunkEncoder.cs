@@ -5,15 +5,6 @@ using Mathf = UnityEngine.Mathf;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// One stream of the recording: what it is, and where its rows go in the current chunk. Per-tick streams (state,
-    /// input, transform, player) get one raw row per tick while their owner exists; the encoder drops the ones that
-    /// did not change.
-    /// </summary>
-    /// <summary>
-    /// What a recorder keeps for the streams of one object it visits every tick: the last tick it was there, and
-    /// whether any of the values behind those streams changed since their rows were last written.
-    /// </summary>
     public sealed class RecordedLife
     {
         public ulong tick;
@@ -24,44 +15,24 @@ namespace PurrNet.Recording
     {
         public int id;
         public RowLayout layout;
-        /// <summary>Per-tick stream: a tick without a stored row repeats the previous row.</summary>
         public bool forwardFill;
-        /// <summary>
-        /// Per-tick stream whose rows are only written when they change: its owner is alive through this one's tick,
-        /// and so is the stream. Without one a stream lasts until the last tick a row was written for.
-        /// </summary>
         public RecordedLife life;
-        /// <summary>The last tick a row was written for (whether or not it was the same as the one before).</summary>
         internal ulong aliveTick;
-        /// <summary>Where the fixed part of this stream's last entry is in the current chunk's log.</summary>
         internal int lastOffset;
-        /// <summary>Optional stream whose columns some of ours are XOR-ed with at the same tick (a duplicate pose).</summary>
         public StreamRows baseStream;
-        /// <summary>Pairs of (our offset, base offset) of 4-byte columns XOR-ed with <see cref="baseStream"/>.</summary>
         public int[] baseColumns;
-        /// <summary>Index in the current chunk's stream table, or -1 before its first row in the chunk.</summary>
         internal int slot = -1;
-        /// <summary>Rows written to the current chunk.</summary>
         internal int rowCount;
-        /// <summary>
-        /// Per managed field: the bytes of the last value written, and the string or list they were written from with
-        /// the list's version when an unchanged one means an unchanged value (see
-        /// <see cref="ManagedFieldWriter.Identify"/>), null otherwise.
-        /// </summary>
         internal RecordingBuffer[] lastBytes = Array.Empty<RecordingBuffer>();
         internal object[] lastObject = Array.Empty<object>();
         internal int[] lastVersion = Array.Empty<int>();
-        /// <summary>Reused box for the generic path of managed fields (fallbacks and self-checks).</summary>
         internal object box;
-        /// <summary>Its owner is gone; reused for a new stream once its last rows are flushed.</summary>
         internal bool retired;
 
         public bool hasRows => rowCount > 0;
 
-        /// <summary>The last tick this stream has a row for, written or repeated.</summary>
         internal ulong lastTick => life != null && life.tick > aliveTick ? life.tick : aliveTick;
 
-        /// <summary>Its owner is gone: the stream ends after its last rows are flushed.</summary>
         public void Retire()
         {
             aliveTick = lastTick;
@@ -70,41 +41,28 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>What the writer needs to know about one stream of a chunk.</summary>
     public struct ChunkStream
     {
         public int id;
         public RowLayout layout;
         public bool forwardFill;
         public int[] baseColumns;
-        /// <summary>Slot of the base stream in the same chunk, or -1.</summary>
         public int baseSlot;
-        /// <summary>Per-tick stream: the last tick it has a row for in this chunk.</summary>
         public ulong lastTick;
     }
 
-    /// <summary>
-    /// A chunk's rows as the recorder wrote them: one append-only log for every stream, so there are no per-stream
-    /// buffers to size (or grow). Each entry: <c>[slot i32][tick u64, only when the slot has <see cref="TickFollows"/>]
-    /// [fixed row][per managed field: i32 length (-1: same as the stream's previous value) and bytes]</c>; an entry
-    /// without a tick has the previous entry's. A per-tick stream has an entry for its first tick in the chunk and
-    /// for every tick its row changed; the ticks in between, up to <see cref="ChunkStream.lastTick"/>, repeat the
-    /// row before them. Logs are reused; after warming up nothing grows.
-    /// </summary>
     public sealed class ChunkLog
     {
         public readonly RecordingBuffer bytes;
         public readonly List<ChunkStream> streams = new List<ChunkStream>();
         public ulong firstTick;
         public ulong tickCount;
-        /// <summary>Set on an entry's slot when its tick follows (it differs from the previous entry's).</summary>
         public const int TickFollows = int.MinValue;
         internal ulong lastTick;
         internal bool hasTick;
 
         public ChunkLog() => bytes = new RecordingBuffer(1 << 16);
 
-        /// <summary>A log whose array comes from <paramref name="shelf"/> and grows through it.</summary>
         public ChunkLog(ByteShelf shelf) => bytes = new RecordingBuffer(shelf, 1 << 16);
 
         public void Clear()
@@ -115,13 +73,8 @@ namespace PurrNet.Recording
         }
     }
 
-    /// <summary>
-    /// Encodes one CHUNK payload (FORMAT.md, version 1). Lossless: every block of a per-tick stream carries a CRC-32 of
-    /// its raw rows so readers can prove the decode is exact. One instance per writer thread: it reuses its buffers.
-    /// </summary>
     public sealed class ChunkEncoder
     {
-        // Slicing-by-8: table k gives the CRC of a byte followed by k zero bytes, so 8 bytes are folded per step.
         static readonly uint[] CrcTables = BuildCrcTables();
 
         static uint[] BuildCrcTables()
@@ -143,8 +96,6 @@ namespace PurrNet.Recording
             return tables;
         }
 
-        // The encoder's buffers grow to the largest chunk early in a match; the arrays they outgrow are reused by one
-        // another instead of becoming garbage.
         readonly ByteShelf _shelf = ByteShelf.shared;
         readonly RecordingBuffer _buffer, _work, _coded;
 
@@ -158,7 +109,6 @@ namespace PurrNet.Recording
         readonly Dictionary<RowLayout, bool[]> _numericMasks = new Dictionary<RowLayout, bool[]>();
         byte[] _plane = Array.Empty<byte>();
 
-        // The log split back into streams: a slot's rows are contiguous from its first row.
         int[] _slotFirst = Array.Empty<int>();
         int[] _slotCount = Array.Empty<int>();
         int[] _slotFill = Array.Empty<int>();
@@ -168,31 +118,22 @@ namespace PurrNet.Recording
         ulong[] _ticks = Array.Empty<ulong>();
         int[] _valueStart = Array.Empty<int>();
         int[] _valueLength = Array.Empty<int>();
-        // The stream being encoded: which of its log entries each of its rows comes from.
         int[] _entryOf = Array.Empty<int>();
 
         static void Grow<T>(ref T[] array, int size)
         {
-            // Power-of-two sizes: chunks of a growing match need few steps, so few arrays are left behind.
             if (array.Length < size)
                 array = new T[Math.Max(Mathf.NextPowerOfTwo(size), array.Length * 2)];
         }
 
-        /// <summary>
-        /// Sizes the working arrays for logs of up to <paramref name="logCapacity"/> bytes, so encoding does not grow
-        /// them during a match. Call before chunks are queued (the writer thread owns the encoder afterwards).
-        /// </summary>
         public void Reserve(int logCapacity)
         {
             Grow(ref _rows, logCapacity);
-            // Entries are at least a 4-byte header and a row; most rows are tens of bytes.
             Grow(ref _rowOffset, logCapacity / 16);
             Grow(ref _ticks, logCapacity / 16);
-            // An encoded chunk is at most about its log's size (every row changed), usually far less.
             _buffer.Reserve(logCapacity);
         }
 
-        /// <summary>Returns the encoder's own buffer, valid until the next call.</summary>
         public RecordingBuffer Encode(ChunkLog log)
         {
             Begin(log);
@@ -200,7 +141,6 @@ namespace PurrNet.Recording
             return _buffer;
         }
 
-        // Where a chunk that is encoded in steps (see Step) got to.
         enum Phase { Count, Layout, Scatter, Header, Streams, Done }
 
         ChunkLog _log;
@@ -208,10 +148,8 @@ namespace PurrNet.Recording
         int _at, _slot;
         ulong _tick;
 
-        /// <summary>The finished chunk once <see cref="Step"/> returned true; valid until the next chunk.</summary>
         public RecordingBuffer result => _buffer;
 
-        /// <summary>Starts encoding <paramref name="log"/> in steps; <see cref="Step"/> does the work.</summary>
         public void Begin(ChunkLog log)
         {
             _log = log;
@@ -227,11 +165,6 @@ namespace PurrNet.Recording
             Array.Clear(_slotCount, 0, slots);
         }
 
-        /// <summary>
-        /// Encodes until the chunk is done (true) or <see cref="System.Diagnostics.Stopwatch"/> passes
-        /// <paramref name="deadline"/> (false: call again to continue). The bytes are the same as one
-        /// <see cref="Encode"/> call; a browser spreads a chunk over frames this way.
-        /// </summary>
         public bool Step(long deadline)
         {
             var log = _log;
@@ -244,7 +177,6 @@ namespace PurrNet.Recording
                 switch (_phase)
                 {
                     case Phase.Count:
-                        // Pass 1: rows per slot.
                         while (_at < end)
                         {
                             if ((++work & 255) == 0 && System.Diagnostics.Stopwatch.GetTimestamp() > deadline)
@@ -266,7 +198,6 @@ namespace PurrNet.Recording
                         break;
 
                     case Phase.Scatter:
-                        // Pass 2: scatter.
                         while (_at < end)
                         {
                             if ((++work & 255) == 0 && System.Diagnostics.Stopwatch.GetTimestamp() > deadline)
@@ -296,7 +227,6 @@ namespace PurrNet.Recording
                             if (_slotCount[slot] == 0)
                                 continue;
                             EncodeStream(log, slot);
-                            // Each stream is written whole and the deadline checked after it, so every call progresses.
                             if (_slot < streams.Count && System.Diagnostics.Stopwatch.GetTimestamp() > deadline)
                                 return false;
                         }
@@ -326,7 +256,6 @@ namespace PurrNet.Recording
             int managedFields = s.layout.managed.Count;
             ulong firstTick = _ticks[first];
 
-            // 0. A per-tick stream gets its row for every tick: the ticks without an entry repeat the entry before.
             int n = entries;
             if (s.forwardFill)
                 n = (int)(Math.Max(Math.Min(s.lastTick, log.firstTick + log.tickCount - 1), _ticks[first + entries - 1]) - firstTick) + 1;
@@ -347,11 +276,9 @@ namespace PurrNet.Recording
             work.length = n * size;
             uint crc = s.forwardFill ? Crc32(work.data, 0, n * size) : 0;
 
-            // 1. Duplicate columns become XOR against the base stream's row at the same tick.
             if (s.baseSlot >= 0 && _slotCount[s.baseSlot] > 0)
                 XorWithBase(s, first, n, _slotFirst[s.baseSlot], _slotCount[s.baseSlot], work.data);
 
-            // 2. Per-tick streams keep only rows that differ from the previous kept one.
             keep.Clear();
             int managedBase = _slotManagedFirst[slot];
             for (int r = 0; r < n; r++)
@@ -374,7 +301,6 @@ namespace PurrNet.Recording
             if (s.forwardFill)
                 buffer.WriteVarUInt((ulong)(n - 1 - keep[0]));
 
-            // 3. Column coding of the kept rows, then byte planes.
             int total = k * size;
             if (total > 0)
             {
@@ -423,7 +349,6 @@ namespace PurrNet.Recording
             _plane = plane;
         }
 
-        /// <summary>Places each slot's rows contiguously once the rows per slot are counted.</summary>
         void Layout(List<ChunkStream> streams)
         {
             int slots = streams.Count;
@@ -453,7 +378,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>Copies one log entry to its slot's rows (fixed part) and value table (managed part).</summary>
         int ScatterEntry(byte[] data, int at, List<ChunkStream> streams)
         {
             int header = ReadInt(data, at);
@@ -481,7 +405,6 @@ namespace PurrNet.Recording
                 int v = managedRow + f;
                 if (length < 0)
                 {
-                    // Same as the stream's previous value in this chunk.
                     _valueStart[v] = _valueStart[v - fields];
                     _valueLength[v] = _valueLength[v - fields];
                     continue;
@@ -493,7 +416,6 @@ namespace PurrNet.Recording
             return at;
         }
 
-        /// <summary>Skips an entry's row and managed values (<paramref name="at"/> is past its slot and tick).</summary>
         static int SkipEntry(byte[] data, int at, RowLayout layout)
         {
             at += layout.rowSize;
@@ -526,7 +448,6 @@ namespace PurrNet.Recording
                 return UnsafeUtility.MemCmp(pa, pb, length) == 0;
         }
 
-        /// <summary>CRC-32 (IEEE, as zlib) over the raw fixed rows of a per-tick block, one row per tick.</summary>
         public static unsafe uint Crc32(byte[] data, int offset, int length)
         {
             if ((uint)offset > (uint)data.Length || (uint)length > (uint)(data.Length - offset))
@@ -538,7 +459,6 @@ namespace PurrNet.Recording
             fixed (uint* t = CrcTables)
             {
                 byte* p = start;
-                // Bytes are assembled one by one: unaligned word reads fault on some ARM targets.
                 for (; length >= 8; length -= 8, p += 8)
                 {
                     uint one = (uint)(p[0] | p[1] << 8 | p[2] << 16 | p[3] << 24) ^ crc;
@@ -589,10 +509,6 @@ namespace PurrNet.Recording
             return true;
         }
 
-        /// <summary>
-        /// 4- and 8-byte numeric columns: zig-zag second difference of their bit patterns (wrapping), so steady values
-        /// and steady motion become zeros. Other bytes: XOR with the previous row.
-        /// </summary>
         void CodeColumns(RowLayout layout, byte[] rows, int count)
         {
             int size = layout.rowSize;

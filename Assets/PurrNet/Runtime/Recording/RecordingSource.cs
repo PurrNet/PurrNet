@@ -58,12 +58,8 @@ namespace PurrNet.Recording
         public PlayerID? owner;
         public bool isRoot;
         public StreamRows transform;
-        /// <summary>Tick whose pose was last written.</summary>
         internal ulong poseTick;
-        /// <summary>The pose last added to the transform stream.</summary>
         internal RecordedTransform lastPose;
-        // Nearly every entity has one source, and its part is read for every entity on every tick: it is kept inline.
-        // The parts of other sources sharing the entity are in a list made when the first one attaches.
         internal RecordingSource source0;
         internal object data0;
         internal ulong seen0;
@@ -103,7 +99,6 @@ namespace PurrNet.Recording
                 (more ??= new List<Part>(1)).Add(new Part { source = source, data = data });
         }
 
-        /// <summary>Marks <paramref name="source"/>'s part seen on <paramref name="tick"/>.</summary>
         internal void Touch(RecordingSource source, ulong tick)
         {
             if (ReferenceEquals(source0, source))
@@ -119,7 +114,6 @@ namespace PurrNet.Recording
             more[index] = part;
         }
 
-        /// <summary>Whether <paramref name="source"/> holds a part that was not seen on <paramref name="tick"/>.</summary>
         internal bool Unseen(RecordingSource source, ulong tick)
         {
             if (ReferenceEquals(source0, source))
@@ -128,7 +122,6 @@ namespace PurrNet.Recording
             return index >= 0 && more[index].lastSeenTick != tick;
         }
 
-        /// <summary>Takes <paramref name="source"/>'s part out and returns its data.</summary>
         internal object Remove(RecordingSource source)
         {
             object data;
@@ -158,34 +151,23 @@ namespace PurrNet.Recording
             return data;
         }
 
-        /// <summary>The source of part <paramref name="index"/> (0 is the inline one).</summary>
         internal RecordingSource SourceAt(int index) => index == 0 ? source0 : more[index - 1].source;
 
-        /// <summary>Body renderers and their GameObjects (read every tick for visibility).</summary>
         internal readonly List<Renderer> renderers = new List<Renderer>(8);
         internal readonly List<GameObject> rendererObjects = new List<GameObject>(8);
-        // Everything the last collider check found under the entity, kept between checks: Unity creates a C#
-        // object the first time a component is handed to C# and drops it once nothing references it, so a check
-        // that let go of them would make garbage every time.
         internal readonly List<Renderer> foundRenderers = new List<Renderer>(8);
         internal readonly List<Renderer> foundGraphics = new List<Renderer>(4);
         internal readonly List<Transform> detachedGraphics = new List<Transform>(2);
 #if UNITY_PHYSICS_3D
-        /// <summary>Binary form of the last written collider set; the JSON is only built when this changes.</summary>
         internal readonly RecordingBuffer colliderKey = new RecordingBuffer(ByteShelf.shared, 256);
         internal bool hasColliderKey;
         internal readonly List<TrackedCollider> colliders = new List<TrackedCollider>(8);
-        /// <summary>Colliders currently moving relative to the entity (sampled every tick).</summary>
         internal int movingColliders;
         internal readonly List<Collider> foundColliders = new List<Collider>(8);
 #endif
     }
 
 #if UNITY_PHYSICS_3D
-    /// <summary>
-    /// A collider of the current set. Its pose relative to the entity is checked with the set; once it moves, it
-    /// gets a pose stream sampled every tick until it has been still for a few checks.
-    /// </summary>
     internal sealed class TrackedCollider
     {
         public Collider collider;

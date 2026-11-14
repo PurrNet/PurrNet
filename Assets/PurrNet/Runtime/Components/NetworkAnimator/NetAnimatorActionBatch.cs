@@ -67,7 +67,9 @@ namespace PurrNet
 
                 actions.Add(new NetAnimatorRPC(new SetAnimatePhysics
                 {
+#pragma warning disable CS0618
                     value = animator.animatePhysics
+#pragma warning restore CS0618
                 }));
 
                 actions.Add(new NetAnimatorRPC(new SetUpdateMode

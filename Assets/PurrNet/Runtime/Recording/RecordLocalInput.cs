@@ -1,5 +1,4 @@
 #if PURRNET_INPUT_SYSTEM && ENABLE_INPUT_SYSTEM
-// The Input System package, when it is installed and enabled; otherwise the legacy Input Manager, when enabled.
 #define PURRREC_INPUT_SYSTEM
 #elif ENABLE_LEGACY_INPUT_MANAGER
 #define PURRREC_LEGACY_INPUT
@@ -20,7 +19,7 @@ using UnityEngine.UIElements;
 namespace PurrNet.Recording
 {
     /// <summary>
-    /// What the player's devices did during one tick (see recording/FORMAT.md, "The input stream"). Fixed size and
+    /// What the player's devices did during one tick (the format spec, "The input stream"). Fixed size and
     /// unmanaged: a row costs nothing to write.
     /// </summary>
     public struct RawInputSample
@@ -28,23 +27,15 @@ namespace PurrNet.Recording
         public const ushort Typing = 1, HasKeyboard = 2, HasPointer = 4, HasGamepad = 8, Focused = 16,
             FromInputSystem = 32, FromLegacyInput = 64;
 
-        /// <summary>Bits: see the constants.</summary>
         public ushort flags;
-        /// <summary>Bit 0 left, 1 right, 2 middle, 3 back, 4 forward.</summary>
         public byte mouseButtons;
-        /// <summary>Pointer movement since the previous row, in pixels.</summary>
         public Vector2 mouseDelta;
-        /// <summary>Pointer position over the screen size: (0,0) bottom left, (1,1) top right.</summary>
         public Vector2 pointer;
-        /// <summary>Scroll since the previous row.</summary>
         public Vector2 scroll;
-        /// <summary>Held keys: bit n is the key numbered n (the Input System's Key values), 0-63 and 64-127.</summary>
         public ulong keys0, keys1;
         public Vector2 leftStick, rightStick;
         public float leftTrigger, rightTrigger;
-        /// <summary>Bit n is the gamepad button numbered n (the Input System's GamepadButton values; triggers 14 and 15).</summary>
         public uint gamepadButtons;
-        /// <summary>Legacy Input Manager only: joystick buttons 0-19 as the Input Manager numbers them.</summary>
         public uint joystickButtons;
     }
 
@@ -58,7 +49,6 @@ namespace PurrNet.Recording
     [DefaultExecutionOrder(-10000)]
     public sealed class RecordLocalInput : MonoBehaviour
     {
-        /// <summary>The stream raw input is recorded under.</summary>
         public const string Stream = "input";
 
         RawInputSample _row;
@@ -183,7 +173,6 @@ namespace PurrNet.Recording
                 _row.mouseButtons |= (byte)(1 << bit);
         }
 #elif PURRREC_LEGACY_INPUT
-        // The Input Manager's key codes and the key numbers rows use (the Input System's Key values).
         static readonly (KeyCode code, byte key)[] Keys =
         {
             (KeyCode.Space, 1), (KeyCode.Return, 2), (KeyCode.Tab, 3), (KeyCode.BackQuote, 4), (KeyCode.Quote, 5),
@@ -253,7 +242,6 @@ namespace PurrNet.Recording
 #if UNITY_6000_0_OR_NEWER
             _row.mouseDelta += (Vector2)Input.mousePositionDelta;
 #else
-            // Older editors have no delta of their own: the pointer's movement on screen (none while it is locked).
             if (_hasLastMouse)
                 _row.mouseDelta += (Vector2)(position - _lastMouse);
             _lastMouse = position;
@@ -269,7 +257,6 @@ namespace PurrNet.Recording
             }
         }
 #else
-        // No input source is enabled in this project: rows only say whether the player was typing.
         void Poll()
         {
             if (IsTyping(false))
@@ -283,18 +270,11 @@ namespace PurrNet.Recording
             _row.pointer = width > 0 && height > 0 ? new Vector2(position.x / width, position.y / height) : default;
         }
 
-        // ---- Text fields ------------------------------------------------------------------------------
-
 #if PURRNET_UITK
         readonly List<UIDocument> _documents = new List<UIDocument>();
         float _documentsAt = float.NegativeInfinity;
 #endif
 
-        /// <summary>
-        /// Whether a text field has keyboard focus: uGUI and TextMeshPro input fields, UI Toolkit text fields, an
-        /// IMGUI control that takes keys, or the on-screen keyboard. <paramref name="keysActive"/> says keys are
-        /// being used right now, which is when the list of UI Toolkit documents is worth refreshing.
-        /// </summary>
         bool IsTyping(bool keysActive)
         {
 #if PURRNET_UGUI
@@ -320,8 +300,6 @@ namespace PurrNet.Recording
             if (TouchScreenKeyboard.visible)
                 return true;
 #if PURRNET_UITK
-            // Unity keeps no list of the live documents; finding them makes one, so it is done at most once a second
-            // and only while keys are in use.
             if (keysActive && Time.unscaledTime - _documentsAt > 1f)
             {
                 _documentsAt = Time.unscaledTime;

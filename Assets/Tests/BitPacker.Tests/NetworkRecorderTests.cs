@@ -47,7 +47,7 @@ public class TestClockExtension : RecorderExtension, IRecordingContext
     public override IRecordingContext clock => enabled ? this : null;
 
     NetworkManager manager => recorder.networkManager;
-    public bool isReady => manager && manager.tickModule != null;
+    public new bool isReady => manager && manager.tickModule != null;
     public ulong localTick => manager.tickModule.localTick + Offset;
     public double viewTick => localTick;
     public bool isServer => manager.isServer;
@@ -140,7 +140,11 @@ public class NetworkRecorderTests
                 yield return null;
         }
 
+#if UNITY_6000_4_OR_NEWER
+        foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include))
+#else
         foreach (var identity in Object.FindObjectsByType<NetworkIdentity>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+#endif
             if (identity)
                 Object.DestroyImmediate(identity.gameObject);
         for (int i = _created.Count - 1; i >= 0; i--)

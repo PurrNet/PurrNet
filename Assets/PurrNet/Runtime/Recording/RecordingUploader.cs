@@ -1,5 +1,4 @@
 #if UNITY_WEBGL && !UNITY_EDITOR
-// In a browser the recording worker stores and uploads the files (see WebRecording); this only says when it may.
 #define PURRREC_WEB
 #endif
 using System;
@@ -12,40 +11,19 @@ using UnityEngine.Networking;
 
 namespace PurrNet.Recording
 {
-    /// <summary>
-    /// Sends finished recordings to the PurrNet recordings service and deletes them once they are sent.
-    /// Uploads run only while this game has no network session, one file at a time, so they never compete
-    /// with match traffic; an upload cut off by a new session is retried later. The service answers each file
-    /// with a short-lived upload URL (the bytes go straight to storage) or with "skip", in which case the file
-    /// is deleted unsent. Recordings that cannot be sent are kept up to a size cap, oldest deleted first. The newest
-    /// file is sent first, so when recordings are made faster than they can be sent, the folder is trimmed at one
-    /// end and sent from the other: what is deleted is what would have waited longest, never the file being sent.
-    /// The settings are remembered, so files left by an earlier session are sent from the next launch on,
-    /// before any match scene loads.
-    /// On WebGL the recordings live in the browser (IndexedDB) and the recording worker sends them with the same
-    /// protocol and rules; the service and its storage must allow the game's origin (CORS).
-    /// </summary>
     [AddComponentMenu("")]
     public sealed class RecordingUploader : MonoBehaviour
     {
         const string Extension = ".purrrec";
-        // Next to a recording: ".sent" once the service has it (it only waits to be deleted), ".lock" while a game
-        // is sending it (held open, so it goes away with that game).
         const string SentMarker = ".sent";
         const string ClaimMarker = ".lock";
         const float RetryDelaySeconds = 60f;
-        // After the service said "not now" to one file, the pause before the next file is tried.
         const float HeldGapSeconds = 5f;
         const int TicketTimeoutSeconds = 20;
         const string PrefsKey = "PurrDiction.RecordingUploader";
 
         static RecordingUploader _instance;
 
-        /// <summary>
-        /// True on CI machines (GitHub Actions, GitLab, Azure Pipelines, Jenkins, TeamCity, Buildkite and anything that
-        /// sets CI). Test and benchmark matches there are not gameplay: the recorder does not start on its own and
-        /// nothing is uploaded. An explicit <see cref="RecordingSession.Start"/> still records.
-        /// </summary>
         public static bool runningOnCI { get; } = DetectCI();
 
         static bool DetectCI()
@@ -63,7 +41,6 @@ namespace PurrNet.Recording
             }
             catch (Exception)
             {
-                // No environment on this platform (a browser): not CI.
             }
             return false;
         }
@@ -75,23 +52,14 @@ namespace PurrNet.Recording
         string _activePath;
 #if !PURRREC_WEB
         float _retryAt;
-        // Files the service said "not now" to (a part whose recording has not arrived, a quota), and when each may be
-        // tried again: the other files are sent meanwhile.
         readonly Dictionary<string, float> _held = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-        // Files the service has answered for that could not be deleted yet: never sent again.
         readonly HashSet<string> _done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool _blocked;
         bool _uploading;
-        // The file being sent, or whose sending was cut off by a new session: it goes first next time and is never
-        // trimmed.
         string _uploadPath;
 #endif
         UnityWebRequest _request;
 
-        /// <summary>
-        /// Starts uploading the recordings in <paramref name="directory"/> (and every file finished later).
-        /// The first call creates the uploader; later calls update its settings.
-        /// </summary>
         public static void Configure(string endpoint, string projectKey, string directory, long maxLocalBytes)
         {
             if (!_instance)
@@ -142,17 +110,15 @@ namespace PurrNet.Recording
                 Configure(saved.endpoint, saved.projectKey, saved.directory, saved.maxLocalBytes);
         }
 
-        /// <summary>The recording being written right now, which must not be sent or deleted.</summary>
         public static void SetActiveRecording(string path)
         {
             if (_instance)
                 _instance._activePath = path;
         }
 
-        /// <summary>A recording was finished: try sending it soon, and keep the folder under its cap.</summary>
         public static void NotifyFinished()
         {
-#if !PURRREC_WEB // the worker trims and sends recordings as they are finished
+#if !PURRREC_WEB
             if (!_instance)
                 return;
             _instance._retryAt = 0;
@@ -177,7 +143,6 @@ namespace PurrNet.Recording
         {
             if (_uploading)
             {
-                // A session started: get off the network, the file is sent again later.
                 if (!IsIdle() && _request != null)
                     _request.Abort();
                 return;
@@ -189,7 +154,6 @@ namespace PurrNet.Recording
             string next = NextPending(out float heldUntil);
             if (next == null)
             {
-                // Nothing to send, or only held files: back when the first of them is due.
                 _retryAt = Math.Min(heldUntil, Time.unscaledTime + RetryDelaySeconds);
                 return;
             }
@@ -204,10 +168,6 @@ namespace PurrNet.Recording
         }
 
 #if !PURRREC_WEB
-        /// <summary>
-        /// The file to send next: the one whose sending was cut off, else the newest finished file that is not held.
-        /// <paramref name="heldUntil"/> is when the first held one is due.
-        /// </summary>
         string NextPending(out float heldUntil)
         {
             heldUntil = float.MaxValue;
@@ -221,7 +181,6 @@ namespace PurrNet.Recording
                 _uploadPath = null;
             }
 
-            // Markers whose recording is gone.
             foreach (var marker in Directory.GetFiles(_directory, "*" + Extension + SentMarker))
                 if (!File.Exists(marker.Substring(0, marker.Length - SentMarker.Length)))
                     TryDelete(marker);
@@ -235,7 +194,6 @@ namespace PurrNet.Recording
                 string full = Path.GetFullPath(path);
                 if (IsDone(full))
                 {
-                    // The service has it; all that is left is to delete it.
                     Finish(full);
                     continue;
                 }
@@ -245,7 +203,6 @@ namespace PurrNet.Recording
                     continue;
                 }
                 var time = File.GetLastWriteTimeUtc(path);
-                // Another game on this machine may share the folder: what it is still writing is not ours to send.
                 if (time > newestTime && !BeingWritten(full))
                 {
                     newest = path;
@@ -257,11 +214,6 @@ namespace PurrNet.Recording
 
         bool IsDone(string fullPath) => _done.Contains(fullPath) || File.Exists(fullPath + SentMarker);
 
-        /// <summary>
-        /// The service has answered for this file: it is deleted. When it cannot be deleted right now (another program
-        /// has it open), it is marked as sent, here and next to the file, so it is never sent again; deleting it is
-        /// tried again whenever the folder is looked at.
-        /// </summary>
         void Finish(string path)
         {
             string full = Path.GetFullPath(path);
@@ -281,11 +233,9 @@ namespace PurrNet.Recording
             }
             catch (Exception)
             {
-                // Remembered for this run of the game at least.
             }
         }
 
-        /// <summary>Whether some program has the file open for writing.</summary>
         static bool BeingWritten(string path)
         {
             try
@@ -299,10 +249,6 @@ namespace PurrNet.Recording
             }
         }
 
-        /// <summary>
-        /// Claims a file for sending, against other games on this machine that share the folder: a lock file held
-        /// open for as long as the sending lasts. Null when another game holds it.
-        /// </summary>
         static FileStream TryClaim(string fullPath)
         {
             try
@@ -320,11 +266,6 @@ namespace PurrNet.Recording
             !string.IsNullOrEmpty(_activePath) &&
             string.Equals(Path.GetFullPath(path), Path.GetFullPath(_activePath), StringComparison.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// Deletes the oldest finished recordings until the folder fits its cap: never the one being written or the
-        /// one being sent, and a client's parts (tiny next to a recording, and of no use once deleted) only when
-        /// deleting every other file was not enough.
-        /// </summary>
         void TrimFolder()
         {
             if (_maxLocalBytes <= 0 || string.IsNullOrEmpty(_directory) || !Directory.Exists(_directory))
@@ -363,7 +304,6 @@ namespace PurrNet.Recording
         {
             public string fileName;
             public long size;
-            // From the file's HEADER, so the service can tie a client's part to the server's recording.
             public string recordingId;
             public string kind;
             public long player;
@@ -379,7 +319,6 @@ namespace PurrNet.Recording
             public string token;
         }
 
-        /// <summary>Reads what links a file to its match from its HEADER record (the first one, never compressed).</summary>
         static HeaderLink ReadLink(string path)
         {
             try
@@ -433,7 +372,6 @@ namespace PurrNet.Recording
             var claim = TryClaim(full);
             if (claim == null || !File.Exists(full) || IsDone(full))
             {
-                // Another game is sending it, or has just sent it.
                 claim?.Dispose();
                 _held[full] = Time.unscaledTime + RetryDelaySeconds;
                 yield break;
@@ -441,7 +379,6 @@ namespace PurrNet.Recording
 
             _uploading = true;
             _uploadPath = full;
-            // Cleared when the service has answered for this file; a sending that was cut off keeps it.
             bool answered = false;
             try
             {
@@ -473,7 +410,6 @@ namespace PurrNet.Recording
 
                 if (response.skip || string.IsNullOrEmpty(response.url))
                 {
-                    // Not wanted (sampling, a cap, a rejected file): sending it later would get the same answer.
                     answered = true;
                     Finish(path);
                     yield break;
@@ -538,19 +474,13 @@ namespace PurrNet.Recording
 
         void HandleRefusal(string path, long code, string text)
         {
-            // Wrong key or the service is not enabled for this project: stop until the next launch.
-            // A quota is a "not now" (it is also a 403).
             bool quota = text != null && text.Contains("quota");
             if (code == 401 || (code == 403 && !quota))
             {
-                if (!_blocked)
-                    Debug.LogWarning($"[RecordingUploader] Uploads refused ({code}): {text}");
                 _blocked = true;
                 return;
             }
 
-            // The service answered "not now" for this file (a part whose recording has not arrived yet, a quota, a
-            // busy server): it waits its turn again while the next file is tried after a short pause.
             if (code > 0)
             {
                 _held[Path.GetFullPath(path)] = Time.unscaledTime + RetryDelaySeconds;
@@ -558,7 +488,6 @@ namespace PurrNet.Recording
                 return;
             }
 
-            // No answer at all (no network, the request was cut off): nothing is tried for a while.
             _retryAt = Time.unscaledTime + RetryDelaySeconds;
         }
 

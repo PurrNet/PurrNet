@@ -105,7 +105,7 @@ public sealed class RollbackQueryBufferTests
             var module = new RollbackModule(null, target.scene);
             var position = (Vector2)target.transform.position;
             var ray = new Ray2D(position - Vector2.right * 5, Vector2.right);
-            var filter = new ContactFilter2D().NoFilter();
+            var filter = new ContactFilter2D { useTriggers = true };
             filter.SetLayerMask(1 << 31);
             for (int i = 0; i < 2; i++)
             {
