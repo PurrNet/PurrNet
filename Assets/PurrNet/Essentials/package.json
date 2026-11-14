@@ -1,0 +1,18 @@
+{
+  "name": "dev.purrnet.essentials",
+  "version": "1.26.0-beta.14",
+  "author": {
+    "name": "PurrNet Team",
+    "url": "https://purrnet.dev/"
+  },
+  "description": "Shared building blocks of the PurrNet ecosystem. Included in PurrNet; install it on its own only in projects without PurrNet",
+  "displayName": "PurrNet Essentials",
+  "unity": "2022.3",
+  "documentationUrl": "https://purrnet.dev/docs",
+  "hideInEditor": false,
+  "keywords": [
+    "purrnet",
+    "networking",
+    "multiplayer"
+  ]
+}

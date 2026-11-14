@@ -19,7 +19,7 @@
     ["semantic-release-replace-plugin", {
         "replacements": [
           {
-            "files": ["Assets/PurrNet/package.json"],
+            "files": ["Assets/PurrNet/package.json", "Assets/PurrNet/Essentials/package.json"],
             "from": "\"version\": \".*?\"",
             "to": "\"version\": \"${nextRelease.version}\"",
             "countMatches": true
@@ -32,7 +32,7 @@
       "output": "PurrNet_${nextRelease.version}.unitypackage"
     }],
     ["@semantic-release/git", {
-        "assets": ["Assets/PurrNet/package.json", "Assets/PurrNet/CHANGELOG.md"],
+        "assets": ["Assets/PurrNet/package.json", "Assets/PurrNet/Essentials/package.json", "Assets/PurrNet/CHANGELOG.md"],
         "message": "ci(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/github", {
