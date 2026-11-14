@@ -1,0 +1,20 @@
+{
+  "PurrNet": {
+    "repo": "..",
+    "root": "Assets/PurrNet",
+    "packageId": "297320",
+    "unity": ["2022.3.62f2", "6000.5.4f1"]
+  },
+  "PurrDiction": {
+    "repo": "../../PurrDiction",
+    "root": "Assets/PurrDiction",
+    "packageId": "329734",
+    "unity": ["2022.3.62f2", "6000.3.8f1"],
+    "gitDependencies": {
+      "dev.purrnet.purrnet": {
+        "url": "https://github.com/PurrNet/PurrNet.git?path=/Assets/PurrNet#v{version}",
+        "repo": ".."
+      }
+    }
+  }
+}
