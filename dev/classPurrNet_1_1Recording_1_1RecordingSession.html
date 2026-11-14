@@ -102,17 +102,14 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
   <div class="headertitle"><div class="title">PurrNet.Recording.RecordingSession Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each player's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On a client it writes that client's own part of the server's recording (see RecordingSession.Parts); nothing but the server's start and stop announcement travels over the game's connection. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.   
- <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:ac65106212255e9dee11d4ccd8876b1b6"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#ac65106212255e9dee11d4ccd8876b1b6">RecordingSession</a> (<a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordingContext.html">IRecordingContext</a> context, string logName, Dictionary&lt; string, string &gt; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a66c9414e4ad8e718c838463022aa59b2">labels</a>=null, params string[] recorderSections)</td></tr>
+<tr class="memitem:ac65106212255e9dee11d4ccd8876b1b6"><td class="memItemLeft" align="right" valign="top"><a id="ac65106212255e9dee11d4ccd8876b1b6" name="ac65106212255e9dee11d4ccd8876b1b6"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>RecordingSession</b> (<a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordingContext.html">IRecordingContext</a> context, string logName, Dictionary&lt; string, string &gt; labels=null, params string[] recorderSections)</td></tr>
 <tr class="separator:ac65106212255e9dee11d4ccd8876b1b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f7531236931d5afcaefcbc285b4a267"><td class="memItemLeft" align="right" valign="top"><a id="a1f7531236931d5afcaefcbc285b4a267" name="a1f7531236931d5afcaefcbc285b4a267"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecorderStats_1_1Section.html">RecorderStats.Section</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Section</b> (string name)</td></tr>
-<tr class="memdesc:a1f7531236931d5afcaefcbc285b4a267"><td class="mdescLeft">&#160;</td><td class="mdescRight">A section of the cost report, by name. <br /></td></tr>
 <tr class="separator:a1f7531236931d5afcaefcbc285b4a267"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a82f1457734a64ae5f584fdf0e590ea95"><td class="memItemLeft" align="right" valign="top"><a id="a82f1457734a64ae5f584fdf0e590ea95" name="a82f1457734a64ae5f584fdf0e590ea95"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Dispose</b> ()</td></tr>
@@ -122,33 +119,30 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>AddSource</b> (<a cla
 <tr class="separator:afa9142899a0472bfb08ac0d07e995227"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b93919ae3b61ea66ee7f35f66137b3f"><td class="memItemLeft" align="right" valign="top"><a id="a2b93919ae3b61ea66ee7f35f66137b3f" name="a2b93919ae3b61ea66ee7f35f66137b3f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>SubscribeNetwork</b> (<a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager)</td></tr>
-<tr class="memdesc:a2b93919ae3b61ea66ee7f35f66137b3f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Announces recordings to <em>manager</em> 's clients (the server side) and listens for them (a client). <br /></td></tr>
 <tr class="separator:a2b93919ae3b61ea66ee7f35f66137b3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a585a8a5ef6b371bb8cc8bee11ff150a2"><td class="memItemLeft" align="right" valign="top"><a id="a585a8a5ef6b371bb8cc8bee11ff150a2" name="a585a8a5ef6b371bb8cc8bee11ff150a2"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>UnsubscribeNetwork</b> ()</td></tr>
 <tr class="separator:a585a8a5ef6b371bb8cc8bee11ff150a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ea68703f7f5f79b795c24374829ce21"><td class="memItemLeft" align="right" valign="top"><a id="a7ea68703f7f5f79b795c24374829ce21" name="a7ea68703f7f5f79b795c24374829ce21"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Update</b> (bool isServer)</td></tr>
-<tr class="memdesc:a7ea68703f7f5f79b795c24374829ce21"><td class="mdescLeft">&#160;</td><td class="mdescRight">Once per frame: looks after a client's part and, on WebGL, encodes queued chunks. <br /></td></tr>
 <tr class="separator:a7ea68703f7f5f79b795c24374829ce21"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa0fe19ff56474a17d183a9e35c11f9e6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#aa0fe19ff56474a17d183a9e35c11f9e6">Start</a> (string directory, string fileName, int tickRate, ulong firstTick, string scene, bool host)</td></tr>
-<tr class="memdesc:aa0fe19ff56474a17d183a9e35c11f9e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opens a recording file and writes its header and the static world.  <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#aa0fe19ff56474a17d183a9e35c11f9e6">More...</a><br /></td></tr>
+<tr class="memitem:aa0fe19ff56474a17d183a9e35c11f9e6"><td class="memItemLeft" align="right" valign="top"><a id="aa0fe19ff56474a17d183a9e35c11f9e6" name="aa0fe19ff56474a17d183a9e35c11f9e6"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>Start</b> (string directory, string fileName, int tickRate, ulong firstTick, string scene, bool host)</td></tr>
 <tr class="separator:aa0fe19ff56474a17d183a9e35c11f9e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af98fbf984f0130175335493993eb5d38"><td class="memItemLeft" align="right" valign="top"><a id="af98fbf984f0130175335493993eb5d38" name="af98fbf984f0130175335493993eb5d38"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Stop</b> (Action&lt; <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> &gt; footer)</td></tr>
-<tr class="memdesc:af98fbf984f0130175335493993eb5d38"><td class="mdescLeft">&#160;</td><td class="mdescRight">Flushes and closes the current recording. <em>footer</em>  adds properties to its FOOTER. <br /></td></tr>
 <tr class="separator:af98fbf984f0130175335493993eb5d38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7da47539dfd0ea9f9e54b4ee67cbb70c"><td class="memItemLeft" align="right" valign="top"><a id="a7da47539dfd0ea9f9e54b4ee67cbb70c" name="a7da47539dfd0ea9f9e54b4ee67cbb70c"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>AddError</b> (string kind, string detail)</td></tr>
+<tr class="separator:a7da47539dfd0ea9f9e54b4ee67cbb70c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e3bde03814b5f500ed6ece0a303d745"><td class="memItemLeft" align="right" valign="top"><a id="a9e3bde03814b5f500ed6ece0a303d745" name="a9e3bde03814b5f500ed6ece0a303d745"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>DescribeLastRecording</b> ()</td></tr>
-<tr class="memdesc:a9e3bde03814b5f500ed6ece0a303d745"><td class="mdescLeft">&#160;</td><td class="mdescRight">The last finished recording's size and the recorder's cost per section, as text. <br /></td></tr>
 <tr class="separator:a9e3bde03814b5f500ed6ece0a303d745"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1dfedb6da107b4179d88f6f56e299efc"><td class="memItemLeft" align="right" valign="top"><a id="a1dfedb6da107b4179d88f6f56e299efc" name="a1dfedb6da107b4179d88f6f56e299efc"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>BeginTick</b> (ulong tick)</td></tr>
-<tr class="memdesc:a1dfedb6da107b4179d88f6f56e299efc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts recording <em>tick</em> : ends the chunk when it is full. <br /></td></tr>
 <tr class="separator:a1dfedb6da107b4179d88f6f56e299efc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a347cdaefc59c885abe24bc6f888d7c48"><td class="memItemLeft" align="right" valign="top"><a id="a347cdaefc59c885abe24bc6f888d7c48" name="a347cdaefc59c885abe24bc6f888d7c48"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EndTick</b> ()</td></tr>
-<tr class="memdesc:a347cdaefc59c885abe24bc6f888d7c48"><td class="mdescLeft">&#160;</td><td class="mdescRight">Ends the tick <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a1dfedb6da107b4179d88f6f56e299efc" title="Starts recording tick : ends the chunk when it is full.">BeginTick</a> started. <br /></td></tr>
 <tr class="separator:a347cdaefc59c885abe24bc6f888d7c48"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adcb0c46e3b9120f1b217063d8e6cc442"><td class="memItemLeft" align="right" valign="top"><a id="adcb0c46e3b9120f1b217063d8e6cc442" name="adcb0c46e3b9120f1b217063d8e6cc442"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>GetEntityAt</b> (int index)</td></tr>
@@ -158,116 +152,93 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetEntity</b> (Gam
 <tr class="separator:a680b7c97ca67757eba06628ebf7c88bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4f7afda42641003dfc456b198fd1dffe"><td class="memItemLeft" align="right" valign="top"><a id="a4f7afda42641003dfc456b198fd1dffe" name="a4f7afda42641003dfc456b198fd1dffe"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BeginSpawn</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, GameObject go, object data)</td></tr>
-<tr class="memdesc:a4f7afda42641003dfc456b198fd1dffe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts an entity for <em>go</em> , created by <em>source</em> . The source then declares its streams, calls <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#aadb3011e9fcb810b3deb220502110b73" title="The entity&#39;s world pose stream; baseStream  holds the same pose under other column names.">CreateTransformStream</a>, writes the ENTITY record and finishes with <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a04fb4d75520a6e7f0001a4d774e7983d" title="Records the entity&#39;s colliders and renderers; the ENTITY record must be written before.">EndSpawn</a>. When the object is already an entity, use <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#aeb63fd57a0966f36f3f1bba018faf419" title="Adds source &#39;s part to an entity another source created. The source then declares its streams and wri...">Attach</a> instead.  <br /></td></tr>
 <tr class="separator:a4f7afda42641003dfc456b198fd1dffe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeb63fd57a0966f36f3f1bba018faf419"><td class="memItemLeft" align="right" valign="top"><a id="aeb63fd57a0966f36f3f1bba018faf419" name="aeb63fd57a0966f36f3f1bba018faf419"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Attach</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, object data)</td></tr>
-<tr class="memdesc:aeb63fd57a0966f36f3f1bba018faf419"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds <em>source</em> 's part to an entity another source created. The source then declares its streams and writes an ATTACH record (see <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a894dc26468e82d396ad47a29eb0d554c" title="Starts an ATTACH record&#39;s JSON; the source adds its components and ends it with EndAttachRecord.">BeginAttachRecord</a>).  <br /></td></tr>
 <tr class="separator:aeb63fd57a0966f36f3f1bba018faf419"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a894dc26468e82d396ad47a29eb0d554c"><td class="memItemLeft" align="right" valign="top"><a id="a894dc26468e82d396ad47a29eb0d554c" name="a894dc26468e82d396ad47a29eb0d554c"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BeginAttachRecord</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick)</td></tr>
-<tr class="memdesc:a894dc26468e82d396ad47a29eb0d554c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts an ATTACH record's JSON; the source adds its components and ends it with EndAttachRecord. <br /></td></tr>
 <tr class="separator:a894dc26468e82d396ad47a29eb0d554c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a38efde13e589ccf06f3749cef96dfb9e"><td class="memItemLeft" align="right" valign="top"><a id="a38efde13e589ccf06f3749cef96dfb9e" name="a38efde13e589ccf06f3749cef96dfb9e"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>EndAttachRecord</b> (<a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#abbe4b582fc29cc4a41d3e5ce75e3930c">json</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>EndAttachRecord</b> (<a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> json)</td></tr>
 <tr class="separator:a38efde13e589ccf06f3749cef96dfb9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aadb3011e9fcb810b3deb220502110b73"><td class="memItemLeft" align="right" valign="top"><a id="aadb3011e9fcb810b3deb220502110b73" name="aadb3011e9fcb810b3deb220502110b73"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>CreateTransformStream</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a> baseStream=null,(string, string)[] baseColumns=null)</td></tr>
-<tr class="memdesc:aadb3011e9fcb810b3deb220502110b73"><td class="mdescLeft">&#160;</td><td class="mdescRight">The entity's world pose stream; <em>baseStream</em>  holds the same pose under other column names. <br /></td></tr>
 <tr class="separator:aadb3011e9fcb810b3deb220502110b73"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a04fb4d75520a6e7f0001a4d774e7983d"><td class="memItemLeft" align="right" valign="top"><a id="a04fb4d75520a6e7f0001a4d774e7983d" name="a04fb4d75520a6e7f0001a4d774e7983d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>EndSpawn</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, ulong tick)</td></tr>
-<tr class="memdesc:a04fb4d75520a6e7f0001a4d774e7983d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Records the entity's colliders and renderers; the ENTITY record must be written before. <br /></td></tr>
 <tr class="separator:a04fb4d75520a6e7f0001a4d774e7983d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ae6feb3301ff515a3afbea49ec08374"><td class="memItemLeft" align="right" valign="top"><a id="a0ae6feb3301ff515a3afbea49ec08374" name="a0ae6feb3301ff515a3afbea49ec08374"></a>
 unsafe bool&#160;</td><td class="memItemRight" valign="bottom"><b>RecordTransform</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick, out Vector3 position)</td></tr>
-<tr class="memdesc:a0ae6feb3301ff515a3afbea49ec08374"><td class="mdescLeft">&#160;</td><td class="mdescRight">Marks <em>source</em> 's part of the entity seen this tick and writes the entity's world pose, once per tick. Returns the position, or false when the pose was already written this tick.  <br /></td></tr>
 <tr class="separator:a0ae6feb3301ff515a3afbea49ec08374"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b00943d88b1ee41b5213e20816d232e"><td class="memItemLeft" align="right" valign="top"><a id="a3b00943d88b1ee41b5213e20816d232e" name="a3b00943d88b1ee41b5213e20816d232e"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>DespawnUnseen</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick)</td></tr>
-<tr class="memdesc:a3b00943d88b1ee41b5213e20816d232e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Releases <em>source</em> 's part of every entity it did not see this tick. <br /></td></tr>
 <tr class="separator:a3b00943d88b1ee41b5213e20816d232e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a448b0bf58fd3fe75c0207a86d84c94f4"><td class="memItemLeft" align="right" valign="top"><a id="a448b0bf58fd3fe75c0207a86d84c94f4" name="a448b0bf58fd3fe75c0207a86d84c94f4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Release</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick)</td></tr>
-<tr class="memdesc:a448b0bf58fd3fe75c0207a86d84c94f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Releases <em>source</em> 's part of the entity: a DETACH record while other sources still hold it, a DESPAWN once none does.  <br /></td></tr>
 <tr class="separator:a448b0bf58fd3fe75c0207a86d84c94f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a31bb7a43be5f3f2a32699f99b1066d32"><td class="memItemLeft" align="right" valign="top"><a id="a31bb7a43be5f3f2a32699f99b1066d32" name="a31bb7a43be5f3f2a32699f99b1066d32"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Despawn</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, ulong tick)</td></tr>
-<tr class="memdesc:a31bb7a43be5f3f2a32699f99b1066d32"><td class="mdescLeft">&#160;</td><td class="mdescRight">Despawns the entity for every source holding it. <br /></td></tr>
 <tr class="separator:a31bb7a43be5f3f2a32699f99b1066d32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad9ead24d1e286de208a217947f697334"><td class="memItemLeft" align="right" valign="top"><a id="ad9ead24d1e286de208a217947f697334" name="ad9ead24d1e286de208a217947f697334"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RecordSources</b> (ulong tick, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> driver)</td></tr>
-<tr class="memdesc:ad9ead24d1e286de208a217947f697334"><td class="mdescLeft">&#160;</td><td class="mdescRight">Records the rows of every source except <em>driver</em> , the recorder driving the session. Called by the driver once per tick, after its own rows and before <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a8d9eab4d376c24067f7194d8b028247f" title="Without the physics module there are no colliders: entities&#39; renderers are refreshed instead.">RecordColliders</a>.  <br /></td></tr>
 <tr class="separator:ad9ead24d1e286de208a217947f697334"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af63f4ccdd889c3e124da907f79e170bd"><td class="memItemLeft" align="right" valign="top"><a id="af63f4ccdd889c3e124da907f79e170bd" name="af63f4ccdd889c3e124da907f79e170bd"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RemoveSource</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source)</td></tr>
-<tr class="memdesc:af63f4ccdd889c3e124da907f79e170bd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops recording <em>source</em> : its part of every entity is released now. <br /></td></tr>
 <tr class="separator:af63f4ccdd889c3e124da907f79e170bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab1f4bc6d2859c70274cd35fbe6e415d2"><td class="memItemLeft" align="right" valign="top"><a id="ab1f4bc6d2859c70274cd35fbe6e415d2" name="ab1f4bc6d2859c70274cd35fbe6e415d2"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>HasSource</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source)</td></tr>
 <tr class="separator:ab1f4bc6d2859c70274cd35fbe6e415d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a16223f2a9a3f32f2bb859fb2cdb60afb"><td class="memItemLeft" align="right" valign="top"><a id="a16223f2a9a3f32f2bb859fb2cdb60afb" name="a16223f2a9a3f32f2bb859fb2cdb60afb"></a>
 Transform&#160;</td><td class="memItemRight" valign="bottom"><b>NearestEntity</b> (Transform t, bool includeInactive)</td></tr>
-<tr class="memdesc:a16223f2a9a3f32f2bb859fb2cdb60afb"><td class="mdescLeft">&#160;</td><td class="mdescRight">The nearest object on or above <em>t</em>  that is an entity of any source, or null. <br /></td></tr>
 <tr class="separator:a16223f2a9a3f32f2bb859fb2cdb60afb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8d431eca72d68831597099ffecaf284"><td class="memItemLeft" align="right" valign="top"><a id="ac8d431eca72d68831597099ffecaf284" name="ac8d431eca72d68831597099ffecaf284"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a>&#160;</td><td class="memItemRight" valign="bottom"><b>ParentEntity</b> (Transform parent, bool includeInactive)</td></tr>
-<tr class="memdesc:ac8d431eca72d68831597099ffecaf284"><td class="mdescLeft">&#160;</td><td class="mdescRight">The recorded entity nearest above <em>parent</em>  (an entity's parent), or null. <br /></td></tr>
 <tr class="separator:ac8d431eca72d68831597099ffecaf284"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a077fa4e16a72a870f9fa9431009f0512"><td class="memItemLeft" align="right" valign="top"><a id="a077fa4e16a72a870f9fa9431009f0512" name="a077fa4e16a72a870f9fa9431009f0512"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a>&#160;</td><td class="memItemRight" valign="bottom"><b>CreateStream</b> (Type type, in <a class="el" href="structPurrNet_1_1Recording_1_1RecordedStreamInfo.html">RecordedStreamInfo</a> info, bool forwardFill=false, <a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a> baseStream=null,(string, string)[] baseColumns=null)</td></tr>
-<tr class="memdesc:a077fa4e16a72a870f9fa9431009f0512"><td class="mdescLeft">&#160;</td><td class="mdescRight">Declares a stream of <em>type</em>  rows. A <em>forwardFill</em>  stream repeats its last row on ticks without one. A stream with a <em>baseStream</em>  stores its <em>baseColumns</em>  (own column, base column) as differences against that stream.  <br /></td></tr>
 <tr class="separator:a077fa4e16a72a870f9fa9431009f0512"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acd1a65feea9a373c16f7336f3a8164cb"><td class="memItemLeft" align="right" valign="top">unsafe void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#acd1a65feea9a373c16f7336f3a8164cb">AppendRow&lt; T &gt;</a> (<a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a> rows, ulong tick, ref T value)</td></tr>
-<tr class="memdesc:acd1a65feea9a373c16f7336f3a8164cb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a row for <em>tick</em>  to <em>rows</em> . A per-tick stream's row is only written when it differs from the stream's last one (or is its first in the chunk); the stream still has that row on this tick.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#acd1a65feea9a373c16f7336f3a8164cb">More...</a><br /></td></tr>
 <tr class="separator:acd1a65feea9a373c16f7336f3a8164cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab2ca09360122bbc5e04fc6b9917eb222"><td class="memItemLeft" align="right" valign="top"><a id="ab2ca09360122bbc5e04fc6b9917eb222" name="ab2ca09360122bbc5e04fc6b9917eb222"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>FlushPendingTypes</b> ()</td></tr>
 <tr class="separator:ab2ca09360122bbc5e04fc6b9917eb222"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a703fab1af0b30b355cd986714550d043"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043">WriteSample&lt; T &gt;</a> (string stream, in T sample)</td></tr>
-<tr class="memdesc:a703fab1af0b30b355cd986714550d043"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into that client's part of the recording, a file of its own (see RecordingSession.Parts). Nothing is sent.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043">More...</a><br /></td></tr>
 <tr class="separator:a703fab1af0b30b355cd986714550d043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4880b63f8d5235fdc110f5b0b1705184"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a4880b63f8d5235fdc110f5b0b1705184">WriteSampleFor&lt; T &gt;</a> (string stream, <a class="el" href="structPurrNet_1_1PlayerID.html">PlayerID</a> player, in T sample)</td></tr>
-<tr class="memdesc:a4880b63f8d5235fdc110f5b0b1705184"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server only. Adds a sample to a custom stream on behalf of <em>player</em> , for players that have no client of their own (bots) or data the server observes about a player.   <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#a4880b63f8d5235fdc110f5b0b1705184">More...</a><br /></td></tr>
 <tr class="separator:a4880b63f8d5235fdc110f5b0b1705184"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a33f1b7837c850e164b51a045bb817884"><td class="memItemLeft" align="right" valign="top"><a id="a33f1b7837c850e164b51a045bb817884" name="a33f1b7837c850e164b51a045bb817884"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteMeta</b> (RecordKind kind, <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#abbe4b582fc29cc4a41d3e5ce75e3930c">json</a>)</td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteMeta</b> (RecordKind kind, <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> json)</td></tr>
 <tr class="separator:a33f1b7837c850e164b51a045bb817884"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a289154255257ca36aafac1c64792334f"><td class="memItemLeft" align="right" valign="top"><a id="a289154255257ca36aafac1c64792334f" name="a289154255257ca36aafac1c64792334f"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>Name</b> (UnityEngine.Object o)</td></tr>
-<tr class="memdesc:a289154255257ca36aafac1c64792334f"><td class="mdescLeft">&#160;</td><td class="mdescRight">An object's name, read from Unity once per recording (each read allocates). <br /></td></tr>
 <tr class="separator:a289154255257ca36aafac1c64792334f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a41f8e94beb829717e03b5c12eda04741"><td class="memItemLeft" align="right" valign="top"><a id="a41f8e94beb829717e03b5c12eda04741" name="a41f8e94beb829717e03b5c12eda04741"></a>
-void&#160;</td><td class="memItemRight" valign="bottom"><b>WritePath</b> (<a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#abbe4b582fc29cc4a41d3e5ce75e3930c">json</a>, Transform t)</td></tr>
-<tr class="memdesc:a41f8e94beb829717e03b5c12eda04741"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes "root/child/object" as a JSON string from the cached names, without building it. <br /></td></tr>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>WritePath</b> (<a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a> json, Transform t)</td></tr>
 <tr class="separator:a41f8e94beb829717e03b5c12eda04741"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae0a17414b6e7a3ba9a1951826564bce7"><td class="memItemLeft" align="right" valign="top"><a id="ae0a17414b6e7a3ba9a1951826564bce7" name="ae0a17414b6e7a3ba9a1951826564bce7"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>TypeName</b> (Type type)</td></tr>
 <tr class="separator:ae0a17414b6e7a3ba9a1951826564bce7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8d9eab4d376c24067f7194d8b028247f"><td class="memItemLeft" align="right" valign="top"><a id="a8d9eab4d376c24067f7194d8b028247f" name="a8d9eab4d376c24067f7194d8b028247f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RecordColliders</b> (ulong tick)</td></tr>
-<tr class="memdesc:a8d9eab4d376c24067f7194d8b028247f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Without the physics module there are no colliders: entities' renderers are refreshed instead. <br /></td></tr>
 <tr class="separator:a8d9eab4d376c24067f7194d8b028247f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a0ed9dcfd597ecb3aa5ea4a86526f1cfe"><td class="memItemLeft" align="right" valign="top"><a id="a0ed9dcfd597ecb3aa5ea4a86526f1cfe" name="a0ed9dcfd597ecb3aa5ea4a86526f1cfe"></a>
-static bool&#160;</td><td class="memItemRight" valign="bottom"><b>RecordsAutomatically</b> (bool recordInEditor)</td></tr>
-<tr class="memdesc:a0ed9dcfd597ecb3aa5ea4a86526f1cfe"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether matches start recording on their own here: not on CI, and in the editor only when asked. <br /></td></tr>
-<tr class="separator:a0ed9dcfd597ecb3aa5ea4a86526f1cfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae80846f486a01cb37273c117354adf5f"><td class="memItemLeft" align="right" valign="top"><a id="ae80846f486a01cb37273c117354adf5f" name="ae80846f486a01cb37273c117354adf5f"></a>
+static bool&#160;</td><td class="memItemRight" valign="bottom"><b>RecordsAutomatically</b> (bool recordInDevelopment)</td></tr>
+<tr class="separator:ae80846f486a01cb37273c117354adf5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adf58f4ecd033456d00bac648899c309c"><td class="memItemLeft" align="right" valign="top"><a id="adf58f4ecd033456d00bac648899c309c" name="adf58f4ecd033456d00bac648899c309c"></a>
 static string&#160;</td><td class="memItemRight" valign="bottom"><b>ResolveDirectory</b> (string directory)</td></tr>
 <tr class="separator:adf58f4ecd033456d00bac648899c309c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aec45c2510199b6b2012ea65b2d591d54"><td class="memItemLeft" align="right" valign="top"><a id="aec45c2510199b6b2012ea65b2d591d54" name="aec45c2510199b6b2012ea65b2d591d54"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>ConfigureUploads</b> (bool upload, string endpoint, string projectKey, string directory, int maxLocalMegabytes)</td></tr>
-<tr class="memdesc:aec45c2510199b6b2012ea65b2d591d54"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends finished recordings in <em>directory</em>  to <em>endpoint</em>  with the project key (empty uses the project linked through PurrServices). Never from the editor or CI.  <br /></td></tr>
 <tr class="separator:aec45c2510199b6b2012ea65b2d591d54"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a66c9414e4ad8e718c838463022aa59b2"><td class="memItemLeft" align="right" valign="top"><a id="a66c9414e4ad8e718c838463022aa59b2" name="a66c9414e4ad8e718c838463022aa59b2"></a>
 readonly Dictionary&lt; string, string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>labels</b></td></tr>
-<tr class="memdesc:a66c9414e4ad8e718c838463022aa59b2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Free-form labels written into the header (map, mode, build hash...). Set before recording starts. <br /></td></tr>
 <tr class="separator:a66c9414e4ad8e718c838463022aa59b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab8b4ac8856f7a7eaaed0c4dd710a1df0"><td class="memItemLeft" align="right" valign="top"><a id="ab8b4ac8856f7a7eaaed0c4dd710a1df0" name="ab8b4ac8856f7a7eaaed0c4dd710a1df0"></a>
 float&#160;</td><td class="memItemRight" valign="bottom"><b>chunkSeconds</b> = 10f</td></tr>
@@ -283,21 +254,18 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>chunkBufferKilobytes</
 <tr class="separator:ab9b26224a50e951986d906d63bc74033"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a37fc67091505377546a2c56b6c415c5a"><td class="memItemLeft" align="right" valign="top"><a id="a37fc67091505377546a2c56b6c415c5a" name="a37fc67091505377546a2c56b6c415c5a"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>partDirectory</b> = &quot;Recordings&quot;</td></tr>
-<tr class="memdesc:a37fc67091505377546a2c56b6c415c5a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Folder client parts are written to. Relative paths are under Application.persistentDataPath. <br /></td></tr>
 <tr class="separator:a37fc67091505377546a2c56b6c415c5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
 <tr class="memitem:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="memItemLeft" align="right" valign="top"><a id="ac0f7685e369c6869f7c5a7060e3d2a93" name="ac0f7685e369c6869f7c5a7060e3d2a93"></a>
 const string&#160;</td><td class="memItemRight" valign="bottom"><b>CameraStream</b> = &quot;camera&quot;</td></tr>
-<tr class="memdesc:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="mdescLeft">&#160;</td><td class="mdescRight">The stream clients' cameras are recorded under. <br /></td></tr>
 <tr class="separator:ac0f7685e369c6869f7c5a7060e3d2a93"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
 <tr class="memitem:abcd8953aefb5660d483b717af3695a90"><td class="memItemLeft" align="right" valign="top"><a id="abcd8953aefb5660d483b717af3695a90" name="abcd8953aefb5660d483b717af3695a90"></a>
 static <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html">RecordingSession</a>&#160;</td><td class="memItemRight" valign="bottom"><b>active</b><code> [get]</code></td></tr>
-<tr class="memdesc:abcd8953aefb5660d483b717af3695a90"><td class="mdescLeft">&#160;</td><td class="mdescRight">The session clients' samples go to (the last one created that is still alive). <br /></td></tr>
 <tr class="separator:abcd8953aefb5660d483b717af3695a90"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af35cc9ed7f2255e0b64d3e00c1f7724d"><td class="memItemLeft" align="right" valign="top"><a id="af35cc9ed7f2255e0b64d3e00c1f7724d" name="af35cc9ed7f2255e0b64d3e00c1f7724d"></a>
 ulong&#160;</td><td class="memItemRight" valign="bottom"><b>localTick</b><code> [get]</code></td></tr>
@@ -307,11 +275,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isRecording</b><code>
 <tr class="separator:a8cbd22cbf3ae5ab1f582b852f6cd0a76"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a341535d48d994a3ae08ed6f572fffda2"><td class="memItemLeft" align="right" valign="top"><a id="a341535d48d994a3ae08ed6f572fffda2" name="a341535d48d994a3ae08ed6f572fffda2"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>chunkStart</b><code> [get]</code></td></tr>
-<tr class="memdesc:a341535d48d994a3ae08ed6f572fffda2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the tick being recorded is the first of a chunk. Every per-tick stream needs a row in each chunk it lives in, so a recorder that only writes rows when they change writes them all on this tick.  <br /></td></tr>
 <tr class="separator:a341535d48d994a3ae08ed6f572fffda2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a623504f0c23f75e4627ea430f601d8ae"><td class="memItemLeft" align="right" valign="top"><a id="a623504f0c23f75e4627ea430f601d8ae" name="a623504f0c23f75e4627ea430f601d8ae"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>sampleEpoch</b><code> [get]</code></td></tr>
-<tr class="memdesc:a623504f0c23f75e4627ea430f601d8ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">0 while <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a703fab1af0b30b355cd986714550d043" title="Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client in...">WriteSample&lt;T&gt;</a> would drop a sample; otherwise a number that changes whenever samples start landing in a new chunk. A sample stream that only writes changes writes its full state again when this changes, so every chunk can be read on its own.  <br /></td></tr>
 <tr class="separator:a623504f0c23f75e4627ea430f601d8ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abe1562cfaf304c38dfdb822e0bac92d7"><td class="memItemLeft" align="right" valign="top"><a id="abe1562cfaf304c38dfdb822e0bac92d7" name="abe1562cfaf304c38dfdb822e0bac92d7"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>currentPath</b><code> [get]</code></td></tr>
@@ -327,7 +293,6 @@ ulong&#160;</td><td class="memItemRight" valign="bottom"><b>ticksRecorded</b><co
 <tr class="separator:aec1464edbc46577b67f70cb404fb5429"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6678aded9cda119655591e87bef186d6"><td class="memItemLeft" align="right" valign="top"><a id="a6678aded9cda119655591e87bef186d6" name="a6678aded9cda119655591e87bef186d6"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isDisposed</b><code> [get]</code></td></tr>
-<tr class="memdesc:a6678aded9cda119655591e87bef186d6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops recording and stops being the session clients' samples go to. <br /></td></tr>
 <tr class="separator:a6678aded9cda119655591e87bef186d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae56e872afa9b6bad3f14415720cb4e3"><td class="memItemLeft" align="right" valign="top"><a id="aae56e872afa9b6bad3f14415720cb4e3" name="aae56e872afa9b6bad3f14415720cb4e3"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>subscribedNetwork</b><code> [get]</code></td></tr>
@@ -337,19 +302,15 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>entityCount</b><code> 
 <tr class="separator:a90bed44a20410d8dd489f2a85fbe5599"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abbe4b582fc29cc4a41d3e5ce75e3930c"><td class="memItemLeft" align="right" valign="top"><a id="abbe4b582fc29cc4a41d3e5ce75e3930c" name="abbe4b582fc29cc4a41d3e5ce75e3930c"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>json</b><code> [get]</code></td></tr>
-<tr class="memdesc:abbe4b582fc29cc4a41d3e5ce75e3930c"><td class="mdescLeft">&#160;</td><td class="mdescRight">The builder metadata records are written with; each use starts with <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html#a1841956a1388045cb9354ed4510731ed" title="Starts over, keeping the buffer.">JsonBuilder.Clear</a>. <br /></td></tr>
 <tr class="separator:abbe4b582fc29cc4a41d3e5ce75e3930c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a93165528962b41c31f21ba8dfcdd9195"><td class="memItemLeft" align="right" valign="top"><a id="a93165528962b41c31f21ba8dfcdd9195" name="a93165528962b41c31f21ba8dfcdd9195"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>recordingId</b><code> [get]</code></td></tr>
-<tr class="memdesc:a93165528962b41c31f21ba8dfcdd9195"><td class="mdescLeft">&#160;</td><td class="mdescRight">The id of the recording being written (a part carries the id of the server's file); null when none is. <br /></td></tr>
 <tr class="separator:a93165528962b41c31f21ba8dfcdd9195"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7b299e062a5d6e01ec83ace7062bfcfa"><td class="memItemLeft" align="right" valign="top"><a id="a7b299e062a5d6e01ec83ace7062bfcfa" name="a7b299e062a5d6e01ec83ace7062bfcfa"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPart</b><code> [get]</code></td></tr>
-<tr class="memdesc:a7b299e062a5d6e01ec83ace7062bfcfa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether the open file is a client part. <br /></td></tr>
 <tr class="separator:a7b299e062a5d6e01ec83ace7062bfcfa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5caa81e8a92fbcf71008a0d60ff6751c"><td class="memItemLeft" align="right" valign="top"><a id="a5caa81e8a92fbcf71008a0d60ff6751c" name="a5caa81e8a92fbcf71008a0d60ff6751c"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>wantsSamples</b><code> [get]</code></td></tr>
-<tr class="memdesc:a5caa81e8a92fbcf71008a0d60ff6751c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether samples written now are kept: a recording is open here, or the server announced one and this client's part opens with the first sample.  <br /></td></tr>
 <tr class="separator:a5caa81e8a92fbcf71008a0d60ff6751c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
@@ -358,58 +319,6 @@ Events</h2></td></tr>
 Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onRecordingFinished</b></td></tr>
 <tr class="separator:aa9719c9160786499b53825684ab5c7f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Writes a match to a self-describing .purrrec file (see recording/FORMAT.md): entities with their transforms, colliders and streams, players, and custom streams such as each player's camera. A recorder owns one and feeds it every tick; <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html" title="Something that puts entities into a RecordingSession (predicted objects, network identities)....">RecordingSource</a>s say which scene objects belong to which entity. On a client it writes that client's own part of the server's recording (see RecordingSession.Parts); nothing but the server's start and stop announcement travels over the game's connection. Once running it makes no garbage: storage is pooled, metadata is written straight to bytes, and managed fields are read in place.  </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="ac65106212255e9dee11d4ccd8876b1b6" name="ac65106212255e9dee11d4ccd8876b1b6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac65106212255e9dee11d4ccd8876b1b6">&#9670;&#160;</a></span>RecordingSession()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">PurrNet.Recording.RecordingSession.RecordingSession </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordingContext.html">IRecordingContext</a>&#160;</td>
-          <td class="paramname"><em>context</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">string&#160;</td>
-          <td class="paramname"><em>logName</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Dictionary&lt; string, string &gt;&#160;</td>
-          <td class="paramname"><em>labels</em> = <code>null</code>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">params string[]&#160;</td>
-          <td class="paramname"><em>recorderSections</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">context</td><td>Clocks and identity of this machine.</td></tr>
-    <tr><td class="paramname">logName</td><td>How the recorder calls itself in its report and warnings.</td></tr>
-    <tr><td class="paramname">labels</td><td>Header labels; a new dictionary when null.</td></tr>
-    <tr><td class="paramname">recorderSections</td><td>The recorder's own sections of the cost report (players, identities...), listed after the tick; get them with <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#a1f7531236931d5afcaefcbc285b4a267" title="A section of the cost report, by name.">Section</a>. </td></tr>
-  </table>
-  </dd>
-</dl>
-
-</div>
-</div>
 <h2 class="groupheader">Member Function Documentation</h2>
 <a id="acd1a65feea9a373c16f7336f3a8164cb" name="acd1a65feea9a373c16f7336f3a8164cb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acd1a65feea9a373c16f7336f3a8164cb">&#9670;&#160;</a></span>AppendRow&lt; T &gt;()</h2>
@@ -442,8 +351,6 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p>Adds a row for <em>tick</em>  to <em>rows</em> . A per-tick stream's row is only written when it differs from the stream's last one (or is its first in the chunk); the stream still has that row on this tick.  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">
@@ -452,66 +359,6 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
 </dd>
 </dl>
 </div>
-
-</div>
-</div>
-<a id="aa0fe19ff56474a17d183a9e35c11f9e6" name="aa0fe19ff56474a17d183a9e35c11f9e6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa0fe19ff56474a17d183a9e35c11f9e6">&#9670;&#160;</a></span>Start()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">void PurrNet.Recording.RecordingSession.Start </td>
-          <td>(</td>
-          <td class="paramtype">string&#160;</td>
-          <td class="paramname"><em>directory</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">string&#160;</td>
-          <td class="paramname"><em>fileName</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>tickRate</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">ulong&#160;</td>
-          <td class="paramname"><em>firstTick</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">string&#160;</td>
-          <td class="paramname"><em>scene</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>host</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Opens a recording file and writes its header and the static world. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">host</td><td>Whether this machine is also a client (written as the recorder kind).</td></tr>
-  </table>
-  </dd>
-</dl>
 
 </div>
 </div>
@@ -540,8 +387,6 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p>Adds a sample to a custom stream. On the server (and host) it goes into the recording; on a client into that client's part of the recording, a file of its own (see RecordingSession.Parts). Nothing is sent.  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">
@@ -584,8 +429,6 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
         </tr>
       </table>
 </div><div class="memdoc">
-
-<p>Server only. Adds a sample to a custom stream on behalf of <em>player</em> , for players that have no client of their own (bots) or data the server observes about a player.  </p>
 <div class="typeconstraint">
 <dl><dt><b>Type Constraints</b></dt><dd>
 <table border="0" cellspacing="2" cellpadding="0">

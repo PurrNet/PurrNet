@@ -98,15 +98,11 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1ByteShelf
   <div class="headertitle"><div class="title">PurrNet.Recording.ByteShelf Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Byte arrays that buffers grew out of, kept for the next buffer that needs one. Chunk logs grow to megabytes early in a match; with a shelf the arrays they leave behind are reused instead of becoming garbage, so the recorder never triggers a collection by growing.   
- <a href="classPurrNet_1_1Recording_1_1ByteShelf.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a9dc16766cb110e9ef4a5da9c18f6f38d"><td class="memItemLeft" align="right" valign="top"><a id="a9dc16766cb110e9ef4a5da9c18f6f38d" name="a9dc16766cb110e9ef4a5da9c18f6f38d"></a>
 byte[]&#160;</td><td class="memItemRight" valign="bottom"><b>Take</b> (int size)</td></tr>
-<tr class="memdesc:a9dc16766cb110e9ef4a5da9c18f6f38d"><td class="mdescLeft">&#160;</td><td class="mdescRight">The smallest kept array of at least <em>size</em>  bytes, or a new one. Arrays more than four times too big are left for buffers that need them, so a small buffer never holds megabytes.  <br /></td></tr>
 <tr class="separator:a9dc16766cb110e9ef4a5da9c18f6f38d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac293afe20257ef814745a645a935845b"><td class="memItemLeft" align="right" valign="top"><a id="ac293afe20257ef814745a645a935845b" name="ac293afe20257ef814745a645a935845b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Put</b> (byte[] array)</td></tr>
@@ -116,7 +112,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Put</b> (byte[] array
 Static Public Attributes</h2></td></tr>
 <tr class="memitem:acd89277548081ff57949a2f762caaeea"><td class="memItemLeft" align="right" valign="top"><a id="acd89277548081ff57949a2f762caaeea" name="acd89277548081ff57949a2f762caaeea"></a>
 static readonly <a class="el" href="classPurrNet_1_1Recording_1_1ByteShelf.html">ByteShelf</a>&#160;</td><td class="memItemRight" valign="bottom"><b>shared</b> = new <a class="el" href="classPurrNet_1_1Recording_1_1ByteShelf.html">ByteShelf</a>()</td></tr>
-<tr class="memdesc:acd89277548081ff57949a2f762caaeea"><td class="mdescLeft">&#160;</td><td class="mdescRight">The recorder's shelf: chunk logs, metadata batches, the encoder and compressed output share it. <br /></td></tr>
 <tr class="separator:acd89277548081ff57949a2f762caaeea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
@@ -125,9 +120,7 @@ Properties</h2></td></tr>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>count</b><code> [get]</code></td></tr>
 <tr class="separator:aa8c360e3f4fc1454f879394b089691c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Byte arrays that buffers grew out of, kept for the next buffer that needs one. Chunk logs grow to megabytes early in a match; with a shelf the arrays they leave behind are reused instead of becoming garbage, so the recorder never triggers a collection by growing.  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordingBuffers.cs</li>
 </ul>
 </div><!-- contents -->

@@ -98,34 +98,28 @@ $(document).ready(function(){initNavTree('structPurrNet_1_1Recording_1_1RawInput
 </div><!--header-->
 <div class="contents">
 
-<p>What the player's devices did during one tick (see recording/FORMAT.md, "The input stream"). Fixed size and unmanaged: a row costs nothing to write.   
+<p>What the player's devices did during one tick (the format spec, "The input stream"). Fixed size and unmanaged: a row costs nothing to write.   
  <a href="structPurrNet_1_1Recording_1_1RawInputSample.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ada91e684297653d83ff37e91c280c05f"><td class="memItemLeft" align="right" valign="top"><a id="ada91e684297653d83ff37e91c280c05f" name="ada91e684297653d83ff37e91c280c05f"></a>
 ushort&#160;</td><td class="memItemRight" valign="bottom"><b>flags</b></td></tr>
-<tr class="memdesc:ada91e684297653d83ff37e91c280c05f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bits: see the constants. <br /></td></tr>
 <tr class="separator:ada91e684297653d83ff37e91c280c05f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae9b39f2b4453b1a9d7ce18521cc2e3aa"><td class="memItemLeft" align="right" valign="top"><a id="ae9b39f2b4453b1a9d7ce18521cc2e3aa" name="ae9b39f2b4453b1a9d7ce18521cc2e3aa"></a>
 byte&#160;</td><td class="memItemRight" valign="bottom"><b>mouseButtons</b></td></tr>
-<tr class="memdesc:ae9b39f2b4453b1a9d7ce18521cc2e3aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bit 0 left, 1 right, 2 middle, 3 back, 4 forward. <br /></td></tr>
 <tr class="separator:ae9b39f2b4453b1a9d7ce18521cc2e3aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab4d4a4d4c6eba3c5d65f278f3a6badc7"><td class="memItemLeft" align="right" valign="top"><a id="ab4d4a4d4c6eba3c5d65f278f3a6badc7" name="ab4d4a4d4c6eba3c5d65f278f3a6badc7"></a>
 Vector2&#160;</td><td class="memItemRight" valign="bottom"><b>mouseDelta</b></td></tr>
-<tr class="memdesc:ab4d4a4d4c6eba3c5d65f278f3a6badc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer movement since the previous row, in pixels. <br /></td></tr>
 <tr class="separator:ab4d4a4d4c6eba3c5d65f278f3a6badc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af3b18eccd72a91c01f7771ca35c94962"><td class="memItemLeft" align="right" valign="top"><a id="af3b18eccd72a91c01f7771ca35c94962" name="af3b18eccd72a91c01f7771ca35c94962"></a>
 Vector2&#160;</td><td class="memItemRight" valign="bottom"><b>pointer</b></td></tr>
-<tr class="memdesc:af3b18eccd72a91c01f7771ca35c94962"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pointer position over the screen size: (0,0) bottom left, (1,1) top right. <br /></td></tr>
 <tr class="separator:af3b18eccd72a91c01f7771ca35c94962"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae066e4331552a9af82f7d86d38513e7f"><td class="memItemLeft" align="right" valign="top"><a id="ae066e4331552a9af82f7d86d38513e7f" name="ae066e4331552a9af82f7d86d38513e7f"></a>
 Vector2&#160;</td><td class="memItemRight" valign="bottom"><b>scroll</b></td></tr>
-<tr class="memdesc:ae066e4331552a9af82f7d86d38513e7f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scroll since the previous row. <br /></td></tr>
 <tr class="separator:ae066e4331552a9af82f7d86d38513e7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa2d69f7e27a2216c755a446c8e67c792"><td class="memItemLeft" align="right" valign="top"><a id="aa2d69f7e27a2216c755a446c8e67c792" name="aa2d69f7e27a2216c755a446c8e67c792"></a>
 ulong&#160;</td><td class="memItemRight" valign="bottom"><b>keys0</b></td></tr>
-<tr class="memdesc:aa2d69f7e27a2216c755a446c8e67c792"><td class="mdescLeft">&#160;</td><td class="mdescRight">Held keys: bit n is the key numbered n (the Input System's Key values), 0-63 and 64-127. <br /></td></tr>
 <tr class="separator:aa2d69f7e27a2216c755a446c8e67c792"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac8a72d111f4af121c82ab11b99c8d063"><td class="memItemLeft" align="right" valign="top"><a id="ac8a72d111f4af121c82ab11b99c8d063" name="ac8a72d111f4af121c82ab11b99c8d063"></a>
 ulong&#160;</td><td class="memItemRight" valign="bottom"><b>keys1</b></td></tr>
@@ -144,11 +138,9 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>rightTrigger</b></td
 <tr class="separator:a741867de3912a02df456eda951b16506"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c9e3d78a1f388ff2f33ecb74f85afd2"><td class="memItemLeft" align="right" valign="top"><a id="a2c9e3d78a1f388ff2f33ecb74f85afd2" name="a2c9e3d78a1f388ff2f33ecb74f85afd2"></a>
 uint&#160;</td><td class="memItemRight" valign="bottom"><b>gamepadButtons</b></td></tr>
-<tr class="memdesc:a2c9e3d78a1f388ff2f33ecb74f85afd2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bit n is the gamepad button numbered n (the Input System's GamepadButton values; triggers 14 and 15). <br /></td></tr>
 <tr class="separator:a2c9e3d78a1f388ff2f33ecb74f85afd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f6e94b10256fe28f9023f0c66c20565"><td class="memItemLeft" align="right" valign="top"><a id="a1f6e94b10256fe28f9023f0c66c20565" name="a1f6e94b10256fe28f9023f0c66c20565"></a>
 uint&#160;</td><td class="memItemRight" valign="bottom"><b>joystickButtons</b></td></tr>
-<tr class="memdesc:a1f6e94b10256fe28f9023f0c66c20565"><td class="mdescLeft">&#160;</td><td class="mdescRight">Legacy Input Manager only: joystick buttons 0-19 as the Input Manager numbers them. <br /></td></tr>
 <tr class="separator:a1f6e94b10256fe28f9023f0c66c20565"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
@@ -176,7 +168,7 @@ const ushort&#160;</td><td class="memItemRight" valign="bottom"><b>FromLegacyInp
 <tr class="separator:adb5ddf7134192e9a514dedcc39da11bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >What the player's devices did during one tick (see recording/FORMAT.md, "The input stream"). Fixed size and unmanaged: a row costs nothing to write.  </p>
+<div class="textblock"><p >What the player's devices did during one tick (the format spec, "The input stream"). Fixed size and unmanaged: a row costs nothing to write.  </p>
 </div><hr/>The documentation for this struct was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordLocalInput.cs</li>
 </ul>

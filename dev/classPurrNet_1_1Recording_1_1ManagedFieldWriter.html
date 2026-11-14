@@ -97,16 +97,13 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1ManagedFi
   <div class="headertitle"><div class="title">PurrNet.Recording.ManagedFieldWriter Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Writes one managed field of a row in place: a reference is read from the row and written as a tagged value, a struct (a DisposableList, say) through its plan. No box of the row or the field.   
- <a href="classPurrNet_1_1Recording_1_1ManagedFieldWriter.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.Recording.ManagedFieldWriter:</div>
 <div class="dyncontent">
  <div class="center">
   <img src="classPurrNet_1_1Recording_1_1ManagedFieldWriter.png" usemap="#PurrNet.Recording.ManagedFieldWriter_map" alt=""/>
   <map id="PurrNet.Recording.ManagedFieldWriter_map" name="PurrNet.Recording.ManagedFieldWriter_map">
-<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" title="Something that writes tagged values without reflection, re-checked against the generic path at first." alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,237,24"/>
+<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,237,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -114,7 +111,6 @@ Inheritance diagram for PurrNet.Recording.ManagedFieldWriter:</div>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a49bac0d8a2590ebfc32c213adf4cdec2"><td class="memItemLeft" align="right" valign="top"><a id="a49bac0d8a2590ebfc32c213adf4cdec2" name="a49bac0d8a2590ebfc32c213adf4cdec2"></a>
 unsafe bool&#160;</td><td class="memItemRight" valign="bottom"><b>Identify</b> (byte *row, out object source, out int version)</td></tr>
-<tr class="memdesc:a49bac0d8a2590ebfc32c213adf4cdec2"><td class="mdescLeft">&#160;</td><td class="mdescRight">The object the field holds and its change counter, when both being the same as before means the value is the same: a string, or a list of strings or plain data. False for anything else and for null.  <br /></td></tr>
 <tr class="separator:a49bac0d8a2590ebfc32c213adf4cdec2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac6a26238068313b6b5d22ae05ead6118"><td class="memItemLeft" align="right" valign="top"><a id="ac6a26238068313b6b5d22ae05ead6118" name="ac6a26238068313b6b5d22ae05ead6118"></a>
 unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (byte *row, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> buffer, HashSet&lt; object &gt; visiting)</td></tr>
@@ -122,7 +118,6 @@ unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (byt
 <tr class="inherit_header pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1Recording_1_1CheckedWriter.html">PurrNet.Recording.CheckedWriter</a></td></tr>
 <tr class="memitem:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memItemLeft" align="right" valign="top"><a id="a07fc41df40d759c6e2febc9706a48292" name="a07fc41df40d759c6e2febc9706a48292"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>NeedsSelfCheck</b> (bool trivial)</td></tr>
-<tr class="memdesc:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks until SelfChecks non-trivial values matched; trivial ones prove little. <br /></td></tr>
 <tr class="separator:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
@@ -138,9 +133,7 @@ Additional Inherited Members</h2></td></tr>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>disabled</b></td></tr>
 <tr class="separator:a8fd2ddf985166d0b4a52f3ef68b1ab20 inherit pub_attribs_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Writes one managed field of a row in place: a reference is read from the row and written as a tagged value, a struct (a DisposableList, say) through its plan. No box of the row or the field.  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/TypedListWriters.cs</li>
 </ul>
 </div><!-- contents -->

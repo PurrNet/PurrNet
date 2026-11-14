@@ -103,24 +103,22 @@ Inheritance diagram for PurrNet.Recording.ListWriter&lt; T &gt;:</div>
  <div class="center">
   <img src="classPurrNet_1_1Recording_1_1ListWriter.png" usemap="#PurrNet.Recording.ListWriter_3C_20T_20_3E_map" alt=""/>
   <map id="PurrNet.Recording.ListWriter_3C_20T_20_3E_map" name="PurrNet.Recording.ListWriter_3C_20T_20_3E_map">
-<area href="classPurrNet_1_1Recording_1_1TypedListWriter.html" title="Writes an IList&lt;T&gt; object (a List, an array, a boxed DisposableList) as a tagged list,..." alt="PurrNet.Recording.TypedListWriter" shape="rect" coords="0,56,210,80"/>
+<area href="classPurrNet_1_1Recording_1_1TypedListWriter.html" alt="PurrNet.Recording.TypedListWriter" shape="rect" coords="0,56,210,80"/>
 <area href="interfacePurrNet_1_1Recording_1_1IElementPlan.html" alt="PurrNet.Recording.IElementPlan" shape="rect" coords="220,56,430,80"/>
-<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" title="Something that writes tagged values without reflection, re-checked against the generic path at first." alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,210,24"/>
+<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,210,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a903aff7c598829fd2121fc22abe1ba1c"><td class="memItemLeft" align="right" valign="top">override bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1ListWriter.html#a903aff7c598829fd2121fc22abe1ba1c">Write</a> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> buffer, object value, int depth, HashSet&lt; object &gt; visiting)</td></tr>
-<tr class="memdesc:a903aff7c598829fd2121fc22abe1ba1c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns false when the list could not be read (the caller writes null, as the generic path does).  <a href="classPurrNet_1_1Recording_1_1ListWriter.html#a903aff7c598829fd2121fc22abe1ba1c">More...</a><br /></td></tr>
 <tr class="separator:a903aff7c598829fd2121fc22abe1ba1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1d9199c0bdef876e06f4a400b28a7615"><td class="memItemLeft" align="right" valign="top">abstract bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1TypedListWriter.html#a1d9199c0bdef876e06f4a400b28a7615">Write</a> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> buffer, object list, int depth, HashSet&lt; object &gt; visiting)</td></tr>
-<tr class="memdesc:a1d9199c0bdef876e06f4a400b28a7615"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns false when the list could not be read (the caller writes null, as the generic path does).  <a href="classPurrNet_1_1Recording_1_1TypedListWriter.html#a1d9199c0bdef876e06f4a400b28a7615">More...</a><br /></td></tr>
+<tr class="memitem:a1d9199c0bdef876e06f4a400b28a7615"><td class="memItemLeft" align="right" valign="top"><a id="a1d9199c0bdef876e06f4a400b28a7615" name="a1d9199c0bdef876e06f4a400b28a7615"></a>
+abstract bool&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> buffer, object list, int depth, HashSet&lt; object &gt; visiting)</td></tr>
 <tr class="separator:a1d9199c0bdef876e06f4a400b28a7615"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1Recording_1_1CheckedWriter.html">PurrNet.Recording.CheckedWriter</a></td></tr>
 <tr class="memitem:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memItemLeft" align="right" valign="top"><a id="a07fc41df40d759c6e2febc9706a48292" name="a07fc41df40d759c6e2febc9706a48292"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>NeedsSelfCheck</b> (bool trivial)</td></tr>
-<tr class="memdesc:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks until SelfChecks non-trivial values matched; trivial ones prove little. <br /></td></tr>
 <tr class="separator:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
@@ -169,7 +167,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>disabled</b></td></tr
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">object&#160;</td>
-          <td class="paramname"><em>list</em>, </td>
+          <td class="paramname"><em>value</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -196,9 +194,7 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>disabled</b></td></tr
 </table>
 </div><div class="memdoc">
 
-<p>Returns false when the list could not be read (the caller writes null, as the generic path does). </p>
-
-<p>Implements <a class="el" href="classPurrNet_1_1Recording_1_1TypedListWriter.html#a1d9199c0bdef876e06f4a400b28a7615">PurrNet.Recording.TypedListWriter</a>.</p>
+<p>Implements <a class="el" href="classPurrNet_1_1Recording_1_1TypedListWriter.html">PurrNet.Recording.TypedListWriter</a>.</p>
 
 </div>
 </div>

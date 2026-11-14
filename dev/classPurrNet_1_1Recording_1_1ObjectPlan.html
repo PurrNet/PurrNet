@@ -100,16 +100,13 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1ObjectPla
   <div class="headertitle"><div class="title">PurrNet.Recording.ObjectPlan Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>The tagged encoding of a value as a flat list of reads from its memory. Primitive fields are read in place, references are handed to RecordingTypeRegistry.WriteTagged (no boxing for those), and struct fields that are lists go to a typed list writer.   
- <a href="classPurrNet_1_1Recording_1_1ObjectPlan.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.Recording.ObjectPlan:</div>
 <div class="dyncontent">
  <div class="center">
   <img src="classPurrNet_1_1Recording_1_1ObjectPlan.png" usemap="#PurrNet.Recording.ObjectPlan_map" alt=""/>
   <map id="PurrNet.Recording.ObjectPlan_map" name="PurrNet.Recording.ObjectPlan_map">
-<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" title="Something that writes tagged values without reflection, re-checked against the generic path at first." alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,206,24"/>
+<area href="classPurrNet_1_1Recording_1_1CheckedWriter.html" alt="PurrNet.Recording.CheckedWriter" shape="rect" coords="0,0,206,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -117,30 +114,25 @@ Inheritance diagram for PurrNet.Recording.ObjectPlan:</div>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:aba630f6207598508d88cb12e1e21df3a"><td class="memItemLeft" align="right" valign="top"><a id="aba630f6207598508d88cb12e1e21df3a" name="aba630f6207598508d88cb12e1e21df3a"></a>
 unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (byte *p, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> buffer, int baseDepth, HashSet&lt; object &gt; visiting)</td></tr>
-<tr class="memdesc:aba630f6207598508d88cb12e1e21df3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes the value at <em>p</em>  as the generic path would at <em>baseDepth</em> . <br /></td></tr>
 <tr class="separator:aba630f6207598508d88cb12e1e21df3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPurrNet_1_1Recording_1_1CheckedWriter.html">PurrNet.Recording.CheckedWriter</a></td></tr>
 <tr class="memitem:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memItemLeft" align="right" valign="top"><a id="a07fc41df40d759c6e2febc9706a48292" name="a07fc41df40d759c6e2febc9706a48292"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>NeedsSelfCheck</b> (bool trivial)</td></tr>
-<tr class="memdesc:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="mdescLeft">&#160;</td><td class="mdescRight">Checks until SelfChecks non-trivial values matched; trivial ones prove little. <br /></td></tr>
 <tr class="separator:a07fc41df40d759c6e2febc9706a48292 inherit pub_methods_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ac7a14f5acac89a82f8a07d990ea57377"><td class="memItemLeft" align="right" valign="top"><a id="ac7a14f5acac89a82f8a07d990ea57377" name="ac7a14f5acac89a82f8a07d990ea57377"></a>
 static <a class="el" href="classPurrNet_1_1Recording_1_1ObjectPlan.html">ObjectPlan</a>&#160;</td><td class="memItemRight" valign="bottom"><b>ForValue</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, Type type)</td></tr>
-<tr class="memdesc:ac7a14f5acac89a82f8a07d990ea57377"><td class="mdescLeft">&#160;</td><td class="mdescRight">A struct value stored inline (a row field or a list element). <br /></td></tr>
 <tr class="separator:ac7a14f5acac89a82f8a07d990ea57377"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aef67657eb0ce882592cbec255c103eaf"><td class="memItemLeft" align="right" valign="top"><a id="aef67657eb0ce882592cbec255c103eaf" name="aef67657eb0ce882592cbec255c103eaf"></a>
 static <a class="el" href="classPurrNet_1_1Recording_1_1ObjectPlan.html">ObjectPlan</a>&#160;</td><td class="memItemRight" valign="bottom"><b>ForObject</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html">RecordingTypeRegistry</a> types, Type type)</td></tr>
-<tr class="memdesc:aef67657eb0ce882592cbec255c103eaf"><td class="mdescLeft">&#160;</td><td class="mdescRight">The fields of a class object or boxed struct, counting offsets from its field origin. <br /></td></tr>
 <tr class="separator:aef67657eb0ce882592cbec255c103eaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:a463064cc6e823d745a33bdbce5155c3a"><td class="memItemLeft" align="right" valign="top"><a id="a463064cc6e823d745a33bdbce5155c3a" name="a463064cc6e823d745a33bdbce5155c3a"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>depth</b></td></tr>
-<tr class="memdesc:a463064cc6e823d745a33bdbce5155c3a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Deepest level written directly; deeper values make the caller use the generic path. <br /></td></tr>
 <tr class="separator:a463064cc6e823d745a33bdbce5155c3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_attribs_classPurrNet_1_1Recording_1_1CheckedWriter"><td colspan="2" onclick="javascript:toggleInherit('pub_attribs_classPurrNet_1_1Recording_1_1CheckedWriter')"><img src="closed.png" alt="-"/>&#160;Public Attributes inherited from <a class="el" href="classPurrNet_1_1Recording_1_1CheckedWriter.html">PurrNet.Recording.CheckedWriter</a></td></tr>
 <tr class="memitem:a8fd2ddf985166d0b4a52f3ef68b1ab20 inherit pub_attribs_classPurrNet_1_1Recording_1_1CheckedWriter"><td class="memItemLeft" align="right" valign="top"><a id="a8fd2ddf985166d0b4a52f3ef68b1ab20" name="a8fd2ddf985166d0b4a52f3ef68b1ab20"></a>
@@ -151,12 +143,9 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>disabled</b></td></tr
 Properties</h2></td></tr>
 <tr class="memitem:aa6fbde049a1398ee6b6138effaa990a8"><td class="memItemLeft" align="right" valign="top"><a id="aa6fbde049a1398ee6b6138effaa990a8" name="aa6fbde049a1398ee6b6138effaa990a8"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>readsOnlyItself</b><code> [get]</code></td></tr>
-<tr class="memdesc:aa6fbde049a1398ee6b6138effaa990a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when the encoding depends on nothing but the value's own bytes (no references, no lists), so equal bytes always encode the same.  <br /></td></tr>
 <tr class="separator:aa6fbde049a1398ee6b6138effaa990a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >The tagged encoding of a value as a flat list of reads from its memory. Primitive fields are read in place, references are handed to RecordingTypeRegistry.WriteTagged (no boxing for those), and struct fields that are lists go to a typed list writer.  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/TypedListWriters.cs</li>
 </ul>
 </div><!-- contents -->

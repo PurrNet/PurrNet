@@ -97,9 +97,6 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
   <div class="headertitle"><div class="title">PurrNet.Recording.RecordingBuffer Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Growable byte buffer with the little-endian and LEB128 writers the format uses.   
- <a href="classPurrNet_1_1Recording_1_1RecordingBuffer.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -108,14 +105,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8f52d3d0dc871b695601473c19562444"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a497e902fb6f7a195580d9a9a43838496"><td class="memItemLeft" align="right" valign="top"><a id="a497e902fb6f7a195580d9a9a43838496" name="a497e902fb6f7a195580d9a9a43838496"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>RecordingBuffer</b> (<a class="el" href="classPurrNet_1_1Recording_1_1ByteShelf.html">ByteShelf</a> shelf, int capacity)</td></tr>
-<tr class="memdesc:a497e902fb6f7a195580d9a9a43838496"><td class="mdescLeft">&#160;</td><td class="mdescRight">A buffer whose arrays come from (and go back to) <em>shelf</em> , so growing makes no garbage. <br /></td></tr>
 <tr class="separator:a497e902fb6f7a195580d9a9a43838496"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae5e86951b143409e99c04e083c379cf4"><td class="memItemLeft" align="right" valign="top"><a id="ae5e86951b143409e99c04e083c379cf4" name="ae5e86951b143409e99c04e083c379cf4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Clear</b> ()</td></tr>
 <tr class="separator:ae5e86951b143409e99c04e083c379cf4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a493aebf0dcc45d1ec13b2971719a631a"><td class="memItemLeft" align="right" valign="top"><a id="a493aebf0dcc45d1ec13b2971719a631a" name="a493aebf0dcc45d1ec13b2971719a631a"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Reserve</b> (int capacity)</td></tr>
-<tr class="memdesc:a493aebf0dcc45d1ec13b2971719a631a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Grows the array now (a load moment) so later writes up to <em>capacity</em>  do not. <br /></td></tr>
 <tr class="separator:a493aebf0dcc45d1ec13b2971719a631a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad74e39e351e943a5da5b9614a1d79d8b"><td class="memItemLeft" align="right" valign="top"><a id="ad74e39e351e943a5da5b9614a1d79d8b" name="ad74e39e351e943a5da5b9614a1d79d8b"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Ensure</b> (int extra)</td></tr>
@@ -134,11 +129,9 @@ unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteBytes</b>
 <tr class="separator:a47c1fac82288a93fd337f271ae44917c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab20994dcf24e25d85a5eee40d59a86d4"><td class="memItemLeft" align="right" valign="top"><a id="ab20994dcf24e25d85a5eee40d59a86d4" name="ab20994dcf24e25d85a5eee40d59a86d4"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>CopyFrom</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> other)</td></tr>
-<tr class="memdesc:ab20994dcf24e25d85a5eee40d59a86d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Replaces the contents with <em>other</em> 's, keeping this buffer's array when it fits. <br /></td></tr>
 <tr class="separator:ab20994dcf24e25d85a5eee40d59a86d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a1e0bb052ea25c71e6f2e3577bcd486"><td class="memItemLeft" align="right" valign="top"><a id="a6a1e0bb052ea25c71e6f2e3577bcd486" name="a6a1e0bb052ea25c71e6f2e3577bcd486"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>WriteUtf8</b> (string value)</td></tr>
-<tr class="memdesc:a6a1e0bb052ea25c71e6f2e3577bcd486"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes a string's UTF-8 bytes (no length prefix) without allocating. <br /></td></tr>
 <tr class="separator:a6a1e0bb052ea25c71e6f2e3577bcd486"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aec62c100acd7fad98605c0a82bc55849"><td class="memItemLeft" align="right" valign="top"><a id="aec62c100acd7fad98605c0a82bc55849" name="aec62c100acd7fad98605c0a82bc55849"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>SameBytes</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a> other)</td></tr>
@@ -183,9 +176,7 @@ byte[]&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>length</b></td></tr>
 <tr class="separator:a668df4b08bd92a146a2ec484d27cdf46"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Growable byte buffer with the little-endian and LEB128 writers the format uses.  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordingBuffers.cs</li>
 </ul>
 </div><!-- contents -->

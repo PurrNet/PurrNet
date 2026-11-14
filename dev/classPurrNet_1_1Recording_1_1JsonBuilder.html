@@ -97,15 +97,11 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1JsonBuild
   <div class="headertitle"><div class="title">PurrNet.Recording.JsonBuilder Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>Minimal JSON writer for the metadata records, writing UTF-8 straight into a reusable buffer: no strings, no garbage. Keeps the recorder free of serializer dependencies.   
- <a href="classPurrNet_1_1Recording_1_1JsonBuilder.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a1841956a1388045cb9354ed4510731ed"><td class="memItemLeft" align="right" valign="top"><a id="a1841956a1388045cb9354ed4510731ed" name="a1841956a1388045cb9354ed4510731ed"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Clear</b> ()</td></tr>
-<tr class="memdesc:a1841956a1388045cb9354ed4510731ed"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts over, keeping the buffer. <br /></td></tr>
 <tr class="separator:a1841956a1388045cb9354ed4510731ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7d1694fd916b920c0ee1f9c8e1b0d178"><td class="memItemLeft" align="right" valign="top"><a id="a7d1694fd916b920c0ee1f9c8e1b0d178" name="a7d1694fd916b920c0ee1f9c8e1b0d178"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BeginObject</b> ()</td></tr>
@@ -163,7 +159,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ad8861c1b746c9fa93f1338e805970b0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afd73880161049122c249f91020f7c384"><td class="memItemLeft" align="right" valign="top"><a id="afd73880161049122c249f91020f7c384" name="afd73880161049122c249f91020f7c384"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>BeginString</b> ()</td></tr>
-<tr class="memdesc:afd73880161049122c249f91020f7c384"><td class="mdescLeft">&#160;</td><td class="mdescRight">A string value built from parts: <code><a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html#afd73880161049122c249f91020f7c384" title="A string value built from parts: BeginString().Part(&quot;e&quot;).Part(12).EndString().">BeginString()</a>.Part("e").Part(12).EndString()</code>. <br /></td></tr>
 <tr class="separator:afd73880161049122c249f91020f7c384"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2853c7c46b6e676d8b93d86abedc99cf"><td class="memItemLeft" align="right" valign="top"><a id="a2853c7c46b6e676d8b93d86abedc99cf" name="a2853c7c46b6e676d8b93d86abedc99cf"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Part</b> (string text)</td></tr>
@@ -176,11 +171,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9a7c0edc6816c0498d7cbf70dd570827"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c6941e276a84621e60ec43e4784c507"><td class="memItemLeft" align="right" valign="top"><a id="a6c6941e276a84621e60ec43e4784c507" name="a6c6941e276a84621e60ec43e4784c507"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>RawValue</b> (byte[] bytes, int count)</td></tr>
-<tr class="memdesc:a6c6941e276a84621e60ec43e4784c507"><td class="mdescLeft">&#160;</td><td class="mdescRight">Appends already-encoded JSON (a value) as is. <br /></td></tr>
 <tr class="separator:a6c6941e276a84621e60ec43e4784c507"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e4c35177382bf0c6625d26ddd30ba80"><td class="memItemLeft" align="right" valign="top"><a id="a2e4c35177382bf0c6625d26ddd30ba80" name="a2e4c35177382bf0c6625d26ddd30ba80"></a>
 override string&#160;</td><td class="memItemRight" valign="bottom"><b>ToString</b> ()</td></tr>
-<tr class="memdesc:a2e4c35177382bf0c6625d26ddd30ba80"><td class="mdescLeft">&#160;</td><td class="mdescRight">The JSON as a string. Allocates; for one-off records only. <br /></td></tr>
 <tr class="separator:a2e4c35177382bf0c6625d26ddd30ba80"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
@@ -192,9 +185,7 @@ byte[]&#160;</td><td class="memItemRight" valign="bottom"><b>data</b><code> [get
 int&#160;</td><td class="memItemRight" valign="bottom"><b>length</b><code> [get]</code></td></tr>
 <tr class="separator:abe241f8435c248a9f5a45bd612e8e296"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >Minimal JSON writer for the metadata records, writing UTF-8 straight into a reusable buffer: no strings, no garbage. Keeps the recorder free of serializer dependencies.  </p>
-</div><hr/>The documentation for this class was generated from the following file:<ul>
+<hr/>The documentation for this class was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/JsonBuilder.cs</li>
 </ul>
 </div><!-- contents -->

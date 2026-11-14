@@ -96,16 +96,13 @@ $(document).ready(function(){initNavTree('interfacePurrNet_1_1Recording_1_1IStep
   <div class="headertitle"><div class="title">PurrNet.Recording.IStepwiseRecordProducer Interface Reference</div></div>
 </div><!--header-->
 <div class="contents">
-
-<p>A record payload that can also be built in steps (a browser has no writer thread, so a big chunk is encoded over several frames). <a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html#a5f55a70e666fbe054f9fb1f70789e3d6" title="The payload; read before Release.">IRecordProducer.Produce</a> finishes whatever is left.   
- <a href="interfacePurrNet_1_1Recording_1_1IStepwiseRecordProducer.html#details">More...</a></p>
 <div class="dynheader">
 Inheritance diagram for PurrNet.Recording.IStepwiseRecordProducer:</div>
 <div class="dyncontent">
  <div class="center">
   <img src="interfacePurrNet_1_1Recording_1_1IStepwiseRecordProducer.png" usemap="#PurrNet.Recording.IStepwiseRecordProducer_map" alt=""/>
   <map id="PurrNet.Recording.IStepwiseRecordProducer_map" name="PurrNet.Recording.IStepwiseRecordProducer_map">
-<area href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html" title="A record payload built on the writer thread from pooled data." alt="PurrNet.Recording.IRecordProducer" shape="rect" coords="0,0,269,24"/>
+<area href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html" alt="PurrNet.Recording.IRecordProducer" shape="rect" coords="0,0,269,24"/>
   </map>
 </div></div>
 <table class="memberdecls">
@@ -116,21 +113,16 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Begin</b> ()</td></tr
 <tr class="separator:af2b6f342c70ba617be7d37acf12667ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a95a4310315367dbb1b3899865790eebf"><td class="memItemLeft" align="right" valign="top"><a id="a95a4310315367dbb1b3899865790eebf" name="a95a4310315367dbb1b3899865790eebf"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>Step</b> (long deadline)</td></tr>
-<tr class="memdesc:a95a4310315367dbb1b3899865790eebf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Works until done (true) or until the Stopwatch passes <em>deadline</em>  (false). <br /></td></tr>
 <tr class="separator:a95a4310315367dbb1b3899865790eebf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html">PurrNet.Recording.IRecordProducer</a></td></tr>
 <tr class="memitem:a5f55a70e666fbe054f9fb1f70789e3d6 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="memItemLeft" align="right" valign="top"><a id="a5f55a70e666fbe054f9fb1f70789e3d6" name="a5f55a70e666fbe054f9fb1f70789e3d6"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordingBuffer.html">RecordingBuffer</a>&#160;</td><td class="memItemRight" valign="bottom"><b>Produce</b> ()</td></tr>
-<tr class="memdesc:a5f55a70e666fbe054f9fb1f70789e3d6 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="mdescLeft">&#160;</td><td class="mdescRight">The payload; read before <a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html#ae6bfe7bba470a0e0cb3d31c0fd206a06" title="Called on the writer thread once the payload is written (or dropped).">Release</a>. <br /></td></tr>
 <tr class="separator:a5f55a70e666fbe054f9fb1f70789e3d6 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae6bfe7bba470a0e0cb3d31c0fd206a06 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="memItemLeft" align="right" valign="top"><a id="ae6bfe7bba470a0e0cb3d31c0fd206a06" name="ae6bfe7bba470a0e0cb3d31c0fd206a06"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Release</b> ()</td></tr>
-<tr class="memdesc:ae6bfe7bba470a0e0cb3d31c0fd206a06 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="mdescLeft">&#160;</td><td class="mdescRight">Called on the writer thread once the payload is written (or dropped). <br /></td></tr>
 <tr class="separator:ae6bfe7bba470a0e0cb3d31c0fd206a06 inherit pub_methods_interfacePurrNet_1_1Recording_1_1IRecordProducer"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p >A record payload that can also be built in steps (a browser has no writer thread, so a big chunk is encoded over several frames). <a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html#a5f55a70e666fbe054f9fb1f70789e3d6" title="The payload; read before Release.">IRecordProducer.Produce</a> finishes whatever is left.  </p>
-</div><hr/>The documentation for this interface was generated from the following file:<ul>
+<hr/>The documentation for this interface was generated from the following file:<ul>
 <li>Assets/PurrNet/Runtime/Recording/RecordingFile.cs</li>
 </ul>
 </div><!-- contents -->

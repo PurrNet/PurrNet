@@ -103,7 +103,6 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1StreamRow
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ab0bb69358a57e0afc1e2cec2cdca857d"><td class="memItemLeft" align="right" valign="top"><a id="ab0bb69358a57e0afc1e2cec2cdca857d" name="ab0bb69358a57e0afc1e2cec2cdca857d"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Retire</b> ()</td></tr>
-<tr class="memdesc:ab0bb69358a57e0afc1e2cec2cdca857d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Its owner is gone: the stream ends after its last rows are flushed. <br /></td></tr>
 <tr class="separator:ab0bb69358a57e0afc1e2cec2cdca857d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
@@ -116,19 +115,15 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>id</b></td></tr>
 <tr class="separator:afb06e3522ead8e20ed040a886c228736"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a26e404180543b3049fb6973fd4092664"><td class="memItemLeft" align="right" valign="top"><a id="a26e404180543b3049fb6973fd4092664" name="a26e404180543b3049fb6973fd4092664"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>forwardFill</b></td></tr>
-<tr class="memdesc:a26e404180543b3049fb6973fd4092664"><td class="mdescLeft">&#160;</td><td class="mdescRight">Per-tick stream: a tick without a stored row repeats the previous row. <br /></td></tr>
 <tr class="separator:a26e404180543b3049fb6973fd4092664"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1d28d71ef97cd666c82b67f83de944a2"><td class="memItemLeft" align="right" valign="top"><a id="a1d28d71ef97cd666c82b67f83de944a2" name="a1d28d71ef97cd666c82b67f83de944a2"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1RecordedLife.html">RecordedLife</a>&#160;</td><td class="memItemRight" valign="bottom"><b>life</b></td></tr>
-<tr class="memdesc:a1d28d71ef97cd666c82b67f83de944a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Per-tick stream whose rows are only written when they change: its owner is alive through this one's tick, and so is the stream. Without one a stream lasts until the last tick a row was written for.  <br /></td></tr>
 <tr class="separator:a1d28d71ef97cd666c82b67f83de944a2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad8dccfbe087d0b0539441c7778e41b97"><td class="memItemLeft" align="right" valign="top"><a id="ad8dccfbe087d0b0539441c7778e41b97" name="ad8dccfbe087d0b0539441c7778e41b97"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html">StreamRows</a>&#160;</td><td class="memItemRight" valign="bottom"><b>baseStream</b></td></tr>
-<tr class="memdesc:ad8dccfbe087d0b0539441c7778e41b97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional stream whose columns some of ours are XOR-ed with at the same tick (a duplicate pose). <br /></td></tr>
 <tr class="separator:ad8dccfbe087d0b0539441c7778e41b97"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a787e145726d6875f9e0200c64ce802b6"><td class="memItemLeft" align="right" valign="top"><a id="a787e145726d6875f9e0200c64ce802b6" name="a787e145726d6875f9e0200c64ce802b6"></a>
 int[]&#160;</td><td class="memItemRight" valign="bottom"><b>baseColumns</b></td></tr>
-<tr class="memdesc:a787e145726d6875f9e0200c64ce802b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pairs of (our offset, base offset) of 4-byte columns XOR-ed with <a class="el" href="classPurrNet_1_1Recording_1_1StreamRows.html#ad8dccfbe087d0b0539441c7778e41b97" title="Optional stream whose columns some of ours are XOR-ed with at the same tick (a duplicate pose).">baseStream</a>. <br /></td></tr>
 <tr class="separator:a787e145726d6875f9e0200c64ce802b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
