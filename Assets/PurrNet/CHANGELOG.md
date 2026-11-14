@@ -1,3 +1,10 @@
+# [1.26.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.30...v1.26.0-beta.31) (2026-11-14)
+
+
+### Bug Fixes
+
+* Conditional essentials updater ([6a395ba](https://github.com/PurrNet/PurrNet/commit/6a395ba4e433c5d5c6c0ec4f0d0cb7c6d3917f88))
+
 # [1.26.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.29...v1.26.0-beta.30) (2026-11-14)
 
 
