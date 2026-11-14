@@ -20,11 +20,6 @@
             "name": "dev.purrnet.essentials",
             "expression": "",
             "define": "PURR_ESSENTIALS_STANDALONE"
-        },
-        {
-            "name": "com.unity.modules.physics",
-            "expression": "",
-            "define": "UNITY_PHYSICS_3D"
         }
     ],
     "noEngineReferences": false

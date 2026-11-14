@@ -3,7 +3,8 @@
     "rootNamespace": "PurrNet.Essentials.Relay",
     "references": [
         "GUID:1beb10fd218482c4c919c79f867341a0",
-        "GUID:3b5390adca4e2bb4791cb930316d6f3e"
+        "GUID:3b5390adca4e2bb4791cb930316d6f3e",
+        "GUID:5a0ba52ecc0962c45a5f7f93997506a5"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

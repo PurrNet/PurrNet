@@ -112,6 +112,8 @@ namespace PurrNet.Essentials.Relay
         {
             if (!string.IsNullOrWhiteSpace(projectKey))
                 headers["project_key"] = projectKey.Trim();
+            foreach (var header in RelayRequestHeaders.all)
+                headers[header.Key] = header.Value;
         }
 
         private static string Url(string masterServer, string path)

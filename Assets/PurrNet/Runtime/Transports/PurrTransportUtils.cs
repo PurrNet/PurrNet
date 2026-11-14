@@ -258,8 +258,12 @@ namespace PurrNet.Transports
         static void SetProjectKey([UsedImplicitly] object request, string projectKey)
         {
 #if UNITY_WEB
-            if (!string.IsNullOrWhiteSpace(projectKey) && request is UnityWebRequest webRequest)
+            if (request is not UnityWebRequest webRequest)
+                return;
+            if (!string.IsNullOrWhiteSpace(projectKey))
                 webRequest.SetRequestHeader("project_key", projectKey.Trim());
+            foreach (var header in PurrNet.Essentials.RelayRequestHeaders.all)
+                webRequest.SetRequestHeader(header.Key, header.Value);
 #endif
         }
 
