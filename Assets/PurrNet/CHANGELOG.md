@@ -1,3 +1,10 @@
+# [1.26.0-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.31...v1.26.0-beta.32) (2026-11-14)
+
+
+### Performance Improvements
+
+* capture rollback colliders by dictionary lookup instead of a list search ([#343](https://github.com/PurrNet/PurrNet/issues/343)) ([d9a772a](https://github.com/PurrNet/PurrNet/commit/d9a772a04075970bad552825763a9fbfa1d3b19a))
+
 # [1.26.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.30...v1.26.0-beta.31) (2026-11-14)
 
 
