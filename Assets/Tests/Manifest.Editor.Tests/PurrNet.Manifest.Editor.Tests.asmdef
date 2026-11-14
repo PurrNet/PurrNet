@@ -1,0 +1,28 @@
+{
+    "name": "PurrNet.Manifest.Editor.Tests",
+    "rootNamespace": "PurrNet.Manifest.Tests",
+    "references": [
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb",
+        "PurrNet.Editor",
+        "GUID:a0a384ce9150428b833985b4e1216af9"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll",
+        "Newtonsoft.Json.dll"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

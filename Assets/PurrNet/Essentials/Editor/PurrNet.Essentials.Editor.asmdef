@@ -1,7 +1,9 @@
 {
     "name": "PurrNet.Essentials.Editor",
     "rootNamespace": "PurrNet.Essentials",
-    "references": [],
+    "references": [
+        "GUID:5a0ba52ecc0962c45a5f7f93997506a5"
+    ],
     "includePlatforms": [
         "Editor"
     ],
@@ -18,6 +20,11 @@
             "name": "dev.purrnet.essentials",
             "expression": "",
             "define": "PURR_ESSENTIALS_STANDALONE"
+        },
+        {
+            "name": "com.unity.modules.physics",
+            "expression": "",
+            "define": "UNITY_PHYSICS_3D"
         }
     ],
     "noEngineReferences": false
