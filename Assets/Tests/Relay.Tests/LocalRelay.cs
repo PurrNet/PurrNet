@@ -16,15 +16,35 @@ namespace PurrNet.Relay.Tests
         const int UdpPortV2 = 17778;
         const int WebSocketsPort = 16942;
         const string PathVariable = "PURRLAY_PATH";
+        const string UrlVariable = "PURR_RELAY_TEST_URL";
+        const string ProjectKeyVariable = "PURR_RELAY_TEST_PROJECT_KEY";
 
         static readonly List<Process> _started = new List<Process>();
 
-        public static string balancerUrl => $"http://127.0.0.1:{BalancerPort}/";
+        static string remoteUrl => Environment.GetEnvironmentVariable(UrlVariable);
+
+        public static bool isRemote => !string.IsNullOrWhiteSpace(remoteUrl);
+
+        public static string balancerUrl => isRemote
+            ? (remoteUrl.EndsWith("/") ? remoteUrl : remoteUrl + "/")
+            : $"http://127.0.0.1:{BalancerPort}/";
+
+        public static string projectKey
+        {
+            get
+            {
+                string key = Environment.GetEnvironmentVariable(ProjectKeyVariable);
+                return string.IsNullOrWhiteSpace(key) ? null : key.Trim();
+            }
+        }
 
         public static void EnsureRunning()
         {
             if (HasRelay())
                 return;
+
+            if (isRemote)
+                Assert.Ignore($"No relay answered at {balancerUrl} ({UrlVariable}).");
 
             string root = FindRoot();
             if (root == null)

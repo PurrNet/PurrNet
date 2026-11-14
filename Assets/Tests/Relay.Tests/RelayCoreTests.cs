@@ -86,7 +86,12 @@ namespace PurrNet.Relay.Tests
 
         RelayOptions Options()
         {
-            return new RelayOptions { masterServer = LocalRelay.balancerUrl, roomName = _room };
+            return new RelayOptions
+            {
+                masterServer = LocalRelay.balancerUrl,
+                roomName = _room,
+                projectKey = LocalRelay.projectKey
+            };
         }
 
         HostEnd CreateHost()
@@ -112,6 +117,8 @@ namespace PurrNet.Relay.Tests
             var transport = new GameObject("RelayInteropTransport").AddComponent<PurrTransport>();
             transport.masterServer = LocalRelay.balancerUrl;
             transport.roomName = _room;
+            if (LocalRelay.projectKey != null)
+                transport.projectKey = LocalRelay.projectKey;
             _transports.Add(transport);
             return transport;
         }

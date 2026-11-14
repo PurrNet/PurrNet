@@ -80,6 +80,8 @@ namespace PurrNet.Relay.Tests
             endpoint.transport = endpoint.gameObject.AddComponent<PurrTransport>();
             endpoint.transport.masterServer = LocalRelay.balancerUrl;
             endpoint.transport.roomName = _room;
+            if (LocalRelay.projectKey != null)
+                endpoint.transport.projectKey = LocalRelay.projectKey;
 
             endpoint.transport.onConnected += (conn, server) =>
             {
