@@ -4114,9 +4114,6 @@ namespace PurrNet.Codegen
                         methodReferences.Invalidate(types[t]);
                         using var discoveryScope = profile?.Measure(IlppProfile.Phase.TypeDiscovery);
                         profile?.AddCounter("methodsAtTypeVisit", types[t].Methods.Count);
-                        if (types[t].FullName == typeof(ApplicationConstants).FullName)
-                            BakeApplicationConstants.Process(types[t], isEditor, messages);
-
                         if (types[t].FullName == typeof(PurrMetadata).FullName)
                             BakePurrVersion.Process(types[t], isEditor, messages);
 
