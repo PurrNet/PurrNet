@@ -2,9 +2,9 @@ using System;
 using UnityEditor;
 using UnityEngine;
 
-namespace PurrNet.Editor
+namespace PurrNet.Essentials
 {
-    internal class PurrPackageManagerLoginWindow : EditorWindow
+    internal class PurrLoginWindow : EditorWindow
     {
         private const float DialogWidth = 440;
 
@@ -17,7 +17,7 @@ namespace PurrNet.Editor
 
         internal static void Open()
         {
-            var window = GetWindow<PurrPackageManagerLoginWindow>(true, "PurrNet API Key", true);
+            var window = GetWindow<PurrLoginWindow>(true, "PurrNet API Key", true);
             window._focusKey = true;
             window.ShowUtility();
             if (window._contentSize == Vector2.zero)
@@ -31,12 +31,12 @@ namespace PurrNet.Editor
         private void OnEnable()
         {
             _contentSize = Vector2.zero;
-            PurrPackageManagerAuth.onAuthChanged += Close;
+            PurrAuth.onAuthChanged += Close;
         }
 
         private void OnDisable()
         {
-            PurrPackageManagerAuth.onAuthChanged -= Close;
+            PurrAuth.onAuthChanged -= Close;
             _submission++;
             _isSubmitting = false;
             _key = "";
@@ -139,34 +139,34 @@ namespace PurrNet.Editor
                 return;
             }
 
-            PurrPackageManagerAuth.CancelLogin();
-            int authAttempt = PurrPackageManagerAuth.LoginAttempt;
+            PurrAuth.CancelLogin();
+            int authAttempt = PurrAuth.loginAttempt;
             int submission = ++_submission;
             _isSubmitting = true;
             _error = null;
             Repaint();
 
-            var result = await PurrPackageManagerAPI.GetMe(key, 30);
+            var result = await PurrAuth.GetUser(key, 30);
             // Closing the dialog cancels its pending submission without changing the saved key.
             if (this == null || submission != _submission)
                 return;
 
             _isSubmitting = false;
-            if (authAttempt != PurrPackageManagerAuth.LoginAttempt)
+            if (authAttempt != PurrAuth.loginAttempt)
             {
                 _error = "Another login attempt was started. Click Sign in to try this key again.";
                 Repaint();
                 return;
             }
 
-            if (!result.Success || result.Value == null || string.IsNullOrEmpty(result.Value.Id))
+            if (!result.success || result.value == null || string.IsNullOrEmpty(result.value.id))
             {
                 _error = "Could not sign in. Check your Unity API key and internet connection, then try again.";
                 Repaint();
                 return;
             }
 
-            PurrPackageManagerAuth.SetApiKey(key);
+            PurrAuth.SetApiKey(key);
         }
     }
 }

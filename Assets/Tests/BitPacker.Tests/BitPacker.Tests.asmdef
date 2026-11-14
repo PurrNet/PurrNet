@@ -2,6 +2,7 @@
     "name": "BitPacker.Tests",
     "rootNamespace": "",
     "references": [
+        "GUID:5a0ba52ecc0962c45a5f7f93997506a5",
         "GUID:6e20f757a1bae164fa42750dd2b27dcb",
         "GUID:e0cd26848372d4e5c891c569017e11f1",
         "GUID:22480835dfad5104ab4375f0d06ee008",

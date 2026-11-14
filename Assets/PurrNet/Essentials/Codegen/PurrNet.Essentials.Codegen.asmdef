@@ -1,0 +1,26 @@
+{
+    "name": "Unity.PurrNet.Essentials.Codegen",
+    "rootNamespace": "PurrNet.Essentials.Codegen",
+    "references": [
+        "GUID:5a0ba52ecc0962c45a5f7f93997506a5"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Mono.Cecil.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.unity.nuget.mono-cecil",
+            "expression": "",
+            "define": "UNITY_MONO_CECIL"
+        }
+    ],
+    "noEngineReferences": false
+}
