@@ -21,6 +21,8 @@ namespace PurrNet.Modules
         private readonly List<SimpleHistory<Collider3DState>> _histories3D = new();
         private readonly List<TrackedBounds3D> _bounds3D = new();
         readonly Dictionary<Collider, SimpleHistory<Collider3DState>> _collider3DStates = new();
+        // Capture looks bounds up by collider: a list search made capturing every collider quadratic.
+        readonly Dictionary<Collider, TrackedBounds3D> _collider3DBounds = new();
 #endif
 
 #if UNITY_PHYSICS_2D
@@ -29,6 +31,8 @@ namespace PurrNet.Modules
         private readonly List<SimpleHistory<Collider2DState>> _histories2D = new();
         private readonly List<TrackedBounds2D> _bounds2D = new();
         readonly Dictionary<Collider2D, SimpleHistory<Collider2DState>> _collider2DStates = new();
+        // Capture looks bounds up by collider: a list search made capturing every collider quadratic.
+        readonly Dictionary<Collider2D, TrackedBounds2D> _collider2DBounds = new();
 #endif
 
         public RollbackModule(TickManager tick, Scene scene)
@@ -248,6 +252,7 @@ namespace PurrNet.Modules
                 if (!col)
                 {
                     _collider3DStates.Remove(col);
+                    _collider3DBounds.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders3D.RemoveAt(i);
                     _histories3D.RemoveAt(i);
@@ -269,6 +274,7 @@ namespace PurrNet.Modules
                 if (!col)
                 {
                     _collider2DStates.Remove(col);
+                    _collider2DBounds.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders2D.RemoveAt(i);
                     _histories2D.RemoveAt(i);
@@ -292,13 +298,14 @@ namespace PurrNet.Modules
         /// </summary>
         public bool Capture(ulong tick, Collider collider)
         {
-            int index = collider ? _colliders3D.IndexOf(collider) : -1;
-            if (index < 0)
+            if (!collider ||
+                !_collider3DStates.TryGetValue(collider, out var history) ||
+                !_collider3DBounds.TryGetValue(collider, out var bounds))
                 return false;
 
             var state = new Collider3DState(collider);
-            _histories3D[index].Write(tick, state);
-            _bounds3D[index].Record((uint)tick, collider, state);
+            history.Write(tick, state);
+            bounds.Record((uint)tick, collider, state);
             return true;
         }
 #endif
@@ -312,13 +319,14 @@ namespace PurrNet.Modules
         /// </summary>
         public bool Capture(ulong tick, Collider2D collider)
         {
-            int index = collider ? _colliders2D.IndexOf(collider) : -1;
-            if (index < 0)
+            if (!collider ||
+                !_collider2DStates.TryGetValue(collider, out var history) ||
+                !_collider2DBounds.TryGetValue(collider, out var bounds))
                 return false;
 
             var state = new Collider2DState(collider);
-            _histories2D[index].Write(tick, state);
-            _bounds2D[index].Record((uint)tick, collider, state);
+            history.Write(tick, state);
+            bounds.Record((uint)tick, collider, state);
             return true;
         }
 #endif
@@ -355,10 +363,12 @@ namespace PurrNet.Modules
 
             int maxEntries = Mathf.CeilToInt(_tickManager.tickRate * storeHistoryInSeconds);
             var history = new SimpleHistory<Collider3DState>(maxEntries);
+            var bounds = new TrackedBounds3D(maxEntries);
             _collider3DStates.Add(collider, history);
+            _collider3DBounds.Add(collider, bounds);
             _colliders3D.Add(collider);
             _histories3D.Add(history);
-            _bounds3D.Add(new TrackedBounds3D(maxEntries));
+            _bounds3D.Add(bounds);
         }
 
         public void Unregister(Collider collider)
@@ -370,6 +380,7 @@ namespace PurrNet.Modules
                 return;
 
             _collider3DStates.Remove(collider);
+            _collider3DBounds.Remove(collider);
 
             int index = _colliders3D.IndexOf(collider);
             if (index >= 0)
@@ -392,10 +403,12 @@ namespace PurrNet.Modules
 
             int maxEntries = Mathf.CeilToInt(_tickManager.tickRate * storeHistoryInSeconds);
             var history = new SimpleHistory<Collider2DState>(maxEntries);
+            var bounds = new TrackedBounds2D(maxEntries);
             _collider2DStates.Add(collider, history);
+            _collider2DBounds.Add(collider, bounds);
             _colliders2D.Add(collider);
             _histories2D.Add(history);
-            _bounds2D.Add(new TrackedBounds2D(maxEntries));
+            _bounds2D.Add(bounds);
         }
 
         public void Unregister(Collider2D collider)
@@ -407,6 +420,7 @@ namespace PurrNet.Modules
                 return;
 
             _collider2DStates.Remove(collider);
+            _collider2DBounds.Remove(collider);
 
             int index = _colliders2D.IndexOf(collider);
             if (index >= 0)

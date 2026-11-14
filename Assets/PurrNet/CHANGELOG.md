@@ -1,3 +1,24 @@
+# [1.26.0-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.31...v1.26.0-beta.32) (2026-11-14)
+
+
+### Performance Improvements
+
+* capture rollback colliders by dictionary lookup instead of a list search ([#343](https://github.com/PurrNet/PurrNet/issues/343)) ([d9a772a](https://github.com/PurrNet/PurrNet/commit/d9a772a04075970bad552825763a9fbfa1d3b19a))
+
+# [1.26.0-beta.31](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.30...v1.26.0-beta.31) (2026-11-14)
+
+
+### Bug Fixes
+
+* Conditional essentials updater ([6a395ba](https://github.com/PurrNet/PurrNet/commit/6a395ba4e433c5d5c6c0ec4f0d0cb7c6d3917f88))
+
+# [1.26.0-beta.30](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.29...v1.26.0-beta.30) (2026-11-14)
+
+
+### Bug Fixes
+
+* Moved essentials ([ebf5040](https://github.com/PurrNet/PurrNet/commit/ebf5040416889f70900dce0ef05c02b2cec521c2))
+
 # [1.26.0-beta.29](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.28...v1.26.0-beta.29) (2026-11-13)
 
 

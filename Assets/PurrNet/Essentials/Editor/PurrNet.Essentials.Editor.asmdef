@@ -13,6 +13,12 @@
     ],
     "autoReferenced": false,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "dev.purrnet.essentials",
+            "expression": "",
+            "define": "PURR_ESSENTIALS_STANDALONE"
+        }
+    ],
     "noEngineReferences": false
 }
