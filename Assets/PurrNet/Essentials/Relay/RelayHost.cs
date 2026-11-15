@@ -9,6 +9,7 @@ namespace PurrNet.Essentials.Relay
         private const byte SendKeepAliveCode = 0;
         private const byte SendOneCode = 1;
         private const byte KickPlayerCode = 2;
+        private const int CaptureTarget = -1;
 
         private readonly List<int> _clients = new List<int>();
         private readonly byte[] _small = new byte[5];
@@ -18,9 +19,14 @@ namespace PurrNet.Essentials.Relay
 
         public IReadOnlyList<int> clients => _clients;
 
+        public bool capturing { get; private set; }
+
+        protected override bool acceptsCapture => true;
+
         public event Action<int> onClientConnected;
         public event Action<int> onClientDisconnected;
         public event Action<int, ArraySegment<byte>> onData;
+        public event Action onCapturing;
 
         public RelayHost(RelayOptions options) : base(options)
         {
@@ -82,6 +88,24 @@ namespace PurrNet.Essentials.Relay
             link.Send(buffer, 0, header + data.Count, delivery);
         }
 
+        public void SendToCapture(ArraySegment<byte> data)
+        {
+            if (!capturing || state != RelayState.Connected || data.Array == null)
+                return;
+
+            bool udp = isUdp;
+            int header = udp ? 6 : 5;
+            var buffer = SendBuffer(header + data.Count);
+
+            buffer[0] = SendOneCode;
+            WriteInt(buffer, 1, CaptureTarget);
+            if (udp)
+                buffer[5] = (byte)RelayDelivery.ReliableOrdered;
+            Buffer.BlockCopy(data.Array, data.Offset, buffer, header, data.Count);
+
+            link.Send(buffer, 0, header + data.Count, RelayDelivery.ReliableOrdered);
+        }
+
         public void Kick(int client)
         {
             if (state != RelayState.Connected)
@@ -128,6 +152,10 @@ namespace PurrNet.Essentials.Relay
                 case ServerAuthenticationFailed:
                     Close(RelayCloseReason.AuthenticationFailed, "The relay rejected the host secret.");
                     break;
+                case ServerCapturing:
+                    capturing = true;
+                    onCapturing?.Invoke();
+                    break;
                 case ServerClientConnected:
                 {
                     int count = (data.Count - 1) / 4;
@@ -167,6 +195,7 @@ namespace PurrNet.Essentials.Relay
         protected override void OnClosed()
         {
             _clients.Clear();
+            capturing = false;
         }
 
         private static void WriteInt(byte[] buffer, int offset, int value)

@@ -13,6 +13,7 @@ namespace PurrNet.Essentials.Relay
         internal const byte ServerClientData = 2;
         internal const byte ServerAuthenticated = 3;
         internal const byte ServerAuthenticationFailed = 4;
+        internal const byte ServerCapturing = 8;
 
         private const int Attempts = 10;
         private const float RetrySeconds = 1f;
@@ -24,6 +25,7 @@ namespace PurrNet.Essentials.Relay
             public string clientSecret;
             public bool nat;
             public bool webRtcP2P;
+            public bool capture;
         }
 
         private struct Delay
@@ -67,6 +69,8 @@ namespace PurrNet.Essentials.Relay
         protected abstract Task<(string host, RelayJoinDetails details)> Resolve(Func<bool> cancelled);
 
         protected abstract void OnData(ArraySegment<byte> data);
+
+        protected virtual bool acceptsCapture => false;
 
         protected virtual void OnClosed()
         {
@@ -249,7 +253,8 @@ namespace PurrNet.Essentials.Relay
             var authenticate = new Authenticate
             {
                 roomName = relayRoomName,
-                clientSecret = details.secret
+                clientSecret = details.secret,
+                capture = acceptsCapture
             };
 
             var data = Encoding.UTF8.GetBytes(JsonUtility.ToJson(authenticate));
