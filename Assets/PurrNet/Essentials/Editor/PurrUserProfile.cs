@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -69,7 +70,9 @@ namespace PurrNet.Essentials
             try
             {
                 var request = UnityWebRequestTexture.GetTexture(url);
-                await request.SendWebRequest();
+                var sent = new TaskCompletionSource<bool>();
+                request.SendWebRequest().completed += _ => sent.TrySetResult(true);
+                await sent.Task;
 
                 if (request.result != UnityWebRequest.Result.Success) return;
 

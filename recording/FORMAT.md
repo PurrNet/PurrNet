@@ -152,10 +152,14 @@ Stream kinds:
 | `custom`    | whenever the writer adds a sample | optional `player` (who sent it) |
 | `collider`  | one per tick while the collider moves within its entity, type `RecordedColliderPose` | `entity` (null: static) + `collider` |
 | `sync`      | one per tick while the entity exists, type `RecordedValue<T>` (or `RecordedTimer`) | `entity` + `component` + `module` |
+| `owner`     | one per tick while the entity exists, type `RecordedOwner` | `entity` |
 
 A `sync` stream is one of a network identity's sync types (PurrNet): `module` is its index in the component and
 `field` its name. `RecordedValue<T>` has one column or managed field, `value`: a SyncVar's value, or a SyncList's
 items as a list. `RecordedTimer` has `state` (enum) and `remaining` (f32, seconds). The values are the server's.
+
+An `owner` stream is the entity's owner over time, written when ownership changes after it spawned (ENTITY `owner`
+is the owner it spawned with). `RecordedOwner` has one column, `owner` (i32): a player id, or -1 for no owner.
 
 ### ENTITY / DESPAWN
 
