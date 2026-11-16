@@ -172,14 +172,6 @@ namespace PurrNet
                 var change = SyncListChange<T>.Set(value, oldValue, idx);
                 QueueChange(change);
                 InvokeChange(change);
-
-                if (isSpawned)
-                {
-                    if (isServer)
-                        SendSetToAll(idx, value);
-                    else
-                        SendSetToServer(idx, value);
-                }
             }
         }
 
@@ -505,8 +497,8 @@ namespace PurrNet
                             else SendAddToServer(change.value);
                             break;
                         case SyncListOperation.Removed:
-                            if (isServer) SendRemoveToAll(change.value);
-                            else SendRemoveToServer(change.value);
+                            if (isServer) SendRemoveAtToAll(change.index);
+                            else SendRemoveAtToServer(change.index);
                             break;
                         case SyncListOperation.Insert:
                             if (isServer) SendInsertToAll(change.index, change.value);
@@ -563,42 +555,6 @@ namespace PurrNet
                 _list.Add(item);
                 var change = SyncListChange<T>.Added(item, _list.Count - 1);
                 InvokeChange(change);
-            }
-        }
-
-        [ServerRpc(Channel.ReliableOrdered, requireOwnership: true)]
-        private void SendRemoveToServer(T item)
-        {
-            if (!_ownerAuth) return;
-            SendRemoveToOthers(item);
-        }
-
-        [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
-        private void SendRemoveToOthers(T item)
-        {
-            int idx = _list.IndexOf(item);
-            if (idx >= 0)
-            {
-                var oldValue = _list[idx];
-                _list.RemoveAt(idx);
-                var change = SyncListChange<T>.Removed(item, oldValue, idx);
-                InvokeChange(change);
-            }
-        }
-
-        [ObserversRpc(Channel.ReliableOrdered)]
-        private void SendRemoveToAll(T item)
-        {
-            if (!isHost)
-            {
-                int idx = _list.IndexOf(item);
-                if (idx >= 0)
-                {
-                    var oldValue = _list[idx];
-                    _list.RemoveAt(idx);
-                    var change = SyncListChange<T>.Removed(item, oldValue, idx);
-                    InvokeChange(change);
-                }
             }
         }
 
