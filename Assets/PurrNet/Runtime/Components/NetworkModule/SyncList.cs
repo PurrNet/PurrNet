@@ -226,6 +226,9 @@ namespace PurrNet
             if (isSpawner && ownerAuth && owner == player)
                 return;
 
+            if (_isDirty && IsController(_ownerAuth))
+                FlushPendingChanges();
+
             SendInitialToTarget(player, _list);
         }
 
@@ -473,6 +476,41 @@ namespace PurrNet
             InvokeChange(change);
         }
 
+        private void FlushPendingChanges()
+        {
+            foreach (var change in _pendingChanges)
+            {
+                switch (change.operation)
+                {
+                    case SyncListOperation.Added:
+                        if (isServer) SendAddToAll(change.value);
+                        else SendAddToServer(change.value);
+                        break;
+                    case SyncListOperation.Removed:
+                        if (isServer) SendRemoveAtToAll(change.index);
+                        else SendRemoveAtToServer(change.index);
+                        break;
+                    case SyncListOperation.Insert:
+                        if (isServer) SendInsertToAll(change.index, change.value);
+                        else SendInsertToServer(change.index, change.value);
+                        break;
+                    case SyncListOperation.Set:
+                        if (isServer) SendSetToAll(change.index, change.value);
+                        else SendSetToServer(change.index, change.value);
+                        break;
+                    case SyncListOperation.Cleared:
+                        if (isServer) SendClearToAll();
+                        else SendClearToServer();
+                        break;
+                }
+            }
+
+            _pendingChanges.Clear();
+            _lastSendTime = Time.time;
+            _wasLastDirty = true;
+            _isDirty = false;
+        }
+
         public void OnTick(float delta)
         {
             if (!_isDirty && !_wasLastDirty)
@@ -488,37 +526,7 @@ namespace PurrNet
 
             if (_isDirty)
             {
-                foreach (var change in _pendingChanges)
-                {
-                    switch (change.operation)
-                    {
-                        case SyncListOperation.Added:
-                            if (isServer) SendAddToAll(change.value);
-                            else SendAddToServer(change.value);
-                            break;
-                        case SyncListOperation.Removed:
-                            if (isServer) SendRemoveAtToAll(change.index);
-                            else SendRemoveAtToServer(change.index);
-                            break;
-                        case SyncListOperation.Insert:
-                            if (isServer) SendInsertToAll(change.index, change.value);
-                            else SendInsertToServer(change.index, change.value);
-                            break;
-                        case SyncListOperation.Set:
-                            if (isServer) SendSetToAll(change.index, change.value);
-                            else SendSetToServer(change.index, change.value);
-                            break;
-                        case SyncListOperation.Cleared:
-                            if (isServer) SendClearToAll();
-                            else SendClearToServer();
-                            break;
-                    }
-                }
-
-                _pendingChanges.Clear();
-                _lastSendTime = Time.time;
-                _wasLastDirty = true;
-                _isDirty = false;
+                FlushPendingChanges();
             }
             else if (_wasLastDirty)
             {
