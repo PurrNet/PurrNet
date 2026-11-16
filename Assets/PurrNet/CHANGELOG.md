@@ -1,3 +1,10 @@
+# [1.26.0-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.32...v1.26.0-beta.33) (2026-11-16)
+
+
+### Bug Fixes
+
+* NT being worse with bots (fake players) ([a27f736](https://github.com/PurrNet/PurrNet/commit/a27f736d44799c91b973ec3a78273304677a6a9c))
+
 # [1.26.0-beta.32](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.31...v1.26.0-beta.32) (2026-11-14)
 
 
