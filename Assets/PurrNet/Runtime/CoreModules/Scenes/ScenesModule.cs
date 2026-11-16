@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using PurrNet.Logging;
+using PurrNet.Pooling;
 using PurrNet.Transports;
 using PurrNet.Utils;
 using UnityEngine;
@@ -255,6 +256,25 @@ namespace PurrNet.Modules
         static bool IsDontDestroyOnLoadScene(Scene scene)
         {
             return scene.name is "DontDestroyOnLoad";
+        }
+
+        /// <summary>
+        /// Forgets every tracked scene except DontDestroyOnLoad, as a LoadSceneMode.Single load unloads them.
+        /// The scenes are collected first because RemoveScene shrinks _rawScenes.
+        /// </summary>
+        private void RemoveScenesReplacedBySingleLoad()
+        {
+            using var toRemove = DisposableList<Scene>.Create(_rawScenes.Count);
+
+            for (var i = 0; i < _rawScenes.Count; i++)
+            {
+                var scene = _scenes[_rawScenes[i]].scene;
+                if (!IsDontDestroyOnLoadScene(scene))
+                    toRemove.Add(scene);
+            }
+
+            for (var i = 0; i < toRemove.Count; i++)
+                RemoveScene(toRemove[i]);
         }
 
 
@@ -667,11 +687,7 @@ namespace PurrNet.Modules
 
                         if (loadAction.parameters.mode == LoadSceneMode.Single)
                         {
-                            for (int i = 0; i < _rawScenes.Count; i++)
-                            {
-                                if (!IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene))
-                                    RemoveScene(_scenes[_rawScenes[i]].scene);
-                            }
+                            RemoveScenesReplacedBySingleLoad();
                         }
 
                         _pendingOperations.Add(new PendingSceneOperation
@@ -1186,12 +1202,7 @@ namespace PurrNet.Modules
                     }
                 }
 
-                for (int i = 0; i < _rawScenes.Count; i++)
-                {
-                    bool isDontDestroyOnLoad = IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene);
-                    if (!isDontDestroyOnLoad)
-                        RemoveScene(_scenes[_rawScenes[i]].scene);
-                }
+                RemoveScenesReplacedBySingleLoad();
             }
 
             var scenePathHash = ScenePathHashFromBuildIndex(sceneIndex);
