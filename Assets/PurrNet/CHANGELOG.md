@@ -1,3 +1,11 @@
+# [1.26.0-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.33...v1.26.0-beta.34) (2026-11-16)
+
+
+### Bug Fixes
+
+* a LoadSceneMode.Single load forgets every additive scene instead of every other one ([#345](https://github.com/PurrNet/PurrNet/issues/345)) ([417fb2c](https://github.com/PurrNet/PurrNet/commit/417fb2c3fa53cfc6109552b743b1ecbdd3fb9fb0))
+* SyncList.RemoveAt syncs the removed index and an indexer set stays in order with earlier operations ([#346](https://github.com/PurrNet/PurrNet/issues/346)) ([e974ffb](https://github.com/PurrNet/PurrNet/commit/e974ffb2959835f3d3a3cdbbc6b2883359fb262d))
+
 # [1.26.0-beta.33](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.32...v1.26.0-beta.33) (2026-11-16)
 
 
