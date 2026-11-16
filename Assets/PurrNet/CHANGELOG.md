@@ -1,3 +1,10 @@
+# [1.26.0-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.34...v1.26.0-beta.35) (2026-11-16)
+
+
+### Bug Fixes
+
+* SyncList flushes pending changes before sending initial state to a ([02460df](https://github.com/PurrNet/PurrNet/commit/02460df0feff1cc7d8986bfd337cec21018d5aff))
+
 # [1.26.0-beta.34](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.33...v1.26.0-beta.34) (2026-11-16)
 
 
