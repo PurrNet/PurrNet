@@ -26,8 +26,23 @@ $compileOnly = @{
 
 function Slash([string]$path) { $path.Replace('\', '/') }
 
-function Get-LatestStableTag([string]$path) {
-    git -C $path tag --list 'v*' --sort=-v:refname | Where-Object { $_ -notmatch '-' } | Select-Object -First 1
+$fetched = @{}
+function Update-Repo([string]$path) {
+    if ($NoFetch -or $fetched[$path]) { return }
+    git -C $path fetch --quiet origin
+    if ($LASTEXITCODE -ne 0) { throw "git fetch failed in $path." }
+    git -C $path fetch --quiet origin '+refs/heads/release:refs/remotes/origin/release'
+    if ($LASTEXITCODE -ne 0) { throw "Could not fetch the release branch of $path." }
+    $fetched[$path] = $true
+}
+
+function Get-ReleaseTag([string]$path) {
+    Update-Repo $path
+    $tip = git -C $path rev-parse --verify --quiet 'refs/remotes/origin/release^{commit}'
+    if (-not $tip) { throw "$path has no origin/release; run without -NoFetch or pass -Ref." }
+    $tag = git -C $path tag --points-at $tip --list 'v*' | Where-Object { $_ -notmatch '-' } | Select-Object -First 1
+    if (-not $tag) { throw "origin/release in $path ($($tip.Substring(0, 9))) has commits after its last release tag; pass -Ref to choose what to upload." }
+    $tag
 }
 
 function Find-Editor([string]$version) {
@@ -63,11 +78,10 @@ New-Item -ItemType Directory -Force $outDir | Out-Null
 $workRoot = (Resolve-Path $workRoot).Path
 $outDir = (Resolve-Path $outDir).Path
 
-if (-not $NoFetch) { git -C $repo fetch --tags --quiet }
-
+Update-Repo $repo
 if (-not $Ref) {
-    $Ref = Get-LatestStableTag $repo
-    if (-not $Ref) { throw "No stable v* tag found in $repo; pass -Ref." }
+    $Ref = Get-ReleaseTag $repo
+    Write-Host "   using $Ref, the tip of the release branch"
 }
 $commit = git -C $repo rev-parse --short "$Ref^{commit}"
 if ($LASTEXITCODE -ne 0) { throw "Ref '$Ref' not found in $repo." }
@@ -109,7 +123,7 @@ foreach ($target in $Unity) {
     }
     foreach ($git in $config.gitDependencies.PSObject.Properties) {
         $gitVersion = $package.dependencies.($git.Name)
-        if (-not $gitVersion) { $gitVersion = (Get-LatestStableTag (Join-Path $PSScriptRoot $git.Value.repo)).TrimStart('v') }
+        if (-not $gitVersion) { $gitVersion = (Get-ReleaseTag (Join-Path $PSScriptRoot $git.Value.repo)).TrimStart('v') }
         $dependencies[$git.Name] = $git.Value.url.Replace('{version}', $gitVersion)
         Write-Host "   compiling against $($git.Name) $gitVersion"
     }

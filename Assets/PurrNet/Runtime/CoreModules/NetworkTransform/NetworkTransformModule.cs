@@ -2730,6 +2730,18 @@ namespace PurrNet.Modules
 
             var observers = nt.observers;
             int count = observers?.Count ?? 0;
+            if (_botCount > 0)
+            {
+                if (count == peerCount + _botCount + (localPlayer != PlayerID.Server ? 1 : 0))
+                    return true;
+
+                for (int i = count; i-- > 0;)
+                {
+                    if (observers[i].isBot)
+                        count--;
+                }
+            }
+
             if (count != peerCount && localPlayer != PlayerID.Server)
             {
                 for (int i = 0; i < count; i++)
@@ -2746,13 +2758,24 @@ namespace PurrNet.Modules
         }
 
         // The shared stream carries the transforms no peer controls and at least one observes.
-        private static bool SharedByPeers(NetworkTransform nt, PlayerID localPlayer)
+        private bool SharedByPeers(NetworkTransform nt, PlayerID localPlayer)
         {
             if (nt.HasRemoteController || !nt.id.HasValue)
                 return false;
 
             var observers = nt.observers;
             int count = observers?.Count ?? 0;
+            if (_botCount > 0)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    if (!observers[i].isBot && observers[i] != localPlayer)
+                        return true;
+                }
+
+                return false;
+            }
+
             return count > 1 || (count == 1 && observers[0] != localPlayer);
         }
 
@@ -2940,9 +2963,16 @@ namespace PurrNet.Modules
         {
             var g = GetGlobalStream();
 
+            _botCount = 0;
             for (var i = 0; i < players.Count; i++)
             {
                 var player = players[i];
+                if (player.isBot)
+                {
+                    _botCount++;
+                    continue;
+                }
+
                 if (player == localPlayer)
                     continue;
                 var peer = PrepareGlobalPeer(player, localPlayer);
@@ -3046,6 +3076,7 @@ namespace PurrNet.Modules
         private readonly int[] _peerSlotStamp = new int[PEER_SLOT_TABLE];
         private readonly PlayerID[] _peerSlotPlayer = new PlayerID[PEER_SLOT_TABLE];
         private int _peerSlotPass;
+        private int _botCount;
 
         private bool TryGetPeerSlot(PlayerID player, out int slot)
         {
