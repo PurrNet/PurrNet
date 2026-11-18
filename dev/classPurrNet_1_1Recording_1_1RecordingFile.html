@@ -131,6 +131,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Enqueue</b> (RecordKi
 <tr class="memitem:acbcf74e8f1219d6e77ebc74295b5d695"><td class="memItemLeft" align="right" valign="top"><a id="acbcf74e8f1219d6e77ebc74295b5d695" name="acbcf74e8f1219d6e77ebc74295b5d695"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Enqueue</b> (RecordKind kind, <a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordProducer.html">IRecordProducer</a> producer, bool compress)</td></tr>
 <tr class="separator:acbcf74e8f1219d6e77ebc74295b5d695"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a982b295732fe8ab6f65a2a537124b7ab"><td class="memItemLeft" align="right" valign="top"><a id="a982b295732fe8ab6f65a2a537124b7ab" name="a982b295732fe8ab6f65a2a537124b7ab"></a>
+unsafe void&#160;</td><td class="memItemRight" valign="bottom"><b>EnqueueNative</b> (RecordKind kind, IntPtr data, int length, bool compress)</td></tr>
+<tr class="memdesc:a982b295732fe8ab6f65a2a537124b7ab"><td class="mdescLeft">&#160;</td><td class="mdescRight">A record whose payload is native memory (from UnsafeUtility.Malloc, Allocator.Persistent): the file takes it over, compresses and writes it from where it is, and frees it. For payloads of megabytes (meshes), which must not pass through the managed heap.  <br /></td></tr>
+<tr class="separator:a982b295732fe8ab6f65a2a537124b7ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8eb49a37aa204f6a4fa34352f379bdb3"><td class="memItemLeft" align="right" valign="top"><a id="a8eb49a37aa204f6a4fa34352f379bdb3" name="a8eb49a37aa204f6a4fa34352f379bdb3"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Dispose</b> ()</td></tr>
 <tr class="separator:a8eb49a37aa204f6a4fa34352f379bdb3"><td class="memSeparator" colspan="2">&#160;</td></tr>

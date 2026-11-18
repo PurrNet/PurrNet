@@ -102,6 +102,9 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
   <div class="headertitle"><div class="title">PurrNet.Recording.RecordingSession Class Reference</div></div>
 </div><!--header-->
 <div class="contents">
+
+<p>What an entity looks like changes rarely, and almost always because the game said so: it activated an object, enabled a renderer or a collider, instantiated or destroyed something. <a class="el" href="namespacePurrNet.html">PurrNet</a>'s code generation makes those calls report here (see RecordedEffects), so an entity is only looked at again when one of them touched it. Changes from code that is not woven (the engine, an animation that toggles an object) are found by the periodic check of every entity instead, a few ticks later.   
+ <a href="classPurrNet_1_1Recording_1_1RecordingSession.html#details">More...</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
@@ -222,6 +225,14 @@ string&#160;</td><td class="memItemRight" valign="bottom"><b>TypeName</b> (Type 
 <tr class="memitem:a8d9eab4d376c24067f7194d8b028247f"><td class="memItemLeft" align="right" valign="top"><a id="a8d9eab4d376c24067f7194d8b028247f" name="a8d9eab4d376c24067f7194d8b028247f"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>RecordColliders</b> (ulong tick)</td></tr>
 <tr class="separator:a8d9eab4d376c24067f7194d8b028247f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3fd4a63f3939761e7fda12a3a1f21017"><td class="memItemLeft" align="right" valign="top"><a id="a3fd4a63f3939761e7fda12a3a1f21017" name="a3fd4a63f3939761e7fda12a3a1f21017"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>RecordEffects</b> (ulong tick)</td></tr>
+<tr class="memdesc:a3fd4a63f3939761e7fda12a3a1f21017"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes what animators, particle systems and audio sources started doing since they were last asked: a row per change, nothing while they carry on. Objects the game created since the last tick are looked at first, then the ones something was called on, then the rest in turn. All of it stops at <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSession.html#aef340d93a5f3d4c62d84b113dcc86a78" title="Most time per tick, in milliseconds, spent asking animators, particle systems and audio sources what ...">effectsBudgetMs</a> and continues from there on the next tick; the first two get no more than half of it, so that a busy game cannot keep the rest from ever being asked.  <br /></td></tr>
+<tr class="separator:a3fd4a63f3939761e7fda12a3a1f21017"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19f2288e5958cf1ed61efbd7f74ace03"><td class="memItemLeft" align="right" valign="top"><a id="a19f2288e5958cf1ed61efbd7f74ace03" name="a19f2288e5958cf1ed61efbd7f74ace03"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>RecordTransformLater</b> (<a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a> entity, <a class="el" href="classPurrNet_1_1Recording_1_1RecordingSource.html">RecordingSource</a> source, ulong tick)</td></tr>
+<tr class="memdesc:a19f2288e5958cf1ed61efbd7f74ace03"><td class="mdescLeft">&#160;</td><td class="mdescRight">Records the entity's pose for this tick like RecordTransform, without the caller needing it back. With many entities the transform is not read here: a job reads all of them at the end of the tick, on other threads, and the rows are written when the next tick begins (with this tick's number, so the file is the same). Whether the entity is visible is still looked up here; only the main thread can.  <br /></td></tr>
+<tr class="separator:a19f2288e5958cf1ed61efbd7f74ace03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -252,6 +263,14 @@ float&#160;</td><td class="memItemRight" valign="bottom"><b>colliderCheckBudgetM
 <tr class="memitem:ab9b26224a50e951986d906d63bc74033"><td class="memItemLeft" align="right" valign="top"><a id="ab9b26224a50e951986d906d63bc74033" name="ab9b26224a50e951986d906d63bc74033"></a>
 int&#160;</td><td class="memItemRight" valign="bottom"><b>chunkBufferKilobytes</b> = 2048</td></tr>
 <tr class="separator:ab9b26224a50e951986d906d63bc74033"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa821d4aab4864aa9770fc471397fb3f"><td class="memItemLeft" align="right" valign="top"><a id="aaa821d4aab4864aa9770fc471397fb3f" name="aaa821d4aab4864aa9770fc471397fb3f"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>recordEffects</b> = true</td></tr>
+<tr class="memdesc:aaa821d4aab4864aa9770fc471397fb3f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Whether animation state changes, particle systems and audio sources starting and stopping are recorded. <br /></td></tr>
+<tr class="separator:aaa821d4aab4864aa9770fc471397fb3f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef340d93a5f3d4c62d84b113dcc86a78"><td class="memItemLeft" align="right" valign="top"><a id="aef340d93a5f3d4c62d84b113dcc86a78" name="aef340d93a5f3d4c62d84b113dcc86a78"></a>
+float&#160;</td><td class="memItemRight" valign="bottom"><b>effectsBudgetMs</b> = 0.02f</td></tr>
+<tr class="memdesc:aef340d93a5f3d4c62d84b113dcc86a78"><td class="mdescLeft">&#160;</td><td class="mdescRight">Most time per tick, in milliseconds, spent asking animators, particle systems and audio sources what they are doing and looking at objects the game created. With more of them than fit, each is asked every few ticks instead of every tick.  <br /></td></tr>
+<tr class="separator:aef340d93a5f3d4c62d84b113dcc86a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a37fc67091505377546a2c56b6c415c5a"><td class="memItemLeft" align="right" valign="top"><a id="a37fc67091505377546a2c56b6c415c5a" name="a37fc67091505377546a2c56b6c415c5a"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>partDirectory</b> = &quot;Recordings&quot;</td></tr>
 <tr class="separator:a37fc67091505377546a2c56b6c415c5a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -303,6 +322,14 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>entityCount</b><code> 
 <tr class="memitem:abbe4b582fc29cc4a41d3e5ce75e3930c"><td class="memItemLeft" align="right" valign="top"><a id="abbe4b582fc29cc4a41d3e5ce75e3930c" name="abbe4b582fc29cc4a41d3e5ce75e3930c"></a>
 <a class="el" href="classPurrNet_1_1Recording_1_1JsonBuilder.html">JsonBuilder</a>&#160;</td><td class="memItemRight" valign="bottom"><b>json</b><code> [get]</code></td></tr>
 <tr class="separator:abbe4b582fc29cc4a41d3e5ce75e3930c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7a0b9d7c3047793426c21eb60f73709"><td class="memItemLeft" align="right" valign="top"><a id="ae7a0b9d7c3047793426c21eb60f73709" name="ae7a0b9d7c3047793426c21eb60f73709"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>effectChecksDeferred</b><code> [get]</code></td></tr>
+<tr class="memdesc:ae7a0b9d7c3047793426c21eb60f73709"><td class="mdescLeft">&#160;</td><td class="mdescRight">How many times an object's effects waited for a later tick, to keep within the budget. <br /></td></tr>
+<tr class="separator:ae7a0b9d7c3047793426c21eb60f73709"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adef268e3e533032767831fef4488afdf"><td class="memItemLeft" align="right" valign="top"><a id="adef268e3e533032767831fef4488afdf" name="adef268e3e533032767831fef4488afdf"></a>
+int&#160;</td><td class="memItemRight" valign="bottom"><b>effectObjectsSkipped</b><code> [get]</code></td></tr>
+<tr class="memdesc:adef268e3e533032767831fef4488afdf"><td class="mdescLeft">&#160;</td><td class="mdescRight">Objects the game created that were never looked at, because more were waiting than can wait. <br /></td></tr>
+<tr class="separator:adef268e3e533032767831fef4488afdf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a93165528962b41c31f21ba8dfcdd9195"><td class="memItemLeft" align="right" valign="top"><a id="a93165528962b41c31f21ba8dfcdd9195" name="a93165528962b41c31f21ba8dfcdd9195"></a>
 string&#160;</td><td class="memItemRight" valign="bottom"><b>recordingId</b><code> [get]</code></td></tr>
 <tr class="separator:a93165528962b41c31f21ba8dfcdd9195"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -312,6 +339,10 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>isPart</b><code> [get
 <tr class="memitem:a5caa81e8a92fbcf71008a0d60ff6751c"><td class="memItemLeft" align="right" valign="top"><a id="a5caa81e8a92fbcf71008a0d60ff6751c" name="a5caa81e8a92fbcf71008a0d60ff6751c"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>wantsSamples</b><code> [get]</code></td></tr>
 <tr class="separator:a5caa81e8a92fbcf71008a0d60ff6751c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a879d3d028c4f02d21afb891bd646e6dc"><td class="memItemLeft" align="right" valign="top"><a id="a879d3d028c4f02d21afb891bd646e6dc" name="a879d3d028c4f02d21afb891bd646e6dc"></a>
+long&#160;</td><td class="memItemRight" valign="bottom"><b>transformsReadByJob</b><code> [get]</code></td></tr>
+<tr class="memdesc:a879d3d028c4f02d21afb891bd646e6dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">How many poses of this recording came from the job. <br /></td></tr>
+<tr class="separator:a879d3d028c4f02d21afb891bd646e6dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="events" name="events"></a>
 Events</h2></td></tr>
@@ -319,7 +350,9 @@ Events</h2></td></tr>
 Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onRecordingFinished</b></td></tr>
 <tr class="separator:aa9719c9160786499b53825684ab5c7f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Member Function Documentation</h2>
+<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
+<div class="textblock"><p >What an entity looks like changes rarely, and almost always because the game said so: it activated an object, enabled a renderer or a collider, instantiated or destroyed something. <a class="el" href="namespacePurrNet.html">PurrNet</a>'s code generation makes those calls report here (see RecordedEffects), so an entity is only looked at again when one of them touched it. Changes from code that is not woven (the engine, an animation that toggles an object) are found by the periodic check of every entity instead, a few ticks later.  </p>
+</div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="acd1a65feea9a373c16f7336f3a8164cb" name="acd1a65feea9a373c16f7336f3a8164cb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acd1a65feea9a373c16f7336f3a8164cb">&#9670;&#160;</a></span>AppendRow&lt; T &gt;()</h2>
 
@@ -441,8 +474,11 @@ Action&lt; string &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>onR
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following files:<ul>
+<li>Assets/PurrNet/Runtime/Recording/RecordingSession.Changes.cs</li>
 <li>Assets/PurrNet/Runtime/Recording/RecordingSession.cs</li>
+<li>Assets/PurrNet/Runtime/Recording/RecordingSession.Effects.cs</li>
 <li>Assets/PurrNet/Runtime/Recording/RecordingSession.Parts.cs</li>
+<li>Assets/PurrNet/Runtime/Recording/RecordingSession.Transforms.cs</li>
 </ul>
 </div><!-- contents -->
 </div><!-- doc-content -->

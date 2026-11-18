@@ -15,6 +15,7 @@ var hierarchy =
       [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
       [ "PurrNet.StripInClientOnlyBuildAttribute", "classPurrNet_1_1StripInClientOnlyBuildAttribute.html", null ]
     ] ],
+    [ "PurrNet.Recording.EntityEffects.Audio", "structPurrNet_1_1Recording_1_1EntityEffects_1_1Audio.html", null ],
     [ "PurrNet.AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
     [ "PurrNet.Authentication.AuthenticationBehaviour< string >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", [
       [ "PurrNet.Authentication.SimpleAuthenticator", "classPurrNet_1_1Authentication_1_1SimpleAuthenticator.html", null ]
@@ -28,7 +29,10 @@ var hierarchy =
       [ "PurrNet.Recording.ManagedFieldWriter", "classPurrNet_1_1Recording_1_1ManagedFieldWriter.html", null ],
       [ "PurrNet.Recording.ObjectPlan", "classPurrNet_1_1Recording_1_1ObjectPlan.html", null ],
       [ "PurrNet.Recording.TypedListWriter", "classPurrNet_1_1Recording_1_1TypedListWriter.html", [
-        [ "PurrNet.Recording.ListWriter< T >", "classPurrNet_1_1Recording_1_1ListWriter.html", null ]
+        [ "PurrNet.Recording.DictionaryWriter< TKey, TValue >", "classPurrNet_1_1Recording_1_1DictionaryWriter.html", null ],
+        [ "PurrNet.Recording.HashSetWriter< T >", "classPurrNet_1_1Recording_1_1HashSetWriter.html", null ],
+        [ "PurrNet.Recording.ListWriter< T >", "classPurrNet_1_1Recording_1_1ListWriter.html", null ],
+        [ "PurrNet.Recording.QueueWriter< T >", "classPurrNet_1_1Recording_1_1QueueWriter.html", null ]
       ] ]
     ] ],
     [ "PurrNet.Recording.ChunkEncoder", "classPurrNet_1_1Recording_1_1ChunkEncoder.html", null ],
@@ -106,6 +110,11 @@ var hierarchy =
     [ "PurrNet.Modules.IBroadcastCallback", "interfacePurrNet_1_1Modules_1_1IBroadcastCallback.html", null ],
     [ "IBufferWriter", null, [
       [ "PurrNet.Packing.BitPackerWrapper", "structPurrNet_1_1Packing_1_1BitPackerWrapper.html", null ]
+    ] ],
+    [ "PurrNet.Recording.ICollectionPlans", "interfacePurrNet_1_1Recording_1_1ICollectionPlans.html", [
+      [ "PurrNet.Recording.DictionaryWriter< TKey, TValue >", "classPurrNet_1_1Recording_1_1DictionaryWriter.html", null ],
+      [ "PurrNet.Recording.HashSetWriter< T >", "classPurrNet_1_1Recording_1_1HashSetWriter.html", null ],
+      [ "PurrNet.Recording.QueueWriter< T >", "classPurrNet_1_1Recording_1_1QueueWriter.html", null ]
     ] ],
     [ "IComparable", null, [
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ],
@@ -468,6 +477,7 @@ var hierarchy =
       [ "PurrNet.SyncTimer", "classPurrNet_1_1SyncTimer.html", null ]
     ] ],
     [ "PurrNet.Recording.JsonBuilder", "classPurrNet_1_1Recording_1_1JsonBuilder.html", null ],
+    [ "PurrNet.Recording.EntityEffects.Layer", "structPurrNet_1_1Recording_1_1EntityEffects_1_1Layer.html", null ],
     [ "PurrNet.Logging.LogStyle", "structPurrNet_1_1Logging_1_1LogStyle.html", null ],
     [ "PurrNet.Recording.RowLayout.ManagedField", "classPurrNet_1_1Recording_1_1RowLayout_1_1ManagedField.html", null ],
     [ "PurrNet.Transports.MigrationJoinInfo", "structPurrNet_1_1Transports_1_1MigrationJoinInfo.html", null ],
@@ -519,6 +529,7 @@ var hierarchy =
       [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
       [ "PurrNet.UnityUpdate", "classPurrNet_1_1UnityUpdate.html", null ]
     ] ],
+    [ "PurrNet.Recording.NativeSink", "classPurrNet_1_1Recording_1_1NativeSink.html", null ],
     [ "PurrNet.NetworkAssetResolver", "classPurrNet_1_1NetworkAssetResolver.html", null ],
     [ "PurrNet.NetworkIdentityRules", "structPurrNet_1_1NetworkIdentityRules.html", null ],
     [ "PurrNet.NetworkLODTier", "structPurrNet_1_1NetworkLODTier.html", null ],
@@ -556,6 +567,7 @@ var hierarchy =
     [ "PurrNet.OwnershipGameObjectToggle", "structPurrNet_1_1OwnershipGameObjectToggle.html", null ],
     [ "PurrNet.OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
     [ "PurrNet.Packing.PackerRegistrationEntry", "structPurrNet_1_1Packing_1_1PackerRegistrationEntry.html", null ],
+    [ "PurrNet.Recording.EntityEffects.Particles", "structPurrNet_1_1Recording_1_1EntityEffects_1_1Particles.html", null ],
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
     [ "PurrNet.Transports.PeerMigrationEndpoint", "structPurrNet_1_1Transports_1_1PeerMigrationEndpoint.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
@@ -594,10 +606,14 @@ var hierarchy =
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
     [ "PurrNet.Recording.RawInputSample", "structPurrNet_1_1Recording_1_1RawInputSample.html", null ],
+    [ "PurrNet.Recording.RecordedAnimation", "structPurrNet_1_1Recording_1_1RecordedAnimation.html", null ],
+    [ "PurrNet.Recording.RecordedAnimatorCall", "structPurrNet_1_1Recording_1_1RecordedAnimatorCall.html", null ],
+    [ "PurrNet.Recording.RecordedAudio", "structPurrNet_1_1Recording_1_1RecordedAudio.html", null ],
     [ "PurrNet.Recording.RecordedBroadcast< T >", "structPurrNet_1_1Recording_1_1RecordedBroadcast.html", null ],
     [ "PurrNet.Recording.RecordedColliderPose", "structPurrNet_1_1Recording_1_1RecordedColliderPose.html", null ],
     [ "PurrNet.Recording.RecordedEntity", "classPurrNet_1_1Recording_1_1RecordedEntity.html", null ],
     [ "PurrNet.Recording.RecordedLife", "classPurrNet_1_1Recording_1_1RecordedLife.html", null ],
+    [ "PurrNet.Recording.RecordedParticles", "structPurrNet_1_1Recording_1_1RecordedParticles.html", null ],
     [ "PurrNet.Recording.RecordedPlayerTick", "structPurrNet_1_1Recording_1_1RecordedPlayerTick.html", null ],
     [ "PurrNet.Recording.RecordedRpc", "structPurrNet_1_1Recording_1_1RecordedRpc.html", null ],
     [ "PurrNet.Recording.RecordedStreamInfo", "structPurrNet_1_1Recording_1_1RecordedStreamInfo.html", null ],
