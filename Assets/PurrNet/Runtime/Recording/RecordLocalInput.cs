@@ -8,6 +8,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 #endif
+#if PURRREC_INPUT_SYSTEM && !PURRNET_UITK
+using System.Collections.Generic;
+#endif
 #if PURRNET_UGUI
 using UnityEngine.EventSystems;
 #endif
@@ -37,6 +40,25 @@ namespace PurrNet.Recording
         public float leftTrigger, rightTrigger;
         public uint gamepadButtons;
         public uint joystickButtons;
+    }
+
+    /// <summary>
+    /// One row of the "actions" stream: an Input System action by name, written when it is first seen (and again at
+    /// the start of every chunk) and whenever its value or phase changes. Unlike raw keys it means the same thing
+    /// for every player, whatever they bound it to.
+    /// </summary>
+    public struct InputActionSample
+    {
+        public const byte Declare = 1, Value = 2;
+        public const byte Performed = 1, Disabled = 2;
+
+        public byte op;
+        public byte phase;
+        public byte flags;
+        public int id;
+        public float x, y, z;
+        public string name;
+        public string type;
     }
 
     /// <summary>
@@ -86,6 +108,9 @@ namespace PurrNet.Recording
             if (Application.isFocused)
                 _row.flags |= RawInputSample.Focused;
             session.WriteSample(Stream, _row);
+#if PURRREC_INPUT_SYSTEM
+            WriteActions(session);
+#endif
             _row = default;
             _typing = false;
         }
@@ -165,12 +190,159 @@ namespace PurrNet.Recording
                         _row.gamepadButtons |= 1u << i;
                 }
             }
+
+            PollActions();
         }
 
         void Button(UnityEngine.InputSystem.Controls.ButtonControl button, int bit)
         {
             if (button.isPressed || button.wasPressedThisFrame)
                 _row.mouseButtons |= (byte)(1 << bit);
+        }
+
+        public const string ActionsStream = "actions";
+
+        sealed class ActionState
+        {
+            public int id;
+            public string name, type;
+            public byte kind;
+            public bool unreadable;
+            public int epoch;
+            public int frame;
+            public Vector3 value, sum, written;
+            public bool accumulates;
+            public byte phase, writtenPhase;
+            public bool performed;
+            public bool disabled;
+        }
+
+        readonly Dictionary<InputAction, ActionState> _actions = new Dictionary<InputAction, ActionState>();
+        readonly List<ActionState> _actionList = new List<ActionState>();
+        readonly List<InputAction> _enabledActions = new List<InputAction>();
+
+        static byte ValueKind(string controlType)
+        {
+            switch (controlType)
+            {
+                case "Button":
+                case "Axis":
+                case "Analog":
+                case "Key":
+                    return 1;
+                case "Vector2":
+                case "Stick":
+                case "Dpad":
+                case "Delta":
+                    return 2;
+                case "Vector3":
+                    return 3;
+                default:
+                    return 0;
+            }
+        }
+
+        void PollActions()
+        {
+            _enabledActions.Clear();
+            InputSystem.ListEnabledActions(_enabledActions);
+            int frame = Time.frameCount;
+            for (int i = 0; i < _enabledActions.Count; i++)
+            {
+                var action = _enabledActions[i];
+                if (!_actions.TryGetValue(action, out var state))
+                {
+                    var map = action.actionMap;
+                    state = new ActionState
+                    {
+                        id = _actionList.Count + 1,
+                        name = map != null && !string.IsNullOrEmpty(map.name) ? map.name + "/" + action.name : action.name,
+                        type = action.expectedControlType ?? "",
+                        kind = ValueKind(action.expectedControlType)
+                    };
+                    _actions[action] = state;
+                    _actionList.Add(state);
+                }
+
+                state.frame = frame;
+                if (_typing)
+                {
+                    state.value = default;
+                    state.phase = (byte)InputActionPhase.Waiting;
+                    continue;
+                }
+
+                var value = default(Vector3);
+                if (!state.unreadable && state.kind != 0)
+                {
+                    try
+                    {
+                        switch (state.kind)
+                        {
+                            case 1: value.x = action.ReadValue<float>(); break;
+                            case 2: value = action.ReadValue<Vector2>(); break;
+                            default: value = action.ReadValue<Vector3>(); break;
+                        }
+                    }
+                    catch (System.Exception)
+                    {
+                        state.unreadable = true;
+                    }
+                }
+
+                var control = action.activeControl;
+                state.accumulates = control != null && control.name == "delta";
+                state.value = value;
+                state.sum += value;
+                state.phase = (byte)action.phase;
+                state.performed |= action.triggered;
+            }
+        }
+
+        void WriteActions(RecordingSession session)
+        {
+            int epoch = session.sampleEpoch;
+            if (epoch == 0)
+                return;
+
+            int frame = Time.frameCount;
+            for (int i = 0; i < _actionList.Count; i++)
+            {
+                var state = _actionList[i];
+                bool enabled = state.frame == frame;
+                var value = !enabled ? default : state.accumulates ? state.sum : state.value;
+                byte phase = enabled ? state.phase : (byte)InputActionPhase.Disabled;
+                bool snapshot = state.epoch != epoch;
+                state.sum = default;
+
+                if (snapshot)
+                {
+                    if (!enabled)
+                    {
+                        state.performed = false;
+                        continue;
+                    }
+                    state.epoch = epoch;
+                    session.WriteSample(ActionsStream, new InputActionSample
+                    {
+                        op = InputActionSample.Declare, id = state.id, name = state.name, type = state.type
+                    });
+                }
+                else if (!state.performed && phase == state.writtenPhase && value == state.written)
+                    continue;
+
+                byte flags = state.performed ? InputActionSample.Performed : (byte)0;
+                if (!enabled)
+                    flags |= InputActionSample.Disabled;
+                session.WriteSample(ActionsStream, new InputActionSample
+                {
+                    op = InputActionSample.Value, id = state.id, phase = phase, flags = flags,
+                    x = value.x, y = value.y, z = value.z
+                });
+                state.written = value;
+                state.writtenPhase = phase;
+                state.performed = false;
+            }
         }
 #elif PURRREC_LEGACY_INPUT
         static readonly (KeyCode code, byte key)[] Keys =

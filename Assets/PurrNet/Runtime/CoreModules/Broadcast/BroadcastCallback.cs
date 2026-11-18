@@ -23,6 +23,8 @@ namespace PurrNet.Modules
         {
             var result = default(T);
             Packer<T>.Read(data, ref result);
+            if (Recording.RecordedCalls.receiving != null)
+                Recording.RecordedCalls.BroadcastReceived(conn, result);
             callback?.Invoke(conn, result, asServer);
         }
 

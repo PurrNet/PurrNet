@@ -28,7 +28,9 @@ namespace PurrNet.Recording
         Batch = 11,
         Attach = 12,
         Detach = 13,
-        Part = 14
+        Part = 14,
+        Owner = 15,
+        Observers = 16
     }
 
     interface IStepwiseRecordProducer : IRecordProducer

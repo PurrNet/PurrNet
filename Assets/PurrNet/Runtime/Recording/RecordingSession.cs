@@ -712,6 +712,16 @@ namespace PurrNet.Recording
                     json.BeginString().Part("p").Part((long)info.player).EndString()
                         .Prop("kind", "player").Prop("player", info.player);
                     break;
+                case RecordedStreamKind.Rpc:
+                    json.BeginString().Part("rpc.").Part(info.sample).EndString()
+                        .Prop("kind", "rpc").Prop("rpc", info.sample).Prop("rpcType", info.field);
+                    if (info.componentType != null)
+                        json.Prop("componentType", TypeName(info.componentType));
+                    break;
+                case RecordedStreamKind.Broadcast:
+                    json.BeginString().Part("broadcast.").Part(info.sample).EndString()
+                        .Prop("kind", "broadcast").Prop("broadcast", info.sample);
+                    break;
                 case RecordedStreamKind.Collider:
                     json.BeginString().Part(info.entity >= 0 ? "e" : "static");
                     if (info.entity >= 0)
@@ -792,6 +802,24 @@ namespace PurrNet.Recording
             chunk.hasTick = hadTick;
             chunk.lastTick = lastTick;
             rows.rowCount--;
+        }
+
+        internal RecordingTypeRegistry types => _types;
+
+        internal bool recordsEvents => _file != null && !isPart;
+
+        internal void AppendEventRow<T>(StreamRows rows, ref T value) where T : struct =>
+            AppendRow(rows, SampleTick(), ref value);
+
+        internal void AppendEventRow<T>(StreamRows rows, ref T value, RecordingBuffer managed) where T : struct
+        {
+            ulong tick = SampleTick();
+            rows.aliveTick = tick;
+            var chunk = _job.log;
+            BeginRow(rows, tick, chunk);
+            rows.layout.WriteFixed(ref value, chunk.bytes);
+            chunk.bytes.WriteInt32(managed.length);
+            chunk.bytes.WriteBytes(managed);
         }
 
         unsafe bool SameSources<T>(StreamRows rows, ref T value) where T : struct

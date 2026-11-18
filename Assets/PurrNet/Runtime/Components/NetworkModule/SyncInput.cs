@@ -23,6 +23,14 @@ namespace PurrNet
 
         [SerializeField, PurrLock] private T _value;
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<T>);
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<T> { value = _value };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         [SerializeField, HideInInspector] private T _initialValue;
 
         [Tooltip("Simulated ping in ms. This is only for the host to simulate a ping delay.")]

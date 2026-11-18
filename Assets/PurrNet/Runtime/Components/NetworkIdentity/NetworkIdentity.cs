@@ -442,6 +442,9 @@ namespace PurrNet
 
         public IReadOnlyList<PlayerID> observers => _observers;
 
+        /// <summary>Goes up whenever <see cref="observers"/> changes.</summary>
+        internal int observersVersion;
+
         internal IReadOnlyList<PlayerID> pendingObservers =>
             _pendingObservers != null ? _pendingObservers : Array.Empty<PlayerID>();
 
@@ -1903,6 +1906,7 @@ namespace PurrNet
         {
             _observers.Clear();
             _observerSet.Clear();
+            observersVersion++;
             ReleasePendingObservers();
         }
 

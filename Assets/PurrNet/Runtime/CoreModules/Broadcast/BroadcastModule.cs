@@ -353,6 +353,8 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to all clients from client.");
 
+            if (Recording.RecordedCalls.enabled)
+                Recording.RecordedCalls.BroadcastSent(_networkManager, default, data, true);
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -380,6 +382,8 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to player from client.");
 
+            if (Recording.RecordedCalls.enabled)
+                Recording.RecordedCalls.BroadcastSent(_networkManager, conn, data, false);
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -397,6 +401,11 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to player from client.");
 
+            if (Recording.RecordedCalls.enabled)
+            {
+                for (var i = 0; i < conn.Count; i++)
+                    Recording.RecordedCalls.BroadcastSent(_networkManager, conn[i], data, false);
+            }
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -577,6 +586,9 @@ namespace PurrNet.Modules
         {
             var startPos = packer.positionInBits;
 
+            if (_asServer && Recording.RecordedCalls.enabled)
+                Recording.RecordedCalls.receiving = _networkManager;
+
             if (_actions.TryGetValue(hash, out var actions))
             {
                 for (int i = 0; i < actions.Count; i++)
@@ -587,6 +599,7 @@ namespace PurrNet.Modules
             }
 
             onRawDataReceived?.Invoke(conn, hash, packer);
+            Recording.RecordedCalls.receiving = null;
         }
 
         public void PromoteToServerModule()

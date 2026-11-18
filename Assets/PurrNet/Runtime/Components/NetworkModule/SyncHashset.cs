@@ -47,6 +47,18 @@ namespace PurrNet
         [SerializeField] private List<T> _serializedSet = new List<T>();
         private HashSet<T> _set = new HashSet<T>();
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<HashSet<T>>);
+
+        static readonly bool _recordedOnChange = RecordedPlain(typeof(T));
+
+        internal override bool recordedOnChange => _recordedOnChange;
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<HashSet<T>> { value = _set };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         public delegate void SyncHashSetChanged<Key>(SyncHashSetChange<Key> change);
 
         /// <summary>
@@ -282,6 +294,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncHashSetChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

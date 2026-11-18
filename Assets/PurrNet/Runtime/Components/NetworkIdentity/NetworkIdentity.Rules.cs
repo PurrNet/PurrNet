@@ -263,6 +263,7 @@ namespace PurrNet
 
             _observers.Add(player);
             _observerSet.Add(player);
+            observersVersion++;
             return true;
         }
 
@@ -271,6 +272,7 @@ namespace PurrNet
             if (_observerSet.Remove(player))
             {
                 _observers.Remove(player);
+                observersVersion++;
                 return true;
             }
 
@@ -305,6 +307,7 @@ namespace PurrNet
                 return false;
 
             _observers.Remove(player);
+            observersVersion++;
             _pendingObservers ??= ListPool<PlayerID>.Instantiate();
             _pendingObservers.Add(player);
             return true;
@@ -317,7 +320,10 @@ namespace PurrNet
 
             ReleasePendingObserversIfEmpty();
             if (_observerSet.Add(player))
+            {
                 _observers.Add(player);
+                observersVersion++;
+            }
             return true;
         }
 

@@ -68,6 +68,18 @@ namespace PurrNet
 
         private T[] _array;
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<T[]>);
+
+        static readonly bool _recordedOnChange = RecordedPlain(typeof(T));
+
+        internal override bool recordedOnChange => _recordedOnChange;
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<T[]> { value = _array };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         public delegate void SyncArrayChanged<TYPE>(SyncArrayChange<TYPE> change);
 
         public event SyncArrayChanged<T> onChanged;
@@ -417,6 +429,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncArrayChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

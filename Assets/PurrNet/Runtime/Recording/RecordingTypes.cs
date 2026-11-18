@@ -155,6 +155,19 @@ namespace PurrNet.Recording
             return layout;
         }
 
+        internal int ReserveId() => _nextId++;
+
+        internal void DescribeObject(int id, string name, List<string> fields)
+        {
+            var json = new JsonBuilder().BeginObject()
+                .Prop("id", id).Prop("kind", "object").Prop("name", name)
+                .Key("fields").BeginArray();
+            foreach (var field in fields)
+                json.Value(field);
+            json.EndArray().EndObject();
+            _pending.Add(json.ToString());
+        }
+
         void Flatten(RowLayout layout, Type type, string prefix, int baseOffset, List<FieldInfo> path, int depth)
         {
             foreach (var field in type.GetFields(InstanceFields))

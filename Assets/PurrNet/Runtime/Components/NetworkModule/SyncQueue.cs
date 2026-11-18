@@ -16,6 +16,18 @@ namespace PurrNet
         [SerializeField] private SerializableQueue<T> _serializedQueue = new SerializableQueue<T>();
         private Queue<T> _queue = new Queue<T>();
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<Queue<T>>);
+
+        static readonly bool _recordedOnChange = RecordedPlain(typeof(T));
+
+        internal override bool recordedOnChange => _recordedOnChange;
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<Queue<T>> { value = _queue };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         public delegate void SyncQueueChanged<TYPE>(SyncQueueChange<TYPE> change);
 
         public event SyncQueueChanged<T> onChanged;
@@ -198,6 +210,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncQueueChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

@@ -184,7 +184,7 @@ namespace PurrNet.Recording
 #endif
 
     /// <summary>How a stream is described in its STREAM record.</summary>
-    public enum RecordedStreamKind { State, Input, Transform, Player, Custom, Collider, Sync }
+    public enum RecordedStreamKind { State, Input, Transform, Player, Custom, Collider, Sync, Rpc, Broadcast }
 
     public struct RecordedStreamInfo
     {

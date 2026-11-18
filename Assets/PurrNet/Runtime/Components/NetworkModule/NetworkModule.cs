@@ -28,6 +28,10 @@ namespace PurrNet
         /// <summary>Set by the recorder that records this module.</summary>
         internal Recording.RecordedLife recordedLife;
 
+        /// <summary>Whether a value of this type only changes when it is set (plain data or a string).</summary>
+        internal static bool RecordedPlain(Type type) =>
+            type == typeof(string) || Unity.Collections.LowLevel.Unsafe.UnsafeUtility.IsUnmanaged(type);
+
         internal void RecordedChanged()
         {
             if (recordedLife != null)

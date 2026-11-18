@@ -42,6 +42,31 @@ namespace PurrNet.Recording
         public T sample;
     }
 
+    /// <summary>One RPC the server received or sent. <c>args</c> holds the arguments by parameter name.</summary>
+    public struct RecordedRpc
+    {
+        public const byte Received = 1, Sent = 2;
+
+        public int entity;
+        public int component;
+        public ulong networkId;
+        public int module;
+        public ulong sender;
+        public byte flags;
+        public object args;
+    }
+
+    /// <summary>One broadcast the server received from a player or sent.</summary>
+    public struct RecordedBroadcast<T>
+    {
+        public const byte Received = 1, Sent = 2, ToAll = 4, HasPlayer = 8;
+
+        public int connection;
+        public ulong player;
+        public byte flags;
+        public T value;
+    }
+
     public struct CameraSample
     {
         public Vector3 position;

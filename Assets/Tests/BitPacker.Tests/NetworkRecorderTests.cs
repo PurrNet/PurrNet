@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Text;
 using NUnit.Framework;
 using PurrNet;
+using PurrNet.Modules;
 using PurrNet.Recording;
 using PurrNet.Transports;
 using UnityEngine;
@@ -18,6 +19,42 @@ public class RecordedThing : NetworkBehaviour
     public SyncVar<string> label = new SyncVar<string>("start");
     public SyncList<int> items = new SyncList<int>();
     [DontRecord] public SyncVar<int> secret = new SyncVar<int>(7);
+}
+
+public struct RecordedShot
+{
+    public int weapon;
+    public Vector3 direction;
+}
+
+public struct RecordedPing : PurrNet.Packing.IPackedAuto
+{
+    public int value;
+    public string text;
+}
+
+[DontRecord]
+public struct RecordedSecretPing : PurrNet.Packing.IPackedAuto
+{
+    public int value;
+}
+
+public class RecordedActor : NetworkBehaviour
+{
+    public SyncDictionary<int, int> scores = new SyncDictionary<int, int>();
+    public SyncHashSet<int> tags = new SyncHashSet<int>();
+    public SyncQueue<int> orders = new SyncQueue<int>();
+    public SyncArray<int> slots = new SyncArray<int>(3);
+    public int shots, announced, hidden;
+
+    [ServerRpc(requireOwnership: false)]
+    public void Shoot(RecordedShot shot, string note) => shots++;
+
+    [ObserversRpc]
+    public void Announce(int winner, List<int> scores) => announced++;
+
+    [ObserversRpc, DontRecord]
+    public void Hidden(int value) => hidden++;
 }
 
 [DontRecord]
@@ -350,6 +387,96 @@ public class NetworkRecorderTests
         Assert.That(FirstTick(second), Is.LessThan(TestClockExtension.Offset), "the second file runs on network ticks");
         Assert.That(onNetwork.Exists(m => m.kind == RecordKind.Entity && m.json.Contains("\"name\":\"Recorded")),
             "and has the object that was already spawned:\n" + Dump(onNetwork));
+    }
+
+    [UnityTest]
+    public IEnumerator RecordsCollectionsOwnersObserversRpcsAndBroadcasts()
+    {
+        yield return StartHost(false);
+        var actorPrefab = new GameObject("Actor");
+        actorPrefab.SetActive(false);
+        actorPrefab.AddComponent<RecordedActor>();
+        _created.Add(actorPrefab);
+        _provider.AddRuntimePrefab("recorded-actor", actorPrefab);
+
+        int pings = 0;
+        PlayerBroadcastDelegate<RecordedPing> onPing = (player, data, asServer) => pings++;
+        PlayerBroadcastDelegate<RecordedSecretPing> onSecret = (player, data, asServer) => pings++;
+        _manager.Subscribe(onPing, true);
+        _manager.Subscribe(onSecret, true);
+        _manager.Subscribe(onPing, false);
+
+        _recorder.StartRecording("network-recorder-calls.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+
+        var instance = UnityProxy.Instantiate(actorPrefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+        instance.SetActive(true);
+        _manager.Spawn(instance);
+        var actor = instance.GetComponent<RecordedActor>();
+        yield return WaitUntil(() => actor.isSpawned);
+        yield return Ticks(_manager, 3);
+
+        actor.scores.Add(1, 10);
+        actor.scores[1] = 25;
+        actor.tags.Add(5);
+        actor.orders.Enqueue(3);
+        actor.slots[1] = 9;
+        yield return Ticks(_manager, 2);
+
+        var local = _manager.localPlayer;
+        Assert.That(actor.owner, Is.EqualTo((PlayerID?)local), "the spawner owns it");
+        actor.RemoveOwnership();
+        actor.Shoot(new RecordedShot { weapon = 4, direction = new Vector3(0, 1, 0) }, "first");
+        actor.Announce(77, new List<int> { 1, 2, 3 });
+        actor.Hidden(13);
+        _manager.SendToServer(new RecordedPing { value = 6, text = "up" });
+        _manager.SendToServer(new RecordedSecretPing { value = 99 });
+        _manager.Send(local, new RecordedPing { value = 8, text = "down" });
+        yield return WaitUntil(() => actor.shots == 1 && actor.announced >= 1 && actor.hidden >= 1 && pings >= 3);
+        Assert.That(actor.shots, Is.EqualTo(1), "the ServerRpc ran");
+        Assert.That(pings, Is.GreaterThanOrEqualTo(3), "the broadcasts arrived");
+        yield return Ticks(_manager, 3);
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        _manager.Unsubscribe(onPing, true);
+        _manager.Unsubscribe(onSecret, true);
+        _manager.Unsubscribe(onPing, false);
+
+        var meta = ReadMeta(path);
+        var streams = meta.FindAll(m => m.kind == RecordKind.Stream);
+        foreach (var field in new[] { "scores", "tags", "orders", "slots" })
+            Assert.That(streams.Exists(m => m.json.Contains("\"kind\":\"sync\"") && m.json.Contains($"\"field\":\"{field}\"")),
+                field + " is a sync stream:\n" + Dump(meta));
+
+        Assert.That(streams.FindAll(m => m.json.Contains("\"rpc\":\"RecordedActor.Shoot\"")).Count, Is.EqualTo(1),
+            "one stream for the ServerRpc:\n" + Dump(meta));
+        Assert.That(streams.Exists(m => m.json.Contains("\"rpc\":\"RecordedActor.Shoot\"") && m.json.Contains("\"rpcType\":\"ServerRPC\"")));
+        Assert.That(streams.FindAll(m => m.json.Contains("\"rpc\":\"RecordedActor.Announce\"")).Count, Is.EqualTo(1),
+            "one stream for the ObserversRpc:\n" + Dump(meta));
+        Assert.That(meta.Exists(m => m.json.Contains("Hidden")), Is.False, "a [DontRecord] RPC is not recorded:\n" + Dump(meta));
+        var types = meta.FindAll(m => m.kind == RecordKind.Type);
+        Assert.That(types.Exists(m => m.json.Contains("\"name\":\"RecordedActor.Shoot\"") && m.json.Contains("[\"shot\",\"note\"]")),
+            "the RPC's arguments are named");
+        Assert.That(types.Exists(m => m.json.Contains("\"name\":\"RecordedActor.Announce\"") && m.json.Contains("[\"winner\",\"scores\"]")));
+
+        Assert.That(streams.FindAll(m => m.json.Contains("\"broadcast\":\"RecordedPing\"")).Count, Is.EqualTo(1),
+            "one stream for the broadcast type:\n" + Dump(meta));
+        Assert.That(meta.Exists(m => m.json.Contains("RecordedSecretPing")), Is.False, "a [DontRecord] broadcast is not recorded");
+        Assert.That(streams.Exists(m => m.json.Contains("\"kind\":\"broadcast\"") && m.json.Contains("PurrNet.")), Is.False,
+            "PurrNet's own packets are not recorded as broadcasts:\n" + Dump(meta));
+        Assert.That(streams.Exists(m => m.json.Contains("\"kind\":\"rpc\"") && m.json.Contains("\"rpc\":\"PurrNet.")), Is.False,
+            "PurrNet's own RPCs are not recorded:\n" + Dump(meta));
+
+        var entity = meta.Find(m => m.kind == RecordKind.Entity && m.json.Contains("\"name\":\"Actor"));
+        Assert.That(entity.json, Is.Not.Null, "the actor is an entity:\n" + Dump(meta));
+        int id = EntityId(entity.json);
+        Assert.That(meta.Exists(m => m.kind == RecordKind.Owner && m.json.Contains($"\"entity\":{id},") &&
+                                     m.json.Contains("\"owner\":null")), "the ownership change is recorded:\n" + Dump(meta));
+        Assert.That(meta.Exists(m => m.kind == RecordKind.Observers && m.json.Contains($"\"entity\":{id},") &&
+                                     m.json.Contains($"\"observers\":[{local.id.value}]")), "the observers are recorded:\n" + Dump(meta));
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
 
     static int EntityId(string json)

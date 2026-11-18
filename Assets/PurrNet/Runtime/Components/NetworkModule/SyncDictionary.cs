@@ -60,6 +60,18 @@ namespace PurrNet
 
         private Dictionary<TKey, TValue> _dict = new Dictionary<TKey, TValue>();
 
+        internal override Type recordedType => typeof(Recording.RecordedValue<Dictionary<TKey, TValue>>);
+
+        static readonly bool _recordedOnChange = RecordedPlain(typeof(TKey)) && RecordedPlain(typeof(TValue));
+
+        internal override bool recordedOnChange => _recordedOnChange;
+
+        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
+        {
+            var row = new Recording.RecordedValue<Dictionary<TKey, TValue>> { value = _dict };
+            session.AppendRow(rows, tick, ref row);
+        }
+
         public delegate void SyncDictionaryChanged<Key, Value>(SyncDictionaryChange<Key, Value> change);
 
         /// <summary>
@@ -349,6 +361,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncDictionaryChange<TKey, TValue> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

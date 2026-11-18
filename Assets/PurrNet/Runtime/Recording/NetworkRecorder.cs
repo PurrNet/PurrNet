@@ -18,7 +18,7 @@ namespace PurrNet.Recording
     /// </summary>
     [DefaultExecutionOrder(1000)]
     [AddComponentMenu("PurrNet/Recording/Network Recorder")]
-    public sealed class NetworkRecorder : MonoBehaviour, IRecordingContext
+    public sealed partial class NetworkRecorder : MonoBehaviour, IRecordingContext
     {
         [SerializeField] private NetworkManager _networkManager;
         [Tooltip("Start recording as soon as this machine is the server, in release builds. Never on CI machines (the " +
@@ -103,6 +103,8 @@ namespace PurrNet.Recording
             public readonly List<StreamRows> rows = new List<StreamRows>(4);
             public readonly List<int> polled = new List<int>(4);
             public readonly RecordedLife life = new RecordedLife();
+            public PlayerID? owner;
+            public int observersVersion;
         }
 
         sealed class IdentityComparer : IEqualityComparer<NetworkIdentity>
@@ -393,6 +395,7 @@ namespace PurrNet.Recording
             _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, host);
             foreach (var extension in _extensions)
                 extension.OnRecordingStarted();
+            BeginCalls();
 
             if (_clockAtStart == null)
             {
@@ -421,6 +424,7 @@ namespace PurrNet.Recording
                 return;
             }
 
+            EndCalls();
             if (_tickManager != null)
                 _tickManager.onPostTick -= OnPostTick;
             _tickManager = null;
@@ -550,6 +554,10 @@ namespace PurrNet.Recording
                     }
 
                     _session.RecordTransform(component.data.entity, _source, tick, out _);
+                    if (identity.internalOwnerServer != component.owner)
+                        RecordOwner(component, identity.internalOwnerServer, tick);
+                    if (identity.observersVersion != component.observersVersion)
+                        RecordObservers(component, identity, tick);
                     var modules = component.modules;
                     var rows = component.rows;
                     var life = component.life;
@@ -573,6 +581,27 @@ namespace PurrNet.Recording
             }
 
             _session.DespawnUnseen(_source, tick);
+        }
+
+        void RecordOwner(Component component, PlayerID? owner, ulong tick)
+        {
+            component.owner = owner;
+            var json = _session.json.Clear().BeginObject()
+                .Prop("entity", component.data.entity.id).Prop("component", component.index).Prop("tick", tick).Key("owner");
+            if (owner.HasValue) json.Value(owner.Value.id.value); else json.Null();
+            _session.WriteMeta(RecordKind.Owner, json.EndObject());
+        }
+
+        void RecordObservers(Component component, NetworkIdentity identity, ulong tick)
+        {
+            component.observersVersion = identity.observersVersion;
+            var observers = identity.observers;
+            var json = _session.json.Clear().BeginObject()
+                .Prop("entity", component.data.entity.id).Prop("component", component.index).Prop("tick", tick)
+                .Key("observers").BeginArray();
+            for (int i = 0; i < observers.Count; i++)
+                json.Value(observers[i].id.value);
+            _session.WriteMeta(RecordKind.Observers, json.EndArray().EndObject());
         }
 
         Component Track(NetworkIdentity identity, ulong tick)
@@ -653,6 +682,8 @@ namespace PurrNet.Recording
             component.index = index;
             component.life.changed = true;
             component.life.tick = 0;
+            component.owner = identity.internalOwnerServer;
+            component.observersVersion = identity.observersVersion - 1;
             var excludedFields = RulesOf(identity.GetType()).excludedFields;
             var modules = identity.modules;
             for (int m = 0; m < modules.Count; m++)
@@ -690,8 +721,9 @@ namespace PurrNet.Recording
         void WriteComponent(JsonBuilder json, Component c)
         {
             json.BeginObject().Prop("index", c.index).Prop("type", _session.TypeName(c.identity.GetType()))
-                .Prop("networkId", c.identity.id.HasValue ? (ulong)c.identity.id.Value.id.value : 0)
-                .Key("syncs").BeginArray();
+                .Prop("networkId", c.identity.id.HasValue ? (ulong)c.identity.id.Value.id.value : 0).Key("owner");
+            if (c.owner.HasValue) json.Value(c.owner.Value.id.value); else json.Null();
+            json.Key("syncs").BeginArray();
             for (int m = 0; m < c.modules.Count; m++)
                 json.BeginObject().Prop("module", c.modules[m].index).Prop("field", c.modules[m].name)
                     .Prop("stream", c.rows[m].id).EndObject();

@@ -34,6 +34,8 @@ namespace PurrNet
         {
             var result = default(T);
             Packer<T>.Read(data, ref result);
+            if (Recording.RecordedCalls.receiving != null)
+                Recording.RecordedCalls.BroadcastReceived(playerId, result);
             callback?.Invoke(playerId, result, asServer);
         }
     }

@@ -39,6 +39,8 @@ namespace PurrNet.Codegen
         public RPCSignature Signature;
         public MethodDefinition originalMethod;
         public string ogName;
+        /// <summary>Name the recorder files this RPC's calls under, or null when they are not recorded.</summary>
+        public string recordName;
     }
 
     [UsedImplicitly]
@@ -374,6 +376,89 @@ namespace PurrNet.Codegen
 
             type = default;
             return false;
+        }
+
+        const string DontRecordAttributeName = "PurrNet.Recording.DontRecordAttribute";
+
+        // PurrNet's and PurrDiction's own RPCs are plumbing: what they carry is recorded as state.
+        static bool RecordsRpcs(AssemblyDefinition assembly) =>
+            assembly.Name.Name != "PurrNet.Runtime" && assembly.Name.Name != "PurrNet.Prediction" &&
+            !HasAttribute(assembly.CustomAttributes, DontRecordAttributeName);
+
+        static void AssignRecordNames(DisposableList<RPCMethod> rpcs)
+        {
+            for (var index = 0; index < rpcs.Count; index++)
+            {
+                var rpc = rpcs[index];
+                rpc.recordName = GetRecordName(rpc, rpcs);
+                rpcs[index] = rpc;
+            }
+        }
+
+        static string GetRecordName(RPCMethod rpc, DisposableList<RPCMethod> all)
+        {
+            var method = rpc.originalMethod;
+            if (method.DeclaringType == null || method.HasGenericParameters ||
+                HasAttribute(method.CustomAttributes, DontRecordAttributeName))
+                return null;
+
+            string name = method.DeclaringType.FullName + "." + rpc.ogName;
+            int sameName = 0;
+            for (var i = 0; i < all.Count; i++)
+                if (all[i].ogName == rpc.ogName)
+                    sameName++;
+            if (sameName > 1)
+                name += "(" + string.Join(",", method.Parameters.Select(p => p.ParameterType.Name)) + ")";
+            return name;
+        }
+
+        /// <summary>
+        /// Hands the call to the recorder: RecordedCalls.BeginReceived/BeginSent, one Arg per parameter, End.
+        /// Skipped at run time unless a server recording is running.
+        /// </summary>
+        private static void EmitRecordCall(ModuleDefinition module, ILProcessor code, RPCMethod rpc, bool isStatic,
+            ParameterDefinition info, ParameterDefinition asServer, Func<int, Instruction> loadParameter)
+        {
+            if (rpc.recordName == null)
+                return;
+
+            var calls = module.GetTypeDefinition(typeof(PurrNet.Recording.RecordedCalls));
+            var enabled = calls.GetField("enabled").Import(module);
+            var begin = calls.GetMethod(info != null ? "BeginReceived" : "BeginSent").Import(module);
+            var arg = calls.GetMethod("Arg", true).Import(module);
+            var end = calls.GetMethod("End").Import(module);
+            var skip = Instruction.Create(OpCodes.Nop);
+
+            code.Append(Instruction.Create(OpCodes.Ldsfld, enabled));
+            code.Append(Instruction.Create(OpCodes.Brfalse, skip));
+            code.Append(Instruction.Create(isStatic ? OpCodes.Ldnull : OpCodes.Ldarg_0));
+            code.Append(Instruction.Create(OpCodes.Ldstr, rpc.recordName));
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.type));
+            if (info != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldarg, info));
+                code.Append(Instruction.Create(OpCodes.Ldarg, asServer));
+            }
+            code.Append(Instruction.Create(OpCodes.Call, begin));
+            code.Append(Instruction.Create(OpCodes.Brfalse, skip));
+
+            var parameters = rpc.originalMethod.Parameters;
+            for (var p = 0; p < parameters.Count; p++)
+            {
+                var type = parameters[p].ParameterType;
+                if (type.IsByReference || type.IsPointer ||
+                    (p == parameters.Count - 1 && type.FullName == typeof(RPCInfo).FullName))
+                    continue;
+
+                code.Append(Instruction.Create(OpCodes.Ldstr, parameters[p].Name));
+                code.Append(loadParameter(p));
+                var typedArg = new GenericInstanceMethod(arg);
+                typedArg.GenericArguments.Add(type);
+                code.Append(Instruction.Create(OpCodes.Call, typedArg));
+            }
+
+            code.Append(Instruction.Create(OpCodes.Call, end));
+            code.Append(skip);
         }
 
         private static void HandleRPCReceiver(ModuleDefinition module, TypeDefinition type,
@@ -801,12 +886,14 @@ namespace PurrNet.Codegen
             var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
 
             bool useDeltaPacking = rpcPacker != null;
+            var parameterVariables = new VariableDefinition[originalMethod.Parameters.Count];
 
             for (var p = 0; p < originalMethod.Parameters.Count; p++)
             {
                 var param = originalMethod.Parameters[p];
                 var variable = new VariableDefinition(param.ParameterType);
                 newMethod.Body.Variables.Add(variable);
+                parameterVariables[p] = variable;
 
                 if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out var specialType))
                 {
@@ -861,6 +948,9 @@ namespace PurrNet.Codegen
                     code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
                 }
             }
+
+            EmitRecordCall(module, code, rpcMethod, newMethod.IsStatic, info, newMethod.Parameters[2],
+                p => Instruction.Create(OpCodes.Ldloc, parameterVariables[p]));
 
             if (!originalMethod.IsStatic)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
@@ -2260,6 +2350,9 @@ namespace PurrNet.Codegen
 
             PushRPCSignature(module, code, methodRpc, false, isNetworkClass);
             code.Append(Instruction.Create(OpCodes.Stloc, rpcSignature));
+
+            EmitRecordCall(module, code, methodRpc, newMethod.IsStatic, null, null,
+                p => Instruction.Create(OpCodes.Ldarg, newMethod.Parameters[p]));
 
             var playerType = module.GetTypeDefinition<PlayerID>().Import(module);
             var disposableListType = module.GetTypeDefinition(typeof(DisposableList<>)).Import(module);
@@ -4284,6 +4377,9 @@ namespace PurrNet.Codegen
 
                         if (inheritsFromNetworkIdentity || inheritsFromNetworkClass)
                             typesToGenerateSerializer.Add(type);
+
+                        if (RecordsRpcs(assemblyDefinition))
+                            AssignRecordNames(_rpcMethods);
 
                         profile?.AddCounter("rpcCount", _rpcMethods.Count);
                         for (var index = 0; index < _rpcMethods.Count; index++)
