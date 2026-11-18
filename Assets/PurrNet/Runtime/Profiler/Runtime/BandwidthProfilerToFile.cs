@@ -62,14 +62,15 @@ namespace PurrNet
 
             int removed = 0;
 
-            while (removed < targetBytesToRemove)
+            // Each entry is a BinaryWriter.Write(int) length prefix (little-endian) followed by the payload.
+            while (removed < targetBytesToRemove && _writer.BaseStream.Length - _writer.BaseStream.Position >= 4)
             {
                 var a = _writer.BaseStream.ReadByte();
                 var b = _writer.BaseStream.ReadByte();
                 var c = _writer.BaseStream.ReadByte();
                 var d = _writer.BaseStream.ReadByte();
 
-                var length = (a << 24) | (b << 16) | (c << 8) | d;
+                var length = a | (b << 8) | (c << 16) | (d << 24);
                 removed += length + 4;
 
                 _writer.BaseStream.Seek(length, SeekOrigin.Current);
