@@ -116,7 +116,7 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1ClientSample.html">ClientSample</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1DontRecordAttribute.html">DontRecordAttribute</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps a network identity class, or one sync field of it, out of recordings: plumbing that is not game state (PurrDiction's PredictionManager, whose data is recorded as predicted state and input instead).   <a href="classPurrNet_1_1Recording_1_1DontRecordAttribute.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps a network identity class, one sync field or RPC of it, a broadcast type, or every RPC of an assembly out of recordings: plumbing that is not game state (PurrDiction's PredictionManager, whose data is recorded as predicted state and input instead).   <a href="classPurrNet_1_1Recording_1_1DontRecordAttribute.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1DontRecordUI.html">DontRecordUI</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Keeps the UI on and below this object out of recordings: uGUI graphics under it, and the whole document when it sits on a UIDocument. For part of a UI Toolkit document, give the element the USS class <a class="el" href="classPurrNet_1_1Recording_1_1DontRecordUI.html#adde53649eb1f5b110bdae6cbb43253fc" title="USS class that keeps a UI Toolkit element and everything inside it out of recordings.">UssClass</a> instead.   <a href="classPurrNet_1_1Recording_1_1DontRecordUI.html#details">More...</a><br /></td></tr>
@@ -128,6 +128,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Recording_1_1IElementPlan.html">IElementPlan</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1InlineListWriter.html">InlineListWriter</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1InputActionSample.html">InputActionSample</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">One row of the "actions" stream: an Input System action by name, written when it is first seen (and again at the start of every chunk) and whenever its value or phase changes. Unlike raw keys it means the same thing for every player, whatever they bound it to.   <a href="structPurrNet_1_1Recording_1_1InputActionSample.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">interface &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="interfacePurrNet_1_1Recording_1_1IRecordingContext.html">IRecordingContext</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The clocks and identity of the machine a session runs on.  <a href="interfacePurrNet_1_1Recording_1_1IRecordingContext.html#details">More...</a><br /></td></tr>
@@ -158,6 +161,14 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RawInputSample.html">RawInputSample</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">What the player's devices did during one tick (the format spec, "The input stream"). Fixed size and unmanaged: a row costs nothing to write.   <a href="structPurrNet_1_1Recording_1_1RawInputSample.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedBroadcast.html">RecordedBroadcast</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">One broadcast the server received from a player or sent.  <a href="structPurrNet_1_1Recording_1_1RecordedBroadcast.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><b>RecordedBroadcastType</b></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><b>RecordedCalls</b></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Where generated RPC code and the broadcast module hand the calls the server sees to the recorder. Every entry point is a no-op unless a recording is running on this machine as the server.  <br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedColliderPose.html">RecordedColliderPose</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordedEntity.html">RecordedEntity</a></td></tr>
@@ -166,6 +177,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPurrNet_1_1Recording_1_1RecordedLife.html">RecordedLife</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedPlayerTick.html">RecordedPlayerTick</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedRpc.html">RecordedRpc</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">One RPC the server received or sent. <code>args</code> holds the arguments by parameter name.  <a href="structPurrNet_1_1Recording_1_1RecordedRpc.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPurrNet_1_1Recording_1_1RecordedStreamInfo.html">RecordedStreamInfo</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>

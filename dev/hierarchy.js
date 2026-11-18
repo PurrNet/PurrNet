@@ -300,6 +300,7 @@ var hierarchy =
     [ "InlineListWriter", null, [
       [ "PurrNet.Recording.InlineListWriter< TList, T >", "classPurrNet_1_1Recording_1_1InlineListWriter.html", null ]
     ] ],
+    [ "PurrNet.Recording.InputActionSample", "structPurrNet_1_1Recording_1_1InputActionSample.html", null ],
     [ "PurrNet.Interpolated< T >", "classPurrNet_1_1Interpolated.html", null ],
     [ "PurrNet.Interpolated< PurrNet.QuaternionWithParent >", "classPurrNet_1_1Interpolated.html", null ],
     [ "PurrNet.Interpolated< PurrNet.ScaleWithParent >", "classPurrNet_1_1Interpolated.html", null ],
@@ -593,10 +594,12 @@ var hierarchy =
     [ "PurrNet.Modules.PurrSceneSettings", "structPurrNet_1_1Modules_1_1PurrSceneSettings.html", null ],
     [ "PurrNet.QuaternionWithParent", "structPurrNet_1_1QuaternionWithParent.html", null ],
     [ "PurrNet.Recording.RawInputSample", "structPurrNet_1_1Recording_1_1RawInputSample.html", null ],
+    [ "PurrNet.Recording.RecordedBroadcast< T >", "structPurrNet_1_1Recording_1_1RecordedBroadcast.html", null ],
     [ "PurrNet.Recording.RecordedColliderPose", "structPurrNet_1_1Recording_1_1RecordedColliderPose.html", null ],
     [ "PurrNet.Recording.RecordedEntity", "classPurrNet_1_1Recording_1_1RecordedEntity.html", null ],
     [ "PurrNet.Recording.RecordedLife", "classPurrNet_1_1Recording_1_1RecordedLife.html", null ],
     [ "PurrNet.Recording.RecordedPlayerTick", "structPurrNet_1_1Recording_1_1RecordedPlayerTick.html", null ],
+    [ "PurrNet.Recording.RecordedRpc", "structPurrNet_1_1Recording_1_1RecordedRpc.html", null ],
     [ "PurrNet.Recording.RecordedStreamInfo", "structPurrNet_1_1Recording_1_1RecordedStreamInfo.html", null ],
     [ "PurrNet.Recording.RecordedTimer", "structPurrNet_1_1Recording_1_1RecordedTimer.html", null ],
     [ "PurrNet.Recording.RecordedTransform", "structPurrNet_1_1Recording_1_1RecordedTransform.html", null ],
