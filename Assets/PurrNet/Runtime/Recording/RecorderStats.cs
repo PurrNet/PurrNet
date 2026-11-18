@@ -49,6 +49,22 @@ namespace PurrNet.Recording
         readonly Stopwatch _clock = Stopwatch.StartNew();
         int _collectionsAtStart;
 
+        /// <summary>
+        /// The slowest tick, and the slowest one once the recording has settled: what each section took in it.
+        /// </summary>
+        sealed class Slowest
+        {
+            public double ms;
+            public int tick;
+            public bool collected;
+            public double[] sections = new double[0];
+        }
+
+        const int SettledAfterTicks = 20;
+        readonly Slowest _slowest = new Slowest(), _slowestSettled = new Slowest();
+        int _commits;
+        int _collectionsAtTick;
+
         readonly string _prefix;
 
         public bool enabled;
@@ -78,6 +94,8 @@ namespace PurrNet.Recording
             section.marker.Begin();
             if (!enabled)
                 return;
+            if (ReferenceEquals(section, _sections[0]))
+                _collectionsAtTick = GC.CollectionCount(0);
             section.startCounted = _counted ? _gcAllocated.CurrentValue : 0;
             section.startMemory = file != null && file.busy ? -1 : GC.GetTotalMemory(false);
             section.start = _clock.ElapsedTicks;
@@ -110,6 +128,13 @@ namespace PurrNet.Recording
         {
             if (!enabled)
                 return;
+            if (_sections[0].touched)
+            {
+                _commits++;
+                Note(_slowest);
+                if (_commits > SettledAfterTicks)
+                    Note(_slowestSettled);
+            }
             foreach (var s in _sections)
             {
                 if (!s.touched)
@@ -143,8 +168,34 @@ namespace PurrNet.Recording
             }
         }
 
+        void Note(Slowest slowest)
+        {
+            double ms = _sections[0].pendingMs;
+            if (ms <= slowest.ms)
+                return;
+            slowest.ms = ms;
+            slowest.tick = _commits;
+            slowest.collected = GC.CollectionCount(0) != _collectionsAtTick;
+            if (slowest.sections.Length != _sections.Count)
+                slowest.sections = new double[_sections.Count];
+            for (int i = 0; i < _sections.Count; i++)
+                slowest.sections[i] = _sections[i].touched ? _sections[i].pendingMs : 0;
+        }
+
+        void Describe(StringBuilder text, string title, Slowest slowest)
+        {
+            if (slowest.ms <= 0)
+                return;
+            text.Append($"\n  {title}: tick {slowest.tick}, {slowest.ms:0.000}ms{(slowest.collected ? ", a garbage collection ran during it" : "")}:");
+            for (int i = 1; i < _sections.Count; i++)
+                if (slowest.sections[i] >= 0.0005)
+                    text.Append($" {_sections[i].name.Trim()} {slowest.sections[i]:0.000}");
+        }
+
         public void Reset()
         {
+            _commits = 0;
+            _slowest.ms = _slowestSettled.ms = 0;
             foreach (var s in _sections)
             {
                 Array.Clear(s.histogram, 0, s.histogram.Length);
@@ -191,6 +242,8 @@ namespace PurrNet.Recording
                             $"total={s.sumMs:0}ms heapGrowth={s.allocated / 1024.0:0.0}KiB in {s.ticksWithAllocation} ticks (writer idle)" +
                             (_counted ? $" gcAlloc={s.counted / 1024.0:0.0}KiB in {s.ticksWithCounted} ticks" : ""));
             }
+            Describe(text, "slowest tick", _slowest);
+            Describe(text, $"slowest tick after the first {SettledAfterTicks}", _slowestSettled);
             text.Append($"\n  GC collections during the recording (whole game): {GC.CollectionCount(0) - _collectionsAtStart}");
             if (_counted)
             {

@@ -55,6 +55,16 @@
             "define": "UNITY_ANIMATION"
         },
         {
+            "name": "com.unity.modules.particlesystem",
+            "expression": "",
+            "define": "PURRNET_PARTICLES"
+        },
+        {
+            "name": "com.unity.modules.audio",
+            "expression": "",
+            "define": "PURRNET_AUDIO"
+        },
+        {
             "name": "com.unity.ugui",
             "expression": "",
             "define": "PURRNET_UGUI"

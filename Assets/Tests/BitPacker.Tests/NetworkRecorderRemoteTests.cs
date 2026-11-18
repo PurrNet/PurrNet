@@ -176,4 +176,92 @@ public class NetworkRecorderRemoteTests
 
         Assert.That(RecordedCalls.enabled, Is.False, "nothing is handed to a stopped recorder");
     }
+
+    NetworkRecorder AddRecorder(NetworkManager manager)
+    {
+        var recorder = manager.gameObject.AddComponent<NetworkRecorder>();
+        Set(recorder, "_recordOnServer", false);
+        Set(recorder, "_recordInEditor", true);
+        Set(recorder, "_recordCamera", false);
+        Set(recorder, "_recordInput", false);
+        Set(recorder, "_recordUI", false);
+        Set(recorder, "_upload", false);
+        Set(recorder, "_directory", Path.GetFullPath(Path.Combine(Application.dataPath, "../test-results/recorder-tests")));
+        Set(recorder, "_networkManager", manager);
+        return recorder;
+    }
+
+    [UnityTest]
+    public IEnumerator AClientRecordsTheEffectsItPlaysInItsPart()
+    {
+        var shot = AudioClip.Create("Shot", 22050, 1, 44100, false);
+        _created.Add(shot);
+        _prefab = new GameObject("RemoteActor");
+        _prefab.SetActive(false);
+        _prefab.AddComponent<RecordedActor>();
+        var main = _prefab.AddComponent<ParticleSystem>().main;
+        main.playOnAwake = false;
+        var gun = _prefab.AddComponent<AudioSource>();
+        gun.playOnAwake = false;
+        gun.clip = shot;
+        _created.Add(_prefab);
+
+        var clientTransport = CreateManager("RecorderRemoteClient", out _client);
+        var serverTransport = CreateManager("RecorderRemoteServer", out _server);
+        serverTransport.peer = clientTransport;
+        clientTransport.peer = serverTransport;
+        var clientRecorder = AddRecorder(_client);
+        _recorder = AddRecorder(_server);
+
+        ClearMainInstance();
+        _client.gameObject.SetActive(true);
+        ClearMainInstance();
+        _server.gameObject.SetActive(true);
+        NetworkManager.SetMainInstance(_server);
+
+        _server.StartServer();
+        yield return WaitUntil(() => _server.serverState == ConnectionState.Connected);
+        _client.StartClient();
+        yield return WaitUntil(() => _client.isLocalPlayerReady && _server.players.Count == 1);
+        Assert.That(_client.isLocalPlayerReady && _server.players.Count == 1, Is.True, "the client joined");
+        yield return Ticks(_server, 3);
+
+        _recorder.StartRecording("network-recorder-remote-effects.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+
+        var serverCopy = Object.Instantiate(_prefab).GetComponent<RecordedActor>();
+        serverCopy.gameObject.SetActive(true);
+        _server.Spawn(serverCopy.gameObject);
+        RecordedActor clientCopy = null;
+        yield return WaitUntil(() => (clientCopy = ClientCopy(serverCopy)) != null);
+        Assert.That(clientCopy, Is.Not.Null, "the client spawned its copy");
+        yield return Ticks(_client, 4);
+
+        clientCopy.gameObject.SetActive(true);
+        clientCopy.GetComponent<ParticleSystem>().Play();
+        clientCopy.GetComponent<AudioSource>().PlayOneShot(shot);
+        AudioSource.PlayClipAtPoint(shot, new Vector3(7, 8, 9));
+        yield return Ticks(_client, 6);
+
+        string partPath = clientRecorder.session.currentPath;
+        Assert.That(clientRecorder.session.isPart, Is.True, "the client writes a part");
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        yield return WaitUntil(() => !clientRecorder.session.isPart && File.Exists(partPath) && new FileInfo(partPath).Length > 0);
+
+        var part = NetworkRecorderTests.ReadMeta(partPath);
+        string dump = NetworkRecorderTests.Dump(part);
+        ulong networkId = serverCopy.id!.Value.id.value;
+        Assert.That(part.Exists(m => m.kind == RecordKind.Effects && m.json.Contains($"\"networkId\":{networkId},") &&
+                                     m.json.Contains("\"clip\":\"Shot\"")), "the part names the object's effects by its network id:\n" + dump);
+        foreach (var stream in new[] { "effect.particles", "effect.audio" })
+            Assert.That(part.Exists(m => m.kind == RecordKind.Stream && m.json.Contains($"\"sample\":\"{stream}\"")),
+                stream + " is one of the player's streams:\n" + dump);
+        Assert.That(part.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no errors in the part");
+
+        var server = NetworkRecorderTests.ReadMeta(path);
+        Assert.That(server.Exists(m => m.kind == RecordKind.Effects && m.json.Contains("\"object\":")), Is.False,
+            "a dedicated server does not follow what only a client plays:\n" + NetworkRecorderTests.Dump(server));
+    }
 }

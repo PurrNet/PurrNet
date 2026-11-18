@@ -133,8 +133,40 @@ namespace PurrNet.Recording
             Array.Reverse(_out.data, start, _out.length - start);
         }
 
+        /// <summary>
+        /// Most numbers in records are whole or were rounded to four decimals: those are written digit by digit,
+        /// which is the text the general formatter gives them, many times faster. Below 1000 no two numbers of four
+        /// decimals share a float, so the digits found are the shortest that read back the same.
+        /// </summary>
         void Float(float value)
         {
+            float size = value < 0 ? -value : value;
+            if (size < 1000f && (value != 0 || 1f / value > 0))
+            {
+                long digits = (long)((double)size * 10000.0 + 0.5);
+                if ((float)(digits / 10000.0) == size)
+                {
+                    _out.Ensure(12);
+                    if (value < 0)
+                        _out.data[_out.length++] = (byte)'-';
+                    long whole = digits / 10000;
+                    int fraction = (int)(digits % 10000);
+                    if (whole >= 100) _out.data[_out.length++] = (byte)('0' + whole / 100);
+                    if (whole >= 10) _out.data[_out.length++] = (byte)('0' + whole / 10 % 10);
+                    _out.data[_out.length++] = (byte)('0' + whole % 10);
+                    if (fraction != 0)
+                    {
+                        _out.data[_out.length++] = (byte)'.';
+                        for (int scale = 1000; fraction != 0; scale /= 10)
+                        {
+                            _out.data[_out.length++] = (byte)('0' + fraction / scale);
+                            fraction %= scale;
+                        }
+                    }
+                    return;
+                }
+            }
+
             Span<char> chars = stackalloc char[32];
             if (!value.TryFormat(chars, out int written, "R", CultureInfo.InvariantCulture))
             {

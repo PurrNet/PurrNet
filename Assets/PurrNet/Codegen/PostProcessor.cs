@@ -4247,7 +4247,8 @@ namespace PurrNet.Codegen
                         }
 
                         using (profile?.Measure(IlppProfile.Phase.ProxyScan))
-                            UnityProxyProcessor.Process(types[t], messages);
+                            UnityProxyProcessor.Process(types[t], messages, RecordsRpcs(assemblyDefinition),
+                                assemblyDefinition.Name.Name != "PurrNet.Runtime");
                         using (profile?.Measure(IlppProfile.Phase.SerializerRegistration))
                             RegisterSerializersProcessor.HandleType(types[t], module, types[t], typesToIgnoreForDelta,
                                 typesToIgnoreForSerialization);

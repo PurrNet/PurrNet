@@ -396,6 +396,10 @@ public class NetworkRecorderTests
         var actorPrefab = new GameObject("Actor");
         actorPrefab.SetActive(false);
         actorPrefab.AddComponent<RecordedActor>();
+        var actorMesh = new Mesh { name = "ActorBody", vertices = new[] { Vector3.zero, Vector3.up, Vector3.right }, triangles = new[] { 0, 1, 2 } };
+        _created.Add(actorMesh);
+        actorPrefab.AddComponent<MeshFilter>().sharedMesh = actorMesh;
+        actorPrefab.AddComponent<MeshRenderer>();
         _created.Add(actorPrefab);
         _provider.AddRuntimePrefab("recorded-actor", actorPrefab);
 
@@ -476,6 +480,540 @@ public class NetworkRecorderTests
                                      m.json.Contains("\"owner\":null")), "the ownership change is recorded:\n" + Dump(meta));
         Assert.That(meta.Exists(m => m.kind == RecordKind.Observers && m.json.Contains($"\"entity\":{id},") &&
                                      m.json.Contains($"\"observers\":[{local.id.value}]")), "the observers are recorded:\n" + Dump(meta));
+        Assert.That(meta.FindAll(m => m.kind == RecordKind.Renderers && m.json.Contains($"\"entity\":{id},")).Count, Is.EqualTo(1),
+            "what the entity is drawn with is written once, not on every check:\n" + Dump(meta));
+        Assert.That(meta.Exists(m => m.kind == RecordKind.Renderers && m.json.Contains("\"kind\":\"mesh\"") &&
+                                     m.json.Contains("\"mesh\":\"ActorBody\"")), "with the mesh by name:\n" + Dump(meta));
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+    }
+
+    Mesh Grid(string name, int side, bool wide)
+    {
+        var vertices = new Vector3[side * side];
+        for (int z = 0; z < side; z++)
+            for (int x = 0; x < side; x++)
+                vertices[z * side + x] = new Vector3(x * 0.5f, Mathf.Sin(x * 0.3f + z * 0.7f), z * 0.5f);
+        var first = new List<int>();
+        var second = new List<int>();
+        for (int z = 0; z < side - 1; z++)
+            for (int x = 0; x < side - 1; x++)
+            {
+                int a = z * side + x;
+                var into = z < side / 2 ? first : second;
+                into.AddRange(new[] { a, a + side, a + 1, a + 1, a + side, a + side + 1 });
+            }
+        var mesh = new Mesh { name = name, indexFormat = wide ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16 };
+        mesh.vertices = vertices;
+        mesh.subMeshCount = 2;
+        mesh.SetTriangles(first, 0);
+        mesh.SetTriangles(second, 1);
+        mesh.RecalculateBounds();
+        _created.Add(mesh);
+        return mesh;
+    }
+
+    IEnumerator RecordMeshColliders(bool fromGpu, string file)
+    {
+        yield return StartHost(false);
+        var meshes = new[] { Grid("SmallGrid", 20, false), Grid("LargeGrid", 300, true) };
+        var prefabs = new List<GameObject>();
+        foreach (var mesh in meshes)
+        {
+            mesh.UploadMeshData(false);
+            var prefab = new GameObject(mesh.name + "Piece");
+            prefab.SetActive(false);
+            prefab.AddComponent<RecordedPlumbingFree>();
+            prefab.AddComponent<MeshCollider>().sharedMesh = mesh;
+            _created.Add(prefab);
+            _provider.AddRuntimePrefab(prefab.name, prefab);
+            prefabs.Add(prefab);
+        }
+
+        RecordingSession.forceGpuMeshRead = fromGpu;
+        try
+        {
+            _recorder.StartRecording(file);
+            Assert.That(_recorder.isRecording, Is.True, "recording started");
+            foreach (var prefab in prefabs)
+            {
+                var instance = UnityProxy.Instantiate(prefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+                instance.SetActive(true);
+                _manager.Spawn(instance);
+            }
+            yield return Ticks(_manager, 3);
+            yield return WaitUntil(() => _recorder.session.pendingMeshes == 0);
+            yield return Ticks(_manager, 25);
+        }
+        finally
+        {
+            RecordingSession.forceGpuMeshRead = false;
+        }
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+
+        var meta = ReadMeta(path);
+        var recorded = ReadMeshes(path);
+        foreach (var mesh in meshes)
+        {
+            Assert.That(recorded.ContainsKey(mesh.name), mesh.name + " was recorded: " + string.Join(", ", recorded.Keys) + "\n" + Dump(meta));
+            var (id, vertices, indices) = recorded[mesh.name];
+            Assert.That(vertices, Is.EqualTo(mesh.vertices), mesh.name + " vertices");
+            Assert.That(indices, Is.EqualTo(mesh.triangles), mesh.name + " indices, sub-meshes in order");
+            Assert.That(meta.Exists(m => m.kind == RecordKind.Colliders && m.json.Contains("\"shape\":\"mesh\"") && m.json.Contains($"\"mesh\":{id},")),
+                mesh.name + " is what its collider refers to:\n" + Dump(meta));
+        }
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+    }
+
+    [UnityTest]
+    public IEnumerator ColliderMeshesAreRecordedExactly()
+    {
+        yield return RecordMeshColliders(false, "network-recorder-meshes.purrrec");
+    }
+
+    [UnityTest]
+    public IEnumerator ColliderMeshesReadBackFromTheGpuAreRecordedExactly()
+    {
+        if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null || !SystemInfo.supportsAsyncGPUReadback)
+            Assert.Ignore("needs a graphics device: run without -nographics");
+        yield return RecordMeshColliders(true, "network-recorder-meshes-gpu.purrrec");
+    }
+
+    /// <summary>The MESH records of a recording by mesh name: id, vertices and triangle indices.</summary>
+    static Dictionary<string, (int id, Vector3[] vertices, int[] indices)> ReadMeshes(string path)
+    {
+        var data = File.ReadAllBytes(path);
+        var result = new Dictionary<string, (int, Vector3[], int[])>();
+        ReadMeshes(data, 10, data.Length, result);
+        return result;
+    }
+
+    static ulong VarUInt(byte[] data, ref int pos)
+    {
+        ulong value = 0;
+        int shift = 0;
+        while (true)
+        {
+            byte b = data[pos++];
+            value |= (ulong)(b & 0x7F) << shift;
+            if (b < 0x80)
+                return value;
+            shift += 7;
+        }
+    }
+
+    static void ReadMeshes(byte[] data, int pos, int end, Dictionary<string, (int, Vector3[], int[])> into)
+    {
+        while (pos < end)
+        {
+            byte kind = data[pos++];
+            int length = (int)VarUInt(data, ref pos);
+            var payload = new byte[length];
+            System.Array.Copy(data, pos, payload, 0, length);
+            pos += length;
+            if ((kind & 0x80) != 0)
+            {
+                using var input = new MemoryStream(payload);
+                using var deflate = new DeflateStream(input, CompressionMode.Decompress);
+                using var output = new MemoryStream();
+                deflate.CopyTo(output);
+                payload = output.ToArray();
+            }
+            var k = (RecordKind)(kind & 0x7F);
+            if (k == RecordKind.Batch)
+                ReadMeshes(payload, 0, payload.Length, into);
+            else if (k == RecordKind.Mesh)
+            {
+                int at = 0;
+                int id = (int)VarUInt(payload, ref at);
+                int nameLength = (int)VarUInt(payload, ref at);
+                string name = Encoding.UTF8.GetString(payload, at, nameLength);
+                at += nameLength;
+                var vertices = new Vector3[(int)VarUInt(payload, ref at)];
+                for (int i = 0; i < vertices.Length; i++, at += 12)
+                    vertices[i] = new Vector3(System.BitConverter.ToSingle(payload, at), System.BitConverter.ToSingle(payload, at + 4), System.BitConverter.ToSingle(payload, at + 8));
+                var indices = new int[(int)VarUInt(payload, ref at)];
+                for (int i = 0; i < indices.Length; i++, at += 4)
+                    indices[i] = System.BitConverter.ToInt32(payload, at);
+                Assert.That(at, Is.EqualTo(payload.Length), "the MESH record has nothing after its indices");
+                into[name] = (id, vertices, indices);
+            }
+        }
+    }
+
+#if UNITY_EDITOR
+    [UnityTest]
+    public IEnumerator RecordsAnimationParticlesAndSound()
+    {
+        const string controllerPath = "Assets/__RecorderEffectsTest.controller";
+        var controller = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
+        foreach (var name in new[] { "IdleClip", "RunClip" })
+        {
+            var motion = new AnimationClip { name = name };
+            motion.SetCurve("", typeof(Transform), "localScale.x", AnimationCurve.Linear(0, 1, 1, 1));
+            UnityEditor.AssetDatabase.AddObjectToAsset(motion, controller);
+            controller.AddMotion(motion);
+        }
+        var complaints = new List<string>();
+        Application.LogCallback onLog = (text, stack, type) =>
+        {
+            if (type != LogType.Log)
+                complaints.Add(text);
+        };
+        Application.logMessageReceived += onLog;
+        try
+        {
+            yield return StartHost(false);
+            var prefab = new GameObject("EffectActor");
+            prefab.SetActive(false);
+            prefab.AddComponent<RecordedPlumbingFree>();
+            GameObject Child(string name)
+            {
+                var child = new GameObject(name);
+                child.transform.SetParent(prefab.transform, false);
+                return child;
+            }
+            Child("Body").AddComponent<Animator>().runtimeAnimatorController = controller;
+            Child("Empty").AddComponent<Animator>();
+            var main = Child("Muzzle").AddComponent<ParticleSystem>().main;
+            main.playOnAwake = false;
+            main.loop = false;
+            var shot = AudioClip.Create("Shot", 44100, 1, 44100, false);
+            _created.Add(shot);
+            var gun = Child("Gun").AddComponent<AudioSource>();
+            gun.playOnAwake = false;
+            gun.clip = shot;
+            _created.Add(prefab);
+            _provider.AddRuntimePrefab(prefab.name, prefab);
+
+            _recorder.StartRecording("network-recorder-effects.purrrec");
+            Assert.That(_recorder.isRecording, Is.True, "recording started");
+            var instance = UnityProxy.Instantiate(prefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+            instance.SetActive(true);
+            _manager.Spawn(instance);
+            var animator = instance.transform.Find("Body").GetComponent<Animator>();
+            var particles = instance.GetComponentInChildren<ParticleSystem>();
+            var source = instance.GetComponentInChildren<AudioSource>();
+            yield return Ticks(_manager, 5);
+
+            animator.CrossFadeInFixedTime("RunClip", 0.2f);
+            particles.Play();
+            source.Play();
+            yield return Ticks(_manager, 12);
+            bool audible = source.isPlaying;
+            particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            source.Stop();
+            animator.Play("IdleClip", 0, 0f);
+            yield return Ticks(_manager, 5);
+            animator.gameObject.SetActive(false);
+            yield return Ticks(_manager, 5);
+            animator.gameObject.SetActive(true);
+            yield return Ticks(_manager, 5);
+            animator.enabled = false;
+            yield return Ticks(_manager, 3);
+            animator.enabled = true;
+            yield return Ticks(_manager, 3);
+            animator.runtimeAnimatorController = null;
+            yield return Ticks(_manager, 3);
+            animator.runtimeAnimatorController = controller;
+            yield return Ticks(_manager, 3);
+
+            string path = _recorder.currentPath;
+            _recorder.StopRecording();
+            yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+
+            var meta = ReadMeta(path);
+            var effects = meta.FindAll(m => m.kind == RecordKind.Effects);
+            Assert.That(effects.Count, Is.EqualTo(1), "one EFFECTS record, for the one object that has any:\n" + Dump(meta));
+            string json = effects[0].json;
+            Assert.That(json, Does.Contain("\"name\":\"Body\",\"controller\":\"__RecorderEffectsTest\",\"layers\":1"), json);
+            Assert.That(json, Does.Contain("\"name\":\"Empty\",\"controller\":null,\"layers\":0"), json);
+            Assert.That(json, Does.Contain("\"name\":\"Muzzle\",\"loop\":false"), json);
+            Assert.That(json, Does.Contain("\"name\":\"Gun\",\"clip\":\"Shot\""), json);
+            var streams = meta.FindAll(m => m.kind == RecordKind.Stream);
+            Assert.That(streams.FindAll(m => m.json.Contains("\"effect\":\"animation\"")).Count, Is.EqualTo(1), Dump(meta));
+            Assert.That(streams.FindAll(m => m.json.Contains("\"effect\":\"particles\"")).Count, Is.EqualTo(1), Dump(meta));
+            if (audible)
+                Assert.That(streams.FindAll(m => m.json.Contains("\"effect\":\"audio\"")).Count, Is.EqualTo(1), Dump(meta));
+            else
+                Debug.Log("no audio device: the audio stream was not checked");
+            Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+            Assert.That(complaints, Is.Empty, "asking about effects never makes the engine complain");
+        }
+        finally
+        {
+            Application.logMessageReceived -= onLog;
+            UnityEditor.AssetDatabase.DeleteAsset(controllerPath);
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator RecordsEffectsTheGameStartsItself()
+    {
+        const string controllerPath = "Assets/__RecorderEffectsTest.controller";
+        var controller = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(controllerPath);
+        var idle = new AnimationClip { name = "IdleClip" };
+        idle.SetCurve("", typeof(Transform), "localScale.x", AnimationCurve.Linear(0, 1, 1, 1));
+        UnityEditor.AssetDatabase.AddObjectToAsset(idle, controller);
+        controller.AddMotion(idle);
+        controller.AddParameter("Fire", AnimatorControllerParameterType.Trigger);
+        var complaints = new List<string>();
+        Application.LogCallback onLog = (text, stack, type) =>
+        {
+            if (type != LogType.Log)
+                complaints.Add(text);
+        };
+        Application.logMessageReceived += onLog;
+        try
+        {
+            yield return StartHost(false);
+            AudioClip Clip(string name)
+            {
+                var clip = AudioClip.Create(name, 22050, 1, 44100, false);
+                _created.Add(clip);
+                return clip;
+            }
+            var shot = Clip("Shot");
+            var ricochet = Clip("Ricochet");
+            var boom = Clip("Boom");
+
+            var prefab = new GameObject("WovenActor");
+            prefab.SetActive(false);
+            prefab.AddComponent<RecordedPlumbingFree>();
+            prefab.AddComponent<Animator>().runtimeAnimatorController = controller;
+            var muzzleMain = prefab.AddComponent<ParticleSystem>().main;
+            muzzleMain.playOnAwake = false;
+            var gun = prefab.AddComponent<AudioSource>();
+            gun.playOnAwake = false;
+            gun.clip = shot;
+            _created.Add(prefab);
+            _provider.AddRuntimePrefab(prefab.name, prefab);
+
+            var explosion = new GameObject("Explosion");
+            explosion.SetActive(false);
+            explosion.AddComponent<ParticleSystem>();
+            var blast = new GameObject("Blast");
+            blast.transform.SetParent(explosion.transform, false);
+            blast.AddComponent<AudioSource>().clip = boom;
+            _created.Add(explosion);
+
+            var music = new GameObject("Music");
+            _created.Add(music);
+            var musicSource = music.AddComponent<AudioSource>();
+            musicSource.playOnAwake = false;
+            musicSource.loop = true;
+            musicSource.clip = Clip("Theme");
+
+            _recorder.StartRecording("network-recorder-woven.purrrec");
+            Assert.That(_recorder.isRecording, Is.True, "recording started");
+            var instance = UnityProxy.Instantiate(prefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+            instance.SetActive(true);
+            _manager.Spawn(instance);
+            var animator = instance.GetComponent<Animator>();
+            var particles = instance.GetComponent<ParticleSystem>();
+            var source = instance.GetComponent<AudioSource>();
+            yield return Ticks(_manager, 4);
+
+            source.PlayOneShot(ricochet, 0.5f);
+            AudioSource.PlayClipAtPoint(boom, new Vector3(1, 2, 3));
+            particles.Emit(5);
+            animator.SetTrigger("Fire");
+            musicSource.Play();
+            var fx = Object.Instantiate(explosion, new Vector3(4, 5, 6), Quaternion.identity);
+            fx.SetActive(true);
+            _created.Add(fx);
+            yield return Ticks(_manager, 6);
+            Object.DestroyImmediate(fx);
+            musicSource.Stop();
+            yield return Ticks(_manager, 4);
+
+            string path = _recorder.currentPath;
+            _recorder.StopRecording();
+            yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+
+            var meta = ReadMeta(path);
+            var effects = meta.FindAll(m => m.kind == RecordKind.Effects);
+            Assert.That(effects.Exists(m => m.json.Contains("\"entity\":") && m.json.Contains("\"name\":\"WovenActor(Clone)\",\"clip\":\"Shot\"")),
+                "the spawned object's effects:\n" + Dump(meta));
+            var local = effects.Find(m => m.json.Contains("\"name\":\"Explosion(Clone)\""));
+            Assert.That(local.json, Does.Contain("\"object\":").And.Contain("\"position\":[4,5,6]").And.Contain("\"name\":\"Blast\",\"clip\":\"Boom\""),
+                "the instantiated effect is followed as an object of its own:\n" + Dump(meta));
+            string localId = System.Text.RegularExpressions.Regex.Match(local.json, "\"object\":(\\d+)").Groups[1].Value;
+            Assert.That(effects.Exists(m => m.json.Contains($"\"object\":{localId},") && m.json.Contains("\"gone\":true")),
+                "and its end is recorded:\n" + Dump(meta));
+            Assert.That(effects.Exists(m => m.json.Contains("\"object\":") && m.json.Contains("\"name\":\"Music\",\"clip\":\"Theme\"")),
+                "a source in the scene is followed from the first call on it:\n" + Dump(meta));
+            Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+            Assert.That(complaints, Is.Empty, "nothing made the engine complain");
+        }
+        finally
+        {
+            Application.logMessageReceived -= onLog;
+            UnityEditor.AssetDatabase.DeleteAsset(controllerPath);
+        }
+    }
+#endif
+
+    /// <summary>
+    /// The same motion, a function of the tick alone, recorded with the transforms read one by one on the main
+    /// thread and with them read by a job: the files are compared outside (the poses must be the same rows).
+    /// </summary>
+    IEnumerator RecordMotion(bool job, string file)
+    {
+        yield return StartHost(false);
+        var prefab = new GameObject("Mover");
+        prefab.SetActive(false);
+        prefab.AddComponent<RecordedPlumbingFree>();
+        _created.Add(prefab);
+        _provider.AddRuntimePrefab(prefab.name, prefab);
+
+        var arm = new GameObject("Arm");
+        _created.Add(arm);
+        arm.transform.localScale = new Vector3(1, 2, 0.5f);
+
+        int from = RecordingSession.transformJobFrom;
+        RecordingSession.transformJobFrom = job ? 4 : int.MaxValue;
+        RecordingSession.checkTransformJob = job;
+        var tickModule = _manager.tickModule;
+        var movers = new List<Transform>();
+        uint first = 0;
+        System.Action move = () =>
+        {
+            float t = (tickModule.localTick - first) * 0.05f;
+            arm.transform.rotation = Quaternion.Euler(0, t * 90, t * 30);
+            for (int i = 0; i < movers.Count; i++)
+            {
+                var m = movers[i];
+                if (!m)
+                    continue;
+                if (i % 4 == 0)
+                    m.position = new Vector3(i, Mathf.Sin(t + i), t);
+                if (i % 4 == 1)
+                    m.rotation = Quaternion.Euler(t * 40, i * 10, 0);
+                if (i % 4 == 2)
+                    m.localScale = Vector3.one * (1 + Mathf.Min(t, 0.5f));
+            }
+        };
+        try
+        {
+            _recorder.StartRecording(file);
+            Assert.That(_recorder.isRecording, Is.True, "recording started");
+            for (int i = 0; i < 16; i++)
+            {
+                var instance = UnityProxy.Instantiate(prefab, new Vector3(i, 0, 0), Quaternion.identity, _manager.gameObject.scene);
+                if (i >= 12)
+                    instance.transform.SetParent(arm.transform, false);
+                instance.SetActive(true);
+                _manager.Spawn(instance);
+                movers.Add(instance.transform);
+            }
+            first = tickModule.localTick;
+            tickModule.onPreTick += move;
+            yield return Ticks(_manager, 20);
+            Object.Destroy(movers[5].gameObject);
+            yield return Ticks(_manager, 20);
+        }
+        finally
+        {
+            tickModule.onPreTick -= move;
+            RecordingSession.transformJobFrom = from;
+            RecordingSession.checkTransformJob = false;
+        }
+
+        string path = _recorder.currentPath;
+        long byJob = _recorder.session.transformsReadByJob;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        var meta = ReadMeta(path);
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""),
+            "what the job read is what the main thread reads at the same moment");
+        if (job)
+            Assert.That(byJob, Is.GreaterThan(300), "the poses came from the job");
+        else
+            Assert.That(byJob, Is.EqualTo(0));
+    }
+
+    [UnityTest]
+    public IEnumerator PosesAreReadOnTheMainThreadInSmallScenes()
+    {
+        yield return RecordMotion(false, "network-recorder-poses-direct.purrrec");
+    }
+
+    [UnityTest]
+    public IEnumerator PosesReadByAJobAreTheOnesTheMainThreadReads()
+    {
+        yield return RecordMotion(true, "network-recorder-poses-job.purrrec");
+    }
+
+    [UnityTest]
+    public IEnumerator WhatTheGameDoesToAnObjectIsRecordedWhenItDoesIt()
+    {
+        yield return StartHost(false);
+        var prefab = new GameObject("Changing");
+        prefab.SetActive(false);
+        prefab.AddComponent<RecordedPlumbingFree>();
+        var bodyPart = new GameObject("Body");
+        bodyPart.transform.SetParent(prefab.transform, false);
+        bodyPart.AddComponent<MeshFilter>().sharedMesh = Grid("ChangingBody", 4, false);
+        bodyPart.AddComponent<MeshRenderer>();
+        var hitboxPart = new GameObject("Hitbox");
+        hitboxPart.transform.SetParent(prefab.transform, false);
+        hitboxPart.AddComponent<BoxCollider>();
+        _created.Add(prefab);
+        _provider.AddRuntimePrefab(prefab.name, prefab);
+
+        _recorder.StartRecording("network-recorder-changes.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        var instance = UnityProxy.Instantiate(prefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+        instance.SetActive(true);
+        _manager.Spawn(instance);
+        var body = instance.transform.Find("Body").gameObject;
+        var hitbox = instance.transform.Find("Hitbox").GetComponent<BoxCollider>();
+        var tickModule = _manager.tickModule;
+        yield return Ticks(_manager, 3);
+        Assert.That(_recorder.session.TryGetEntity(instance, out var entity), Is.True, "the object is in the recording");
+        Assert.That(entity.lastPose.visible, Is.EqualTo(1), "it shows");
+
+        yield return Ticks(_manager, 80);
+        Assert.That(entity.checkRounds, Is.GreaterThan(1), "an object nothing happens to is checked less often");
+
+        body.SetActive(false);
+        yield return Ticks(_manager, 2);
+        Assert.That(entity.lastPose.visible, Is.EqualTo(0), "hidden when the game deactivated its body");
+        Assert.That(entity.checkRounds, Is.LessThanOrEqualTo(2), "and it is checked often again");
+        body.SetActive(true);
+        yield return Ticks(_manager, 2);
+        Assert.That(entity.lastPose.visible, Is.EqualTo(1), "shown when the game activated it");
+        var renderer = body.GetComponent<MeshRenderer>();
+        renderer.enabled = false;
+        yield return Ticks(_manager, 2);
+        Assert.That(entity.lastPose.visible, Is.EqualTo(0), "hidden when the game disabled its renderer");
+        renderer.enabled = true;
+        yield return Ticks(_manager, 2);
+        Assert.That(entity.lastPose.visible, Is.EqualTo(1));
+
+        uint disabledAt = tickModule.localTick;
+        hitbox.enabled = false;
+        yield return Ticks(_manager, 3);
+
+        yield return Ticks(_manager, 30);
+        uint hiddenAt = tickModule.localTick;
+        typeof(GameObject).GetMethod(nameof(GameObject.SetActive))!.Invoke(body, new object[] { false });
+        yield return WaitUntil(() => entity.lastPose.visible == 0, 5f);
+        Assert.That(entity.lastPose.visible, Is.EqualTo(0), "found without being told");
+        Assert.That(tickModule.localTick - hiddenAt, Is.LessThanOrEqualTo(13), "within one round of looks");
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        var meta = ReadMeta(path);
+        var colliders = meta.FindAll(m => m.kind == RecordKind.Colliders && m.json.StartsWith("{\"entity\":" + entity.id + ","));
+        Assert.That(colliders.Count, Is.EqualTo(2), "its colliders when it appeared, and without the disabled one:\n" + Dump(meta));
+        Assert.That(colliders[1].json, Does.Contain("\"colliders\":[]"), colliders[1].json);
+        uint recordedAt = uint.Parse(System.Text.RegularExpressions.Regex.Match(colliders[1].json, "\"tick\":(\\d+)").Groups[1].Value);
+        Assert.That(recordedAt - disabledAt, Is.LessThanOrEqualTo(2), "the collider the game disabled is gone on the tick it did");
         Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
 
@@ -488,7 +1026,7 @@ public class NetworkRecorderTests
         return int.Parse(json.Substring(start, end - start));
     }
 
-    static string Dump(List<(RecordKind kind, string json)> meta)
+    internal static string Dump(List<(RecordKind kind, string json)> meta)
     {
         var text = new StringBuilder();
         foreach (var m in meta)
@@ -501,7 +1039,7 @@ public class NetworkRecorderTests
         target.GetType().GetField(name, Fields)!.SetValue(target, value);
 
     /// <summary>The JSON metadata records of a recording, in file order (batches expanded).</summary>
-    static List<(RecordKind kind, string json)> ReadMeta(string path)
+    internal static List<(RecordKind kind, string json)> ReadMeta(string path)
     {
         var data = File.ReadAllBytes(path);
         var result = new List<(RecordKind, string)>();

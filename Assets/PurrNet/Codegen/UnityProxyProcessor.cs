@@ -13,13 +13,57 @@ namespace PurrNet.Codegen
         const string AddressablesClassName = "UnityEngine.AddressableAssets.Addressables";
         const string AssetReferenceClassName = "UnityEngine.AddressableAssets.AssetReference";
         const string AddressablesProxyFullName = "PurrNet.AddressablesProxy";
+        const string EffectsProxyFullName = "PurrNet.Recording.RecordedEffects";
 
-        public static void Process(TypeDefinition type, [UsedImplicitly] List<DiagnosticMessage> messages)
+        /// <summary>
+        /// The engine calls that start or stop a sound, a particle system or an animation. The game's calls of them
+        /// are pointed at the method of the same name in RecordedEffects, which makes the call and tells a running
+        /// recording about it.
+        /// </summary>
+        static bool IsEffectCall(string declaringType, string method)
+        {
+            switch (declaringType)
+            {
+                case "UnityEngine.AudioSource":
+                    return method == "Play" || method == "PlayOneShot" || method == "PlayClipAtPoint" || method == "Stop";
+                case "UnityEngine.ParticleSystem":
+                    return method == "Play" || method == "Stop" || method == "Emit";
+                case "UnityEngine.Animator":
+                    return method == "SetTrigger" || method == "Play" || method == "PlayInFixedTime" ||
+                           method == "CrossFade" || method == "CrossFadeInFixedTime" ||
+                           method == "SetBool" || method == "SetFloat" || method == "SetInteger";
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// The engine calls that change how an object shows or what it collides with. They go through
+        /// RecordedEffects too, in every assembly but PurrNet's own runtime, also in the ones whose calls are not
+        /// recorded: a recording does not write these down, it looks at the object again when one is made.
+        /// </summary>
+        static bool IsWatchedCall(string declaringType, string method)
+        {
+            switch (declaringType)
+            {
+                case "UnityEngine.GameObject":
+                    return method == "SetActive";
+                case "UnityEngine.Renderer":
+                case "UnityEngine.Collider":
+                    return method == "set_enabled";
+                default:
+                    return false;
+            }
+        }
+
+        public static void Process(TypeDefinition type, [UsedImplicitly] List<DiagnosticMessage> messages, bool effects = false,
+            bool watched = false)
         {
             try
             {
                 bool isProxyItself = type.FullName == typeof(UnityProxy).FullName
-                    || type.FullName == AddressablesProxyFullName;
+                    || type.FullName == AddressablesProxyFullName
+                    || type.FullName == EffectsProxyFullName;
 
                 if (isProxyItself)
                     return;
@@ -30,6 +74,8 @@ namespace PurrNet.Codegen
 
                 TypeDefinition addressablesProxyType = null;
                 bool addressablesProxyResolved = false;
+                TypeDefinition effectsProxyType = null;
+                bool effectsProxyResolved = false;
 
                 foreach (var method in type.Methods)
                 {
@@ -91,6 +137,34 @@ namespace PurrNet.Codegen
                             // call (e.g. `Destroy(c ? a : b)`) would keep pointing at the removed one and be written
                             // with a stale offset; Unity 6.6's ILPP runner re-reads the assembly and rejects that.
                             instruction.Operand = targerRef;
+                            continue;
+                        }
+
+                        if ((instruction.OpCode == OpCodes.Call || instruction.OpCode == OpCodes.Callvirt) &&
+                            ((effects && IsEffectCall(declaringTypeName, methodReference.Name)) ||
+                             (watched && IsWatchedCall(declaringTypeName, methodReference.Name))))
+                        {
+                            if (!effectsProxyResolved)
+                            {
+                                effectsProxyResolved = true;
+                                effectsProxyType = ResolveTypeByName(module, EffectsProxyFullName);
+                            }
+
+                            if (effectsProxyType == null)
+                                continue;
+
+                            var effectResolved = methodReference.Resolve();
+
+                            if (effectResolved == null)
+                                continue;
+
+                            var effectTarget = GetMatchingDefinition(effectResolved, effectsProxyType, !effectResolved.IsStatic);
+
+                            if (effectTarget == null)
+                                continue;
+
+                            instruction.OpCode = OpCodes.Call;
+                            instruction.Operand = module.ImportReference(effectTarget);
                             continue;
                         }
 

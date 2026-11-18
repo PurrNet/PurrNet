@@ -14,6 +14,24 @@ namespace PurrNet.Recording
         /// <summary>Written in ATTACH and DETACH records ("purrnet", "purrdiction").</summary>
         public abstract string name { get; }
 
+        /// <summary>
+        /// How many entities this source is part of, and how many of them it recorded on seenTick: when all were
+        /// recorded, none has to be looked at to find the ones that are gone.
+        /// </summary>
+        internal int attached, seen;
+        internal ulong seenTick;
+
+        internal void CountSeen(ulong before, ulong tick)
+        {
+            if (seenTick != tick)
+            {
+                seenTick = tick;
+                seen = 0;
+            }
+            if (before != tick)
+                seen++;
+        }
+
         /// <summary>Whether <paramref name="go"/> is the root of one of this source's entities.</summary>
         public abstract bool IsEntityObject(GameObject go);
 
@@ -53,6 +71,7 @@ namespace PurrNet.Recording
 
         public int id;
         public GameObject gameObject;
+        internal long gameObjectId;
         public Transform root;
         public ulong spawnTick;
         public PlayerID? owner;
@@ -60,6 +79,27 @@ namespace PurrNet.Recording
         public StreamRows transform;
         internal ulong poseTick;
         internal RecordedTransform lastPose;
+        /// <summary>Its place among the transforms a job reads, and what was asked of that job for it.</summary>
+        internal int jobIndex = -1;
+        internal ulong laterTick;
+        internal byte laterVisible;
+        internal Vector3 scaleAxes;
+        internal bool hasScaleAxes;
+        internal int directTicks, directSpan, jobTicks;
+        internal long rendererKey;
+        internal bool hasRendererKey;
+        internal EntityEffects effects;
+        /// <summary>
+        /// Whether it shows, as last looked up, and when it is looked up or checked again (RecordingSession.Changes).
+        /// </summary>
+        internal byte visible, visibleLooks;
+        internal int visibleEpoch;
+        internal int checkRounds = 1, checkWait, checkHierarchy;
+        internal bool checkSoon;
+        internal readonly List<long> ancestors = new List<long>(2);
+        internal readonly List<long> graphicsRoots = new List<long>(1);
+        internal int effectsHierarchy;
+        internal byte effectsChecks;
         internal RecordingSource source0;
         internal object data0;
         internal ulong seen0;
@@ -89,6 +129,7 @@ namespace PurrNet.Recording
 
         internal void Add(RecordingSource source, object data)
         {
+            source.attached++;
             if (source0 == null)
             {
                 source0 = source;
@@ -103,6 +144,7 @@ namespace PurrNet.Recording
         {
             if (ReferenceEquals(source0, source))
             {
+                source.CountSeen(seen0, tick);
                 seen0 = tick;
                 return;
             }
@@ -110,6 +152,7 @@ namespace PurrNet.Recording
             if (index < 0)
                 return;
             var part = more[index];
+            source.CountSeen(part.lastSeenTick, tick);
             part.lastSeenTick = tick;
             more[index] = part;
         }
@@ -127,6 +170,9 @@ namespace PurrNet.Recording
             object data;
             if (ReferenceEquals(source0, source))
             {
+                source.attached--;
+                if (seen0 == source.seenTick && source.seen > 0)
+                    source.seen--;
                 data = data0;
                 if (more != null && more.Count > 0)
                 {
@@ -146,6 +192,9 @@ namespace PurrNet.Recording
             int index = MoreIndex(source);
             if (index < 0)
                 return null;
+            source.attached--;
+            if (more[index].lastSeenTick == source.seenTick && source.seen > 0)
+                source.seen--;
             data = more[index].data;
             more.RemoveAt(index);
             return data;
@@ -184,7 +233,7 @@ namespace PurrNet.Recording
 #endif
 
     /// <summary>How a stream is described in its STREAM record.</summary>
-    public enum RecordedStreamKind { State, Input, Transform, Player, Custom, Collider, Sync, Rpc, Broadcast }
+    public enum RecordedStreamKind { State, Input, Transform, Player, Custom, Collider, Sync, Rpc, Broadcast, Effect }
 
     public struct RecordedStreamInfo
     {

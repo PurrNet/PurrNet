@@ -496,6 +496,9 @@ namespace PurrNet.Recording
 
             try
             {
+                if (!_genericOnly && WriteTypedList(buffer, value, type, depth, visiting))
+                    return;
+
                 if (value is IDictionary dictionary)
                 {
                     buffer.WriteByte(11);
@@ -507,9 +510,6 @@ namespace PurrNet.Recording
                     }
                     return;
                 }
-
-                if (!_genericOnly && WriteTypedList(buffer, value, type, depth, visiting))
-                    return;
 
                 if (value is IEnumerable enumerable)
                 {

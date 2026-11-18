@@ -59,6 +59,12 @@ public class Bootstrap : Scenario
 
     private void Awake()
     {
+        if (CommandLineUtils.HasFlag("-recorderCost"))
+        {
+            enabled = false;
+            return;
+        }
+
         if (_runStarted)
         {
             enabled = false;

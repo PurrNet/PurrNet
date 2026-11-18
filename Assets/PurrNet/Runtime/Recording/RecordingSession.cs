@@ -142,7 +142,7 @@ namespace PurrNet.Recording
         NetworkManager _networkManager;
 
         readonly RecorderStats _stats;
-        readonly RecorderStats.Section _statTick, _statSpawn, _statManaged, _statColliders, _statChecks, _statFlush;
+        readonly RecorderStats.Section _statTick, _statSpawn, _statManaged, _statColliders, _statChecks, _statFlush, _statEffects, _statPoses;
 
         RecordingFile _file;
         RecordingBuffer _meta = new RecordingBuffer(Shelf, 4096);
@@ -177,6 +177,8 @@ namespace PurrNet.Recording
             _statManaged = _stats.Add(" managed");
             _statColliders = _stats.Add("colliders");
             _statChecks = _stats.Add(" checks");
+            _statEffects = _stats.Add("effects");
+            _statPoses = _stats.Add("poses");
             _statFlush = _stats.Add("flush");
         }
 
@@ -188,6 +190,7 @@ namespace PurrNet.Recording
         {
             isDisposed = true;
             Stop(null);
+            DisposeTransformJob();
             UnsubscribeNetwork();
             if (active == this)
                 active = null;
@@ -268,9 +271,12 @@ namespace PurrNet.Recording
             _slots.Clear();
             chunkStart = true;
             _sampleEpoch++;
+            transformsReadByJob = 0;
 
             BeginParts(firstTick);
             WriteHeader(tickRate, firstTick, scene, host);
+            BeginEffects();
+            RecordedEffects.Watch(this);
 #if UNITY_PHYSICS_3D
             _hasStaticColliderKey = false;
             ResetStaticCheck();
@@ -283,8 +289,14 @@ namespace PurrNet.Recording
             if (_file == null)
                 return;
 
+            TakeLaterTransforms();
+            RecordedEffects.Unwatch(this);
+            EndEffects();
             EndParts();
             FlushChunk();
+#if UNITY_PHYSICS_3D
+            PumpMeshCaptures(true);
+#endif
             foreach (var entity in _entities)
                 WriteMeta(RecordKind.Despawn, _json.Clear().BeginObject()
                     .Prop("entity", entity.id).Prop("tick", _lastTick + 1).EndObject());
@@ -314,6 +326,8 @@ namespace PurrNet.Recording
 
             foreach (var entity in _entities)
                 ReleaseEntity(entity);
+            DisposeTransformJob();
+            ClearChanges();
 #if UNITY_PHYSICS_3D
             ReleaseColliders(_staticColliders);
             ResetStaticCheck();
@@ -391,6 +405,9 @@ namespace PurrNet.Recording
         public void BeginTick(ulong tick)
         {
             _stats.Begin(_statTick);
+            _laterBytes = 0;
+            TakeLaterTransforms();
+            _jobThisTick = UseTransformJob();
             var log = _job.log.bytes;
             if (tick - _chunkFirstTick >= (ulong)_chunkTicks || (log.length > 0 && log.length + 2 * _maxTickBytes > _logCapacity))
             {
@@ -409,7 +426,8 @@ namespace PurrNet.Recording
 
         public void EndTick()
         {
-            _maxTickBytes = Math.Max(_maxTickBytes, _job.log.bytes.length - _logStart);
+            ReadTransformsLater(_lastTick);
+            _maxTickBytes = Math.Max(_maxTickBytes, _job.log.bytes.length - _logStart + _laterBytes);
             if (_maxTickBytes * 2 > _logCapacity)
             {
                 _logCapacity = Mathf.NextPowerOfTwo(_maxTickBytes * 4);
@@ -425,6 +443,15 @@ namespace PurrNet.Recording
             _job ??= TakeJob();
             _job.log.bytes.Reserve(_logCapacity);
             _meta.Reserve(_logCapacity / 8);
+            lock (_metaPool)
+            {
+                if (_metaPool.Count == 0)
+                {
+                    var spare = new MetaBatch { owner = this };
+                    spare.buffer.Reserve(_logCapacity / 8);
+                    _metaPool.Push(spare);
+                }
+            }
             lock (_jobPool)
             {
                 if (_jobPool.Count == 0)
@@ -453,11 +480,16 @@ namespace PurrNet.Recording
             entity.Add(source, data);
             entity.gameObject = go;
             entity.root = go.transform;
+            AddJobTransform(entity);
+            BeginChanges(entity);
             entity.poseTick = 0;
+            entity.hasRendererKey = false;
+            entity.effectsChecks = 0;
 #if UNITY_PHYSICS_3D
             entity.hasColliderKey = false;
 #endif
-            _entitiesByGameObject[RecordingObjectId.Of(go)] = entity;
+            entity.gameObjectId = RecordingObjectId.Of(go);
+            _entitiesByGameObject[entity.gameObjectId] = entity;
             _entities.Add(entity);
             return entity;
         }
@@ -488,7 +520,7 @@ namespace PurrNet.Recording
 #if UNITY_PHYSICS_3D
             RefreshEntityColliders(entity, tick);
 #else
-            RefreshEntityRenderers(entity);
+            RefreshEntityRenderers(entity, tick);
 #endif
             _stats.End(_statSpawn);
         }
@@ -506,7 +538,7 @@ namespace PurrNet.Recording
             var t = entity.root;
             t.GetPositionAndRotation(out pose.position, out pose.rotation);
             pose.scale = t.lossyScale;
-            pose.visible = Visibility(entity);
+            pose.visible = VisibleNow(entity);
             position = pose.position;
             var rows = entity.transform;
             if (rows.slot >= 0 && pose.visible == entity.lastPose.visible)
@@ -525,6 +557,8 @@ namespace PurrNet.Recording
 
         public void DespawnUnseen(RecordingSource source, ulong tick)
         {
+            if (source.attached == 0 || (source.seenTick == tick && source.seen == source.attached))
+                return;
             for (int i = _entities.Count - 1; i >= 0; i--)
             {
                 var entity = _entities[i];
@@ -561,17 +595,8 @@ namespace PurrNet.Recording
                 if (index < _entityCheckCursor)
                     _entityCheckCursor--;
             }
-            if (_entitiesByGameObject.TryGetValue(entity.gameObject ? RecordingObjectId.Of(entity.gameObject) : 0, out var current) && current == entity)
-                _entitiesByGameObject.Remove(RecordingObjectId.Of(entity.gameObject));
-            else
-            {
-                long stale = 0;
-                bool found = false;
-                foreach (var pair in _entitiesByGameObject)
-                    if (pair.Value == entity) { stale = pair.Key; found = true; break; }
-                if (found)
-                    _entitiesByGameObject.Remove(stale);
-            }
+            if (_entitiesByGameObject.TryGetValue(entity.gameObjectId, out var current) && current == entity)
+                _entitiesByGameObject.Remove(entity.gameObjectId);
 
             WriteMeta(RecordKind.Despawn, _json.Clear().BeginObject()
                 .Prop("entity", entity.id).Prop("tick", tick).EndObject());
@@ -580,6 +605,8 @@ namespace PurrNet.Recording
 
         void ReleaseEntity(RecordedEntity entity)
         {
+            RemoveJobTransform(entity);
+            EndChanges(entity);
             entity.transform?.Retire();
             while (entity.source0 != null)
             {
@@ -591,6 +618,7 @@ namespace PurrNet.Recording
             entity.movingColliders = 0;
             entity.foundColliders.Clear();
 #endif
+            ReleaseEffects(entity);
             entity.renderers.Clear();
             entity.rendererObjects.Clear();
             entity.foundRenderers.Clear();
@@ -672,10 +700,10 @@ namespace PurrNet.Recording
             rows.rowCount = 0;
             rows.life = null;
             rows.aliveTick = 0;
-            if (rows.lastBytes.Length != layout.managed.Count)
+            if (rows.lastBytes.Length < layout.managed.Count)
             {
                 rows.lastObject = new object[layout.managed.Count];
-                rows.lastBytes = new RecordingBuffer[layout.managed.Count];
+                Array.Resize(ref rows.lastBytes, layout.managed.Count);
                 rows.lastVersion = new int[layout.managed.Count];
             }
             if (baseStream != null && baseColumns != null)
@@ -721,6 +749,10 @@ namespace PurrNet.Recording
                 case RecordedStreamKind.Broadcast:
                     json.BeginString().Part("broadcast.").Part(info.sample).EndString()
                         .Prop("kind", "broadcast").Prop("broadcast", info.sample);
+                    break;
+                case RecordedStreamKind.Effect:
+                    json.BeginString().Part("effect.").Part(info.sample).EndString()
+                        .Prop("kind", "effect").Prop("effect", info.sample);
                     break;
                 case RecordedStreamKind.Collider:
                     json.BeginString().Part(info.entity >= 0 ? "e" : "static");
@@ -1117,8 +1149,21 @@ namespace PurrNet.Recording
 
         public JsonBuilder json => _json;
 
+        /// <summary>
+        /// Metadata is collected in a buffer that was reserved up front. When a record does not fit, what is there
+        /// goes to the writer as a batch of its own instead of the buffer growing: no allocation, same records in
+        /// the same order.
+        /// </summary>
+        void MakeRoomForMeta(int bytes)
+        {
+            if (_meta.length > 0 && _file != null && _meta.length + bytes + 16 > _meta.data.Length)
+                FlushMeta();
+        }
+
         public void WriteMeta(RecordKind kind, JsonBuilder json)
         {
+            _metaRecords++;
+            MakeRoomForMeta(json.length);
             _meta.WriteByte((byte)kind);
             _meta.WriteVarUInt((ulong)json.length);
             _meta.WriteBytes(json.data, 0, json.length);
@@ -1126,6 +1171,7 @@ namespace PurrNet.Recording
 
         void WriteMeta(RecordKind kind, string json)
         {
+            MakeRoomForMeta(json.Length * 3);
             _meta.WriteByte((byte)kind);
             _meta.WriteVarUInt((ulong)System.Text.Encoding.UTF8.GetByteCount(json));
             _meta.WriteUtf8(json);
@@ -1133,6 +1179,7 @@ namespace PurrNet.Recording
 
         void WriteMeta(RecordKind kind, byte[] payload, int length)
         {
+            MakeRoomForMeta(length);
             _meta.WriteByte((byte)kind);
             _meta.WriteVarUInt((ulong)length);
             _meta.WriteBytes(payload, 0, length);
@@ -1205,7 +1252,7 @@ namespace PurrNet.Recording
 
         readonly List<Renderer> _rendererList = new List<Renderer>();
 
-        bool RefreshEntityRenderers(RecordedEntity entity)
+        bool RefreshEntityRenderers(RecordedEntity entity, ulong tick)
         {
             var root = entity.gameObject;
             bool nested = HasNestedEntities(entity);
@@ -1227,6 +1274,18 @@ namespace PurrNet.Recording
             entity.detachedGraphics.Clear();
             for (int i = 0, parts = entity.partCount; i < parts; i++)
                 entity.SourceAt(i).GetDetachedGraphics(entity, entity.detachedGraphics);
+            if (entity.detachedGraphics.Count > 0 || entity.graphicsRoots.Count > 0)
+            {
+                ForgetGraphicsRoots(entity);
+                foreach (var graphics in entity.detachedGraphics)
+                {
+                    if (!graphics || graphics.IsChildOf(root.transform))
+                        continue;
+                    long id = RecordingObjectId.Of(graphics.gameObject);
+                    _graphicsRoots[id] = entity;
+                    entity.graphicsRoots.Add(id);
+                }
+            }
             entity.foundGraphics.Clear();
             foreach (var graphics in entity.detachedGraphics)
             {
@@ -1244,7 +1303,72 @@ namespace PurrNet.Recording
                 }
             }
             _rendererList.Clear();
+            LookAgain(entity);
+            RecordRenderers(entity, tick);
+            RefreshEntityEffects(entity, nested, tick);
             return nested;
+        }
+
+        static float RoundPose(float value) => (float)Math.Round(value, 4) + 0f;
+
+        /// <summary>
+        /// Writes what the entity is drawn with (a RENDERERS record: each renderer's mesh or sprite by name, its
+        /// material, bounds and pose within the entity) when its set of renderers changed. Between changes this
+        /// only compares the renderers' ids.
+        /// </summary>
+        void RecordRenderers(RecordedEntity entity, ulong tick)
+        {
+            var renderers = entity.renderers;
+            long key = 1469598103934665603L;
+            for (int i = 0; i < renderers.Count; i++)
+                key = unchecked((key ^ RecordingObjectId.Of(renderers[i])) * 1099511628211L);
+            if (entity.hasRendererKey ? key == entity.rendererKey : renderers.Count == 0)
+            {
+                entity.rendererKey = key;
+                entity.hasRendererKey = true;
+                return;
+            }
+            entity.rendererKey = key;
+            entity.hasRendererKey = true;
+
+            var worldToEntity = entity.root.worldToLocalMatrix;
+            var json = _json.Clear().BeginObject().Prop("entity", entity.id).Prop("tick", tick).Key("renderers").BeginArray();
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                var renderer = renderers[i];
+                UnityEngine.Object shape;
+                string kind;
+                switch (renderer)
+                {
+                    case SkinnedMeshRenderer skinned: kind = "skinned"; shape = skinned.sharedMesh; break;
+                    case SpriteRenderer sprite: kind = "sprite"; shape = sprite.sprite; break;
+                    default:
+                        kind = "mesh";
+                        shape = renderer.TryGetComponent<MeshFilter>(out var filter) ? filter.sharedMesh : null;
+                        break;
+                }
+
+                var material = renderer.sharedMaterial;
+                var bounds = renderer.localBounds;
+                var local = worldToEntity * renderer.transform.localToWorldMatrix;
+                Vector3 p = local.GetColumn(3);
+                var r = local.ValidTRS() ? local.rotation : Quaternion.identity;
+                var s = local.lossyScale;
+                json.BeginObject().Prop("kind", kind).Prop("id", RecordingObjectId.Of(renderer))
+                    .Prop("name", Name(renderer.gameObject)).Key("mesh");
+                if (shape) json.Value(Name(shape)); else json.Null();
+                json.Key("material");
+                if (material) json.Value(Name(material)); else json.Null();
+                json.Key("pose").BeginObject()
+                    .Floats("p", RoundPose(p.x), RoundPose(p.y), RoundPose(p.z))
+                    .Floats("r", RoundPose(r.x), RoundPose(r.y), RoundPose(r.z), RoundPose(r.w))
+                    .Floats("s", RoundPose(s.x), RoundPose(s.y), RoundPose(s.z))
+                    .EndObject()
+                    .Floats("center", bounds.center.x, bounds.center.y, bounds.center.z)
+                    .Floats("size", bounds.size.x, bounds.size.y, bounds.size.z)
+                    .EndObject();
+            }
+            WriteMeta(RecordKind.Renderers, json.EndArray().EndObject());
         }
 
 #if UNITY_PHYSICS_3D
@@ -1288,6 +1412,8 @@ namespace PurrNet.Recording
         public void RecordColliders(ulong tick)
         {
             _stats.Begin(_statColliders);
+            if (_meshCaptures.Count > 0)
+                PumpMeshCaptures(false);
 
             _checkDeadline = Stopwatch.GetTimestamp() + (long)(colliderCheckBudgetMs * 0.001 * Stopwatch.Frequency);
             _stats.Begin(_statChecks);
@@ -1310,20 +1436,43 @@ namespace PurrNet.Recording
 
         void CheckEntityColliders(ulong tick)
         {
+            bool first = true;
+            int soon = 0;
+            for (; soon < _checkSoon.Count && (first || !OverBudget); soon++)
+            {
+                var entity = _checkSoon[soon];
+                if (!entity.checkSoon)
+                    continue;
+                entity.checkSoon = false;
+                if (entity.gameObject && entity.spawnTick != tick)
+                {
+                    first = false;
+                    CheckEntity(entity, tick);
+                }
+            }
+            _checkSoon.RemoveRange(0, soon);
+
             int count = _entities.Count;
             if (count == 0)
                 return;
             _entityChecksOwed = Math.Min(count, _entityChecksOwed + (float)count / ColliderCheckTicks);
-            bool first = true;
             while (_entityChecksOwed >= 1f && (first || !OverBudget))
             {
-                first = false;
                 if (_entityCheckCursor >= _entities.Count)
                     _entityCheckCursor = 0;
                 var entity = _entities[_entityCheckCursor++];
-                if (entity.spawnTick != tick)
-                    RefreshEntityColliders(entity, tick);
                 _entityChecksOwed -= 1f;
+                if (entity.spawnTick == tick)
+                    continue;
+                LookAgain(entity);
+                var root = entity.root;
+                if (entity.checkWait > 0 && entity.movingColliders == 0 && root && root.hierarchyCount == entity.checkHierarchy)
+                {
+                    entity.checkWait--;
+                    continue;
+                }
+                first = false;
+                CheckEntity(entity, tick);
             }
         }
 
@@ -1691,7 +1840,7 @@ namespace PurrNet.Recording
             if (!root)
                 return;
 
-            bool nested = RefreshEntityRenderers(entity);
+            bool nested = RefreshEntityRenderers(entity, tick);
 
             root.GetComponentsInChildren(false, entity.foundColliders);
             _colliderList.Clear();
@@ -1777,278 +1926,10 @@ namespace PurrNet.Recording
 
         static float Round(float value) => (float)Math.Round(value, 4) + 0f;
 
-        readonly List<Vector3> _meshVertices = new List<Vector3>();
-        readonly List<int> _meshTriangles = new List<int>();
-        readonly List<int> _meshIndices = new List<int>();
-        readonly RecordingBuffer _meshBuffer = new RecordingBuffer(1024);
-
-        static int VarLength(ulong value)
-        {
-            int length = 1;
-            while (value >= 0x80)
-            {
-                value >>= 7;
-                length++;
-            }
-            return length;
-        }
-
-        unsafe bool WriteMeshNative(Mesh mesh, int id)
-        {
-            using var meshes = Mesh.AcquireReadOnlyMeshData(mesh);
-            var data = meshes[0];
-            int indexCount = 0;
-            for (int sub = 0; sub < data.subMeshCount; sub++)
-            {
-                var desc = data.GetSubMesh(sub);
-                if (desc.topology != MeshTopology.Triangles)
-                    return false;
-                indexCount += desc.indexCount;
-            }
-
-            int vertexCount = data.vertexCount;
-            using var vertices = new NativeArray<Vector3>(vertexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            using var indices = new NativeArray<int>(indexCount, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-            data.GetVertices(vertices);
-            for (int sub = 0, at = 0; sub < data.subMeshCount; sub++)
-            {
-                int count = data.GetSubMesh(sub).indexCount;
-                data.GetIndices(indices.GetSubArray(at, count), sub);
-                at += count;
-            }
-
-            WriteMeshRecord(id, mesh.name, vertices, indices);
-            return true;
-        }
-
-        unsafe void WriteMeshRecord(int id, string name, NativeArray<Vector3> vertices, NativeArray<int> indices)
-        {
-            int vertexCount = vertices.Length;
-            int indexCount = indices.Length;
-            int nameBytes = System.Text.Encoding.UTF8.GetByteCount(name);
-            int length = VarLength((ulong)id) + VarLength((ulong)nameBytes) + nameBytes +
-                         VarLength((ulong)vertexCount) + vertexCount * 12 + VarLength((ulong)indexCount) + indexCount * 4;
-            _meta.WriteByte((byte)RecordKind.Mesh);
-            _meta.WriteVarUInt((ulong)length);
-            _meta.WriteVarUInt((ulong)id);
-            _meta.WriteString(name);
-            _meta.WriteVarUInt((ulong)vertexCount);
-            _meta.WriteBytes((byte*)vertices.GetUnsafeReadOnlyPtr(), vertexCount * 12);
-            _meta.WriteVarUInt((ulong)indexCount);
-            _meta.WriteBytes((byte*)indices.GetUnsafeReadOnlyPtr(), indexCount * 4);
-        }
-
-        sealed class MeshReadback
-        {
-            public RecordingFile file;
-            public long key;
-            public string name;
-            public GraphicsBuffer vertexBuffer, indexBuffer;
-            public int offset, stride, indexStride;
-            public bool half;
-            public int[] subMeshes;
-            public NativeArray<Vector3> vertices;
-            public NativeArray<int> indices;
-            public int done;
-            public bool failed;
-        }
-
-        int ReadMeshFromGpu(Mesh mesh, long key)
-        {
-            if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null || !SystemInfo.supportsAsyncGPUReadback)
-                return 0;
-
-            var read = new MeshReadback { file = _file, key = key };
-            try
-            {
-                int stream = mesh.GetVertexAttributeStream(VertexAttribute.Position);
-                var format = mesh.GetVertexAttributeFormat(VertexAttribute.Position);
-                if (stream < 0 || mesh.GetVertexAttributeDimension(VertexAttribute.Position) != 3 ||
-                    (format != VertexAttributeFormat.Float32 && format != VertexAttributeFormat.Float16))
-                    return 0;
-
-                int subMeshes = mesh.subMeshCount;
-                read.subMeshes = new int[subMeshes * 3];
-                for (int sub = 0; sub < subMeshes; sub++)
-                {
-                    if (mesh.GetTopology(sub) != MeshTopology.Triangles)
-                        return 0;
-                    read.subMeshes[sub * 3] = (int)mesh.GetIndexStart(sub);
-                    read.subMeshes[sub * 3 + 1] = (int)mesh.GetIndexCount(sub);
-                    read.subMeshes[sub * 3 + 2] = (int)mesh.GetBaseVertex(sub);
-                }
-
-                read.name = mesh.name;
-                read.half = format == VertexAttributeFormat.Float16;
-                read.offset = mesh.GetVertexAttributeOffset(VertexAttribute.Position);
-                read.vertexBuffer = mesh.GetVertexBuffer(stream);
-                read.indexBuffer = mesh.GetIndexBuffer();
-                if (read.vertexBuffer == null || read.indexBuffer == null)
-                {
-                    read.vertexBuffer?.Dispose();
-                    read.indexBuffer?.Dispose();
-                    return 0;
-                }
-                read.stride = read.vertexBuffer.stride;
-                read.indexStride = read.indexBuffer.stride;
-                AsyncGPUReadback.Request(read.vertexBuffer, request => OnMeshVertices(read, request));
-                AsyncGPUReadback.Request(read.indexBuffer, request => OnMeshIndices(read, request));
-                return -1;
-            }
-            catch (Exception)
-            {
-                read.failed = true;
-                read.vertexBuffer?.Dispose();
-                read.indexBuffer?.Dispose();
-                return 0;
-            }
-        }
-
-        unsafe void OnMeshVertices(MeshReadback read, AsyncGPUReadbackRequest request)
-        {
-            if (request.hasError || read.failed)
-                read.failed = true;
-            else
-            {
-                var data = request.GetData<byte>();
-                int count = data.Length / read.stride;
-                read.vertices = new NativeArray<Vector3>(count, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-                byte* source = (byte*)data.GetUnsafeReadOnlyPtr() + read.offset;
-                if (!read.half)
-                    UnsafeUtility.MemCpyStride(read.vertices.GetUnsafePtr(), 12, source, read.stride, 12, count);
-                else
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        ushort* p = (ushort*)(source + i * read.stride);
-                        read.vertices[i] = new Vector3(Mathf.HalfToFloat(p[0]), Mathf.HalfToFloat(p[1]), Mathf.HalfToFloat(p[2]));
-                    }
-                }
-            }
-            FinishMeshReadback(read);
-        }
-
-        unsafe void OnMeshIndices(MeshReadback read, AsyncGPUReadbackRequest request)
-        {
-            if (request.hasError || read.failed)
-                read.failed = true;
-            else
-            {
-                var data = request.GetData<byte>();
-                int available = data.Length / read.indexStride;
-                int total = 0;
-                for (int sub = 0; sub < read.subMeshes.Length; sub += 3)
-                {
-                    total += read.subMeshes[sub + 1];
-                    if (read.subMeshes[sub] + read.subMeshes[sub + 1] > available)
-                        read.failed = true;
-                }
-                if (!read.failed)
-                {
-                    read.indices = new NativeArray<int>(total, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
-                    byte* source = (byte*)data.GetUnsafeReadOnlyPtr();
-                    int at = 0;
-                    for (int sub = 0; sub < read.subMeshes.Length; sub += 3)
-                    {
-                        int start = read.subMeshes[sub], baseVertex = read.subMeshes[sub + 2];
-                        for (int i = 0, count = read.subMeshes[sub + 1]; i < count; i++)
-                            read.indices[at++] = baseVertex + (read.indexStride == 2
-                                ? ((ushort*)source)[start + i]
-                                : ((int*)source)[start + i]);
-                    }
-                }
-            }
-            FinishMeshReadback(read);
-        }
-
-        void FinishMeshReadback(MeshReadback read)
-        {
-            if (++read.done < 2)
-                return;
-            read.vertexBuffer.Dispose();
-            read.indexBuffer.Dispose();
-            if (ReferenceEquals(_file, read.file))
-            {
-                if (read.failed)
-                    _meshIds[read.key] = 0;
-                else
-                {
-                    int id = _nextMeshId++;
-                    WriteMeshRecord(id, read.name, read.vertices, read.indices);
-                    _meshIds[read.key] = id;
-                }
-            }
-            if (read.vertices.IsCreated)
-                read.vertices.Dispose();
-            if (read.indices.IsCreated)
-                read.indices.Dispose();
-        }
-
-        int WriteMesh(Mesh mesh)
-        {
-            long key = RecordingObjectId.Of(mesh);
-            if (_meshIds.TryGetValue(key, out int existing))
-                return existing;
-
-            if (!mesh.isReadable && !Application.isEditor)
-                return _meshIds[key] = ReadMeshFromGpu(mesh, key);
-
-            int id = _nextMeshId++;
-            _meshIds[key] = id;
-            try
-            {
-                bool written;
-                try
-                {
-                    written = WriteMeshNative(mesh, id);
-                }
-                catch (Exception)
-                {
-                    written = false;
-                }
-                if (written)
-                    return id;
-
-                mesh.GetVertices(_meshVertices);
-                _meshIndices.Clear();
-                for (int sub = 0; sub < mesh.subMeshCount; sub++)
-                {
-                    mesh.GetTriangles(_meshTriangles, sub);
-                    _meshIndices.AddRange(_meshTriangles);
-                }
-                var buffer = _meshBuffer;
-                buffer.Clear();
-                buffer.WriteVarUInt((ulong)id);
-                buffer.WriteString(mesh.name);
-                buffer.WriteVarUInt((ulong)_meshVertices.Count);
-                foreach (var v in _meshVertices)
-                {
-                    buffer.WriteFloat(v.x);
-                    buffer.WriteFloat(v.y);
-                    buffer.WriteFloat(v.z);
-                }
-                buffer.WriteVarUInt((ulong)_meshIndices.Count);
-                buffer.Ensure(_meshIndices.Count * 4);
-                foreach (var i in _meshIndices)
-                {
-                    buffer.data[buffer.length++] = (byte)i;
-                    buffer.data[buffer.length++] = (byte)(i >> 8);
-                    buffer.data[buffer.length++] = (byte)(i >> 16);
-                    buffer.data[buffer.length++] = (byte)(i >> 24);
-                }
-                WriteMeta(RecordKind.Mesh, buffer.data, buffer.length);
-                return id;
-            }
-            catch (Exception)
-            {
-                _meshIds[key] = 0;
-                return 0;
-            }
-        }
 #else
         int _entityCheckCursor;
 
-        public void RecordColliders(ulong tick) { }
+        public void RecordColliders(ulong tick) => SweepVisibility();
 #endif
     }
 }

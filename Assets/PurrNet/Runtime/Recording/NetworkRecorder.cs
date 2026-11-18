@@ -53,14 +53,30 @@ namespace PurrNet.Recording
         [SerializeField] private string _projectKey = "";
         [Tooltip("Recordings that could not be sent yet are kept up to this size; the oldest are deleted first.")]
         [SerializeField] private int _maxLocalMegabytes = 1024;
-        [Tooltip("Most time per tick, in milliseconds, spent looking for collider changes (colliders added, removed, " +
-                 "resized or moved on entities and in the scene). Rows are always recorded in full; in very large " +
-                 "scenes a change is only noticed a little later.")]
+        [Tooltip("Most time per tick, in milliseconds, spent checking objects for changes nothing announced: colliders " +
+                 "added, removed, resized or moved, renderers, and whether an object still shows. What the game " +
+                 "does through its own code (activating an object, enabling a renderer or a collider, instantiating " +
+                 "or destroying something) is heard and recorded on that tick; everything else is found by this " +
+                 "check, which comes round to an object every half second or so, and less often to one nothing " +
+                 "has changed on.")]
         [SerializeField] private float _colliderCheckBudgetMs = 0.1f;
         [Tooltip("Memory reserved when recording starts for one chunk's rows, in KiB (two such buffers, plus the " +
                  "writer's working memory of about the same size). A chunk ends early when its buffer is full, so " +
                  "recording never allocates during play; bigger buffers make slightly smaller files for big games.")]
         [SerializeField] private int _chunkBufferKilobytes = 2048;
+        [Tooltip("Records what recorded objects' animators, particle systems and audio sources do: a row when an " +
+                 "animation state, a particle system or a sound starts or stops.")]
+        [SerializeField] private bool _recordEffects = true;
+        [Tooltip("Most time per tick, in milliseconds, spent asking animators, particle systems and audio sources " +
+                 "what they are doing. What the game starts through its own code is recorded when it does, and " +
+                 "followed every tick until it ends; this is for the rest, which is asked in turn, so such a " +
+                 "change is noticed a little later.")]
+        [SerializeField] private float _effectsBudgetMs = 0.02f;
+        [Tooltip("Most time per tick, in milliseconds, spent on objects the recording has not seen before (declaring " +
+                 "their streams, colliders and renderers). When more objects appear in one tick than fit, the rest " +
+                 "enter the recording on the following ticks. 0 records every object on the tick it appears, " +
+                 "whatever that costs.")]
+        [SerializeField] private float _spawnBudgetMs = 0.25f;
 
         static readonly List<Type> ExtensionTypes = new List<Type>();
         static readonly List<Func<RecorderExtension>> ExtensionFactories = new List<Func<RecorderExtension>>();
@@ -207,6 +223,9 @@ namespace PurrNet.Recording
         readonly List<RecorderExtension> _extensions = new List<RecorderExtension>();
         IRecordingContext _clock, _clockAtStart;
         HierarchyFactory _hierarchy;
+        HierarchyFactory _clientHierarchy;
+        int _clientEffectsEpoch;
+        ulong _clientEffectsTick;
         TickManager _tickManager;
         readonly Dictionary<NetworkIdentity, Component> _components = new Dictionary<NetworkIdentity, Component>(IdentityComparer.instance);
         readonly List<NetworkIdentity> _identityList = new List<NetworkIdentity>();
@@ -216,9 +235,13 @@ namespace PurrNet.Recording
         readonly HashSet<ulong> _players = new HashSet<ulong>();
         readonly List<ulong> _playersLeft = new List<ulong>();
         readonly Dictionary<int, string> _prefabNames = new Dictionary<int, string>();
-        RecorderStats.Section _statPlayers, _statIdentities;
+        RecorderStats.Section _statPlayers, _statIdentities, _statCalls;
         bool _stoppedThisSession;
         bool _extensionPlayers;
+        long _spawnBudget, _spawnSpent;
+
+        /// <summary>Objects that entered the last recording later than they appeared, to keep within the spawn budget.</summary>
+        public int spawnsDeferred { get; private set; }
 
         bool networkReady => _networkManager && _networkManager.tickModule != null;
 
@@ -238,11 +261,12 @@ namespace PurrNet.Recording
             if (!_networkManager)
                 _networkManager = GetComponent<NetworkManager>();
             _source = new Source(this);
-            _session = new RecordingSession(this, nameof(NetworkRecorder), labels, "players", "identities");
+            _session = new RecordingSession(this, nameof(NetworkRecorder), labels, "players", "identities", "calls");
             _session.onRecordingFinished += path => onRecordingFinished?.Invoke(path);
             _session.AddSource(_source);
             _statPlayers = _session.Section("players");
             _statIdentities = _session.Section("identities");
+            _statCalls = _session.Section("calls");
 
             foreach (var factory in ExtensionFactories)
             {
@@ -269,6 +293,7 @@ namespace PurrNet.Recording
 
         void OnDestroy()
         {
+            StopClientEffects();
             StopFile();
             foreach (var extension in _extensions)
                 extension.OnDestroyed();
@@ -337,6 +362,72 @@ namespace PurrNet.Recording
                 StopFile();
 
             _session.Update(server);
+            if (server)
+                StopClientEffects();
+            else
+                RecordClientEffects(context);
+        }
+
+        /// <summary>
+        /// A client has no entities: what the animators, particle systems and audio sources of its network
+        /// identities do, and the effects it plays that no other machine has, go into its part of the recording.
+        /// </summary>
+        void RecordClientEffects(IRecordingContext context)
+        {
+            if (!_recordEffects || !_session.wantsSamples || !_networkManager || !_networkManager.isClient)
+            {
+                StopClientEffects();
+                return;
+            }
+
+            int epoch = _session.sampleEpoch;
+            if (_clientHierarchy == null || epoch != _clientEffectsEpoch || !_session.effectsActive)
+            {
+                StopClientEffects();
+                if (!_networkManager.TryGetModule(false, out _clientHierarchy))
+                    return;
+                _clientEffectsEpoch = epoch;
+                _session.recordEffects = _recordEffects;
+                _session.effectsBudgetMs = _effectsBudgetMs;
+                _session.BeginClientEffects();
+                _clientHierarchy.onIdentityAdded += OnClientIdentityAdded;
+                _clientHierarchy.onIdentityRemoved += OnClientIdentityRemoved;
+                var hierarchies = _clientHierarchy.hierarchies;
+                for (int h = 0; h < hierarchies.Count; h++)
+                {
+                    var spawned = hierarchies[h].spawnedIdentities;
+                    for (int i = 0; i < spawned.Count; i++)
+                        OnClientIdentityAdded(spawned[i]);
+                }
+            }
+
+            ulong tick = context.localTick;
+            if (tick == _clientEffectsTick)
+                return;
+            _clientEffectsTick = tick;
+            _session.RecordEffects(tick);
+        }
+
+        void StopClientEffects()
+        {
+            if (_clientHierarchy == null)
+                return;
+            _clientHierarchy.onIdentityAdded -= OnClientIdentityAdded;
+            _clientHierarchy.onIdentityRemoved -= OnClientIdentityRemoved;
+            _clientHierarchy = null;
+            _session.EndEffects();
+        }
+
+        void OnClientIdentityAdded(NetworkIdentity identity)
+        {
+            if (identity && identity.id.HasValue && !Excluded(identity))
+                _session.TrackIdentityObject(identity.gameObject, identity.id.Value.id.value);
+        }
+
+        void OnClientIdentityRemoved(NetworkIdentity identity)
+        {
+            if (identity)
+                _session.UntrackIdentityObject(identity.gameObject);
         }
 
         /// <summary>Folder for the next recording. Relative paths are under Application.persistentDataPath.</summary>
@@ -381,12 +472,15 @@ namespace PurrNet.Recording
 
             _clockAtStart = _clock;
             _extensionPlayers = false;
+            spawnsDeferred = 0;
             foreach (var extension in _extensions)
                 _extensionPlayers |= extension.recordsPlayers;
             _hierarchy = null;
             _session.chunkSeconds = _chunkSeconds;
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
+            _session.recordEffects = _recordEffects;
+            _session.effectsBudgetMs = _effectsBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;
             var scene = gameObject.scene;
             if (!scene.IsValid() || scene.buildIndex < 0 && scene.name == "DontDestroyOnLoad")
@@ -479,6 +573,7 @@ namespace PurrNet.Recording
             RecordIdentities(tick);
             stats.End(_statIdentities);
             _session.RecordColliders(tick);
+            _session.RecordEffects(tick);
             _session.EndTick();
         }
 
@@ -525,6 +620,8 @@ namespace PurrNet.Recording
                 return;
 
             bool chunkStart = _session.chunkStart;
+            _spawnSpent = 0;
+            _spawnBudget = _spawnBudgetMs > 0 ? (long)(_spawnBudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency) : long.MaxValue;
             int at = 0;
             var hierarchies = _hierarchy.hierarchies;
             for (int h = 0; h < hierarchies.Count; h++)
@@ -546,14 +643,21 @@ namespace PurrNet.Recording
                         {
                             if (Excluded(identity))
                                 continue;
+                            if (_spawnSpent > _spawnBudget)
+                            {
+                                spawnsDeferred++;
+                                continue;
+                            }
+                            long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
                             component = Track(identity, tick);
+                            _spawnSpent += System.Diagnostics.Stopwatch.GetTimestamp() - spawnStart;
                             if (component == null)
                                 continue;
                         }
                         _slots[slot] = component;
                     }
 
-                    _session.RecordTransform(component.data.entity, _source, tick, out _);
+                    _session.RecordTransformLater(component.data.entity, _source, tick);
                     if (identity.internalOwnerServer != component.owner)
                         RecordOwner(component, identity.internalOwnerServer, tick);
                     if (identity.observersVersion != component.observersVersion)

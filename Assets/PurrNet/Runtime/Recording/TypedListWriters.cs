@@ -373,6 +373,28 @@ namespace PurrNet.Recording
 
         public static TypedListWriter Create(RecordingTypeRegistry types, Type listType)
         {
+            if (listType.IsGenericType)
+            {
+                var definition = listType.GetGenericTypeDefinition();
+                Type writerType = definition == typeof(Dictionary<,>) ? typeof(DictionaryWriter<,>)
+                    : definition == typeof(HashSet<>) ? typeof(HashSetWriter<>)
+                    : definition == typeof(Queue<>) ? typeof(QueueWriter<>)
+                    : null;
+                if (writerType != null)
+                {
+                    try
+                    {
+                        var writer = (TypedListWriter)Activator.CreateInstance(writerType.MakeGenericType(listType.GetGenericArguments()));
+                        ((ICollectionPlans)writer).SetPlans(types);
+                        return writer;
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                }
+            }
+
             var element = ListTypes.Element(listType);
             if (element == null)
                 return null;
@@ -386,6 +408,80 @@ namespace PurrNet.Recording
             {
                 return null;
             }
+        }
+    }
+
+    interface ICollectionPlans
+    {
+        void SetPlans(RecordingTypeRegistry types);
+    }
+
+    sealed class DictionaryWriter<TKey, TValue> : TypedListWriter, ICollectionPlans
+    {
+        ObjectPlan _keyPlan, _valuePlan;
+
+        public void SetPlans(RecordingTypeRegistry types)
+        {
+            _keyPlan = typeof(TKey).IsValueType ? types.GetValuePlan(typeof(TKey)) : null;
+            _valuePlan = typeof(TValue).IsValueType ? types.GetValuePlan(typeof(TValue)) : null;
+        }
+
+        public override bool Write(RecordingTypeRegistry types, RecordingBuffer buffer, object value, int depth,
+            HashSet<object> visiting)
+        {
+            var dictionary = (Dictionary<TKey, TValue>)value;
+            buffer.WriteByte(11);
+            buffer.WriteVarUInt((ulong)dictionary.Count);
+            foreach (var pair in dictionary)
+            {
+                var key = pair.Key;
+                var item = pair.Value;
+                ElementWriter<TKey>.Write(_keyPlan, types, buffer, ref key, depth + 1, visiting);
+                ElementWriter<TValue>.Write(_valuePlan, types, buffer, ref item, depth + 1, visiting);
+            }
+            return true;
+        }
+    }
+
+    sealed class HashSetWriter<T> : TypedListWriter, ICollectionPlans
+    {
+        ObjectPlan _plan;
+
+        public void SetPlans(RecordingTypeRegistry types) => _plan = typeof(T).IsValueType ? types.GetValuePlan(typeof(T)) : null;
+
+        public override bool Write(RecordingTypeRegistry types, RecordingBuffer buffer, object value, int depth,
+            HashSet<object> visiting)
+        {
+            var set = (HashSet<T>)value;
+            buffer.WriteByte(8);
+            buffer.WriteVarUInt((ulong)set.Count);
+            foreach (var entry in set)
+            {
+                var item = entry;
+                ElementWriter<T>.Write(_plan, types, buffer, ref item, depth + 1, visiting);
+            }
+            return true;
+        }
+    }
+
+    sealed class QueueWriter<T> : TypedListWriter, ICollectionPlans
+    {
+        ObjectPlan _plan;
+
+        public void SetPlans(RecordingTypeRegistry types) => _plan = typeof(T).IsValueType ? types.GetValuePlan(typeof(T)) : null;
+
+        public override bool Write(RecordingTypeRegistry types, RecordingBuffer buffer, object value, int depth,
+            HashSet<object> visiting)
+        {
+            var queue = (Queue<T>)value;
+            buffer.WriteByte(8);
+            buffer.WriteVarUInt((ulong)queue.Count);
+            foreach (var entry in queue)
+            {
+                var item = entry;
+                ElementWriter<T>.Write(_plan, types, buffer, ref item, depth + 1, visiting);
+            }
+            return true;
         }
     }
 

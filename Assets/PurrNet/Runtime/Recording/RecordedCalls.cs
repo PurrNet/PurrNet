@@ -131,6 +131,7 @@ namespace PurrNet.Recording
             if (!_session.recordsEvents)
                 return false;
 
+            _session.stats.Begin(_statCalls);
             try
             {
                 NetworkIdentity identity = null;
@@ -200,6 +201,10 @@ namespace PurrNet.Recording
                 _call = null;
                 return false;
             }
+            finally
+            {
+                _session.stats.End(_statCalls);
+            }
         }
 
         internal void CallArg<T>(string name, ref T value)
@@ -209,6 +214,7 @@ namespace PurrNet.Recording
                 return;
 
             int start = _callArgs.length;
+            _session.stats.Begin(_statCalls);
             try
             {
                 if (!call.described)
@@ -226,6 +232,7 @@ namespace PurrNet.Recording
                 _callArgs.length = start;
                 _callArgs.WriteByte(12);
             }
+            _session.stats.End(_statCalls);
         }
 
         internal void EndCall()
@@ -235,6 +242,7 @@ namespace PurrNet.Recording
             if (call == null || _callFailed || !_session.recordsEvents)
                 return;
 
+            _session.stats.Begin(_statCalls);
             try
             {
                 if (!call.described)
@@ -253,6 +261,10 @@ namespace PurrNet.Recording
             {
                 _session.AddError("rpc_record_failed", $"{_callName}: {e.GetType().Name}");
             }
+            finally
+            {
+                _session.stats.End(_statCalls);
+            }
         }
 
         internal void RecordBroadcast<T>(object manager, Connection conn, PlayerID? known, in T data, byte flags)
@@ -260,6 +272,7 @@ namespace PurrNet.Recording
             if (RecordedBroadcastType<T>.excluded || !_session.recordsEvents || !ReferenceEquals(manager, _networkManager))
                 return;
 
+            _session.stats.Begin(_statCalls);
             try
             {
                 if (!_broadcasts.TryGetValue(typeof(T), out var rows))
@@ -294,6 +307,10 @@ namespace PurrNet.Recording
             catch (Exception e)
             {
                 _session.AddError("broadcast_record_failed", $"{typeof(T).Name}: {e.GetType().Name}");
+            }
+            finally
+            {
+                _session.stats.End(_statCalls);
             }
         }
     }

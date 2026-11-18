@@ -30,7 +30,9 @@ namespace PurrNet.Recording
         Detach = 13,
         Part = 14,
         Owner = 15,
-        Observers = 16
+        Observers = 16,
+        Renderers = 17,
+        Effects = 18
     }
 
     interface IStepwiseRecordProducer : IRecordProducer
@@ -55,6 +57,8 @@ namespace PurrNet.Recording
             public byte[] payload;
             public IRecordProducer producer;
             public bool compress;
+            public IntPtr native;
+            public int nativeLength;
         }
 
         readonly Queue<PendingRecord> _queue = new Queue<PendingRecord>(64);
@@ -69,6 +73,9 @@ namespace PurrNet.Recording
         long _bytesWritten, _compressTicks;
         readonly BufferStream _compressed = new BufferStream(new RecordingBuffer(ByteShelf.shared, 1 << 16));
         GCHandle _compressedHandle;
+        readonly NativeSink _nativeSink = new NativeSink();
+        GCHandle _nativeSinkHandle;
+        readonly byte[] _slice = new byte[1 << 16];
 #endif
 
         public double pumpBudgetMs { get; set; } = 1.0;
@@ -162,6 +169,7 @@ namespace PurrNet.Recording
             _stream.WriteByte(0);
             _bytesWritten = 10;
             _compressedHandle = GCHandle.Alloc(_compressed.buffer);
+            _nativeSinkHandle = GCHandle.Alloc(_nativeSink);
             _thread = new Thread(WriteLoop) { IsBackground = true, Name = "PurrDiction recording writer", Priority = System.Threading.ThreadPriority.BelowNormal };
             _thread.Start();
         }
@@ -249,6 +257,69 @@ namespace PurrNet.Recording
             Add(new PendingRecord { kind = kind, producer = producer, compress = compress });
         }
 
+        /// <summary>
+        /// A record whose payload is native memory (from UnsafeUtility.Malloc, Allocator.Persistent): the file takes
+        /// it over, compresses and writes it from where it is, and frees it. For payloads of megabytes (meshes),
+        /// which must not pass through the managed heap.
+        /// </summary>
+        public unsafe void EnqueueNative(RecordKind kind, IntPtr data, int length, bool compress)
+        {
+#if PURRREC_WEB
+            var bytes = new byte[length];
+            Marshal.Copy(data, bytes, 0, length);
+            Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free((void*)data, Unity.Collections.Allocator.Persistent);
+            Enqueue(kind, bytes, compress);
+#else
+            if (_error != null)
+            {
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free((void*)data, Unity.Collections.Allocator.Persistent);
+                return;
+            }
+            Interlocked.Add(ref _rawBytes, length);
+            Add(new PendingRecord { kind = kind, native = data, nativeLength = length, compress = compress });
+#endif
+        }
+
+#if !PURRREC_WEB
+        unsafe void WriteNative(in PendingRecord record, RecordingBuffer header)
+        {
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            byte* payload = (byte*)record.native;
+            int length = record.nativeLength;
+            byte kind = (byte)record.kind;
+            if (record.compress)
+            {
+                using var _ = CompressMarker.Auto();
+                _nativeSink.Begin(length / 2 + 1024);
+                if (NativeDeflate.TryCompress(record.native, length, GCHandle.ToIntPtr(_nativeSinkHandle)) && !_nativeSink.failed)
+                {
+                    payload = _nativeSink.data;
+                    length = _nativeSink.length;
+                    kind |= 0x80;
+                }
+            }
+            long compressed = System.Diagnostics.Stopwatch.GetTimestamp();
+            Interlocked.Add(ref _compressTicks, compressed - started);
+            if (compressed - started > Interlocked.Read(ref _maxRecordTicks))
+                Interlocked.Exchange(ref _maxRecordTicks, compressed - started);
+
+            using var write = WriteMarker.Auto();
+            header.Clear();
+            header.WriteByte(kind);
+            header.WriteVarUInt((ulong)length);
+            _stream.Write(header.data, 0, header.length);
+            for (int at = 0; at < length;)
+            {
+                int n = Math.Min(_slice.Length, length - at);
+                Marshal.Copy((IntPtr)(payload + at), _slice, 0, n);
+                _stream.Write(_slice, 0, n);
+                at += n;
+            }
+            Interlocked.Add(ref _bytesWritten, header.length + length);
+            _nativeSink.Free();
+        }
+#endif
+
         static readonly ProfilerMarker EncodeMarker = new ProfilerMarker("Recording.Encode");
         static readonly ProfilerMarker CompressMarker = new ProfilerMarker("Recording.Compress");
         static readonly ProfilerMarker WriteMarker = new ProfilerMarker("Recording.Write");
@@ -267,11 +338,19 @@ namespace PurrNet.Recording
             if (_error != null)
             {
                 record.producer?.Release();
+                FreeNative(record);
                 return;
             }
             _busy = true;
             try
             {
+#if !PURRREC_WEB
+                if (record.native != IntPtr.Zero)
+                {
+                    WriteNative(record, header);
+                    return;
+                }
+#endif
                 long started = System.Diagnostics.Stopwatch.GetTimestamp();
                 byte[] payload = record.payload;
                 int length = payload?.Length ?? 0;
@@ -326,8 +405,15 @@ namespace PurrNet.Recording
             finally
             {
                 record.producer?.Release();
+                FreeNative(record);
                 _busy = false;
             }
+        }
+
+        static unsafe void FreeNative(in PendingRecord record)
+        {
+            if (record.native != IntPtr.Zero)
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free((void*)record.native, Unity.Collections.Allocator.Persistent);
         }
 
         public void Dispose()
@@ -348,6 +434,9 @@ namespace PurrNet.Recording
             _thread.Join();
             if (_compressedHandle.IsAllocated)
                 _compressedHandle.Free();
+            if (_nativeSinkHandle.IsAllocated)
+                _nativeSinkHandle.Free();
+            _nativeSink.Free();
             _stream.Dispose();
 #endif
         }
@@ -377,6 +466,53 @@ namespace PurrNet.Recording
     }
 
 #if !PURRREC_WEB
+    /// <summary>Compressed output that grows in native memory, for records too large to pass through the managed heap.</summary>
+    sealed unsafe class NativeSink
+    {
+        public byte* data;
+        public int length, capacity;
+        public bool failed;
+
+        public void Begin(int reserve)
+        {
+            Free();
+            capacity = Math.Max(1024, reserve);
+            data = (byte*)Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc(capacity, 1, Unity.Collections.Allocator.Persistent);
+            length = 0;
+            failed = false;
+        }
+
+        public void Write(byte* source, int count)
+        {
+            if (failed || data == null)
+                return;
+            if ((long)length + count > capacity)
+            {
+                long grown = Math.Max((long)capacity * 2, (long)length + count);
+                if (grown > int.MaxValue)
+                {
+                    failed = true;
+                    return;
+                }
+                var bigger = (byte*)Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc(grown, 1, Unity.Collections.Allocator.Persistent);
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.MemCpy(bigger, data, length);
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free(data, Unity.Collections.Allocator.Persistent);
+                data = bigger;
+                capacity = (int)grown;
+            }
+            Unity.Collections.LowLevel.Unsafe.UnsafeUtility.MemCpy(data + length, source, count);
+            length += count;
+        }
+
+        public void Free()
+        {
+            if (data != null)
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free(data, Unity.Collections.Allocator.Persistent);
+            data = null;
+            length = capacity = 0;
+        }
+    }
+
     static class NativeDeflate
     {
         delegate int Feeder(IntPtr buffer, int length, IntPtr state);
@@ -401,8 +537,11 @@ namespace PurrNet.Recording
         {
             try
             {
-                var output = (RecordingBuffer)GCHandle.FromIntPtr(state).Target;
-                output.WriteBytes((byte*)buffer, length);
+                var target = GCHandle.FromIntPtr(state).Target;
+                if (target is NativeSink sink)
+                    sink.Write((byte*)buffer, length);
+                else
+                    ((RecordingBuffer)target).WriteBytes((byte*)buffer, length);
                 return length;
             }
             catch (Exception)
@@ -412,6 +551,12 @@ namespace PurrNet.Recording
         }
 
         public static unsafe bool TryCompress(byte[] payload, int length, IntPtr output)
+        {
+            fixed (byte* p = payload)
+                return TryCompress((IntPtr)p, length, output);
+        }
+
+        public static unsafe bool TryCompress(IntPtr payload, int length, IntPtr output)
         {
             if (_state < 0)
                 return false;
@@ -427,10 +572,7 @@ namespace PurrNet.Recording
                 }
                 int written = 0;
                 if (length > 0)
-                {
-                    fixed (byte* p = payload)
-                        written = WriteZStream(stream, (IntPtr)p, length);
-                }
+                    written = WriteZStream(stream, payload, length);
                 int closed = CloseZStream(stream);
                 if (written < 0 || closed < 0)
                     return false;
