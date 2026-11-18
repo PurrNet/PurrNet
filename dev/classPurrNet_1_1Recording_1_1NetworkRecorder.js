@@ -9,5 +9,7 @@ var classPurrNet_1_1Recording_1_1NetworkRecorder =
     [ "WriteSample< T >", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#a455c9c04bee1ba99260e1d0e57985b52", null ],
     [ "WriteSampleFor< T >", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#acd099c07bfbb35e82d6c8ebe09d9d583", null ],
     [ "labels", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#a41471b20c35ff0ba26d103edd7b0e289", null ],
-    [ "spawnsDeferred", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#a56c868f655beaa6485c14630975a5a1f", null ]
+    [ "lastSplitMs", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#a400e8a8d0a4dd878dd15facf05229e7f", null ],
+    [ "spawnsDeferred", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#a56c868f655beaa6485c14630975a5a1f", null ],
+    [ "splits", "classPurrNet_1_1Recording_1_1NetworkRecorder.html#ac78916b13298c5ae9087b2cc267b463d", null ]
 ];

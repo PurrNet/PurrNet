@@ -55,12 +55,12 @@ var NAVTREEINDEX =
 "classPurrNet_1_1NetworkIdentity.html#aa9ca1d8499152c7c2a641b0b8783adf6",
 "classPurrNet_1_1NetworkManager.html#ad7996587594c52ce02b0f490cafc0669",
 "classPurrNet_1_1NetworkTransformSyncStrategy.html#ae5143c9389d8cae25fd2e36068b2fcbf",
-"classPurrNet_1_1Recording_1_1RecordingSession.html#ae7a0b9d7c3047793426c21eb60f73709",
-"classPurrNet_1_1SyncLazyRef.html#a59f58fda33eb298733e0d1e3abef76e6",
-"classPurrNet_1_1UnityUpdate.html",
-"interfacePurrNet_1_1Transports_1_1ITransport.html#ae3e1f81560c564104469b5fc729ba137",
-"structPurrNet_1_1Packing_1_1Half.html#a5e73f45fee08a95c06806faa3939bf5e",
-"structPurrNet_1_1Transports_1_1HostJoinInfo.html#a485a7fe71fa23b6a00a9d5e50c6bfcf3"
+"classPurrNet_1_1Recording_1_1RecordingFile.html#aeae6be766177de1e23c451c4bdae1a67",
+"classPurrNet_1_1SyncHashSet.html#a69d5d055eb6b43f47507b6f9683976d9",
+"classPurrNet_1_1Transports_1_1RelayUsage_1_1Traffic.html",
+"interfacePurrNet_1_1Recording_1_1IStepwiseRecordProducer.html",
+"structPurrNet_1_1Packing_1_1CompressedFloat.html",
+"structPurrNet_1_1TimestampedSnapshot.html#a86d95cc97fe8a4d59e8d74cc52e8fc76"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

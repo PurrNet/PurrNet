@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1Recording
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
+<a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1Recording_1_1RecordingUploader-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Recording.RecordingUploader Class Reference</div></div>
@@ -110,12 +111,20 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:aa38eaf6a264bfe1c11f7804a9b061025"><td class="memItemLeft" align="right" valign="top"><a id="aa38eaf6a264bfe1c11f7804a9b061025" name="aa38eaf6a264bfe1c11f7804a9b061025"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>Configure</b> (string endpoint, string projectKey, string directory, long maxLocalBytes)</td></tr>
 <tr class="separator:aa38eaf6a264bfe1c11f7804a9b061025"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b07890125f583323ba0c52588ff4dcb"><td class="memItemLeft" align="right" valign="top"><a id="a5b07890125f583323ba0c52588ff4dcb" name="a5b07890125f583323ba0c52588ff4dcb"></a>
-static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetActiveRecording</b> (string path)</td></tr>
-<tr class="separator:a5b07890125f583323ba0c52588ff4dcb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89eb19d3866e3f5535866a74fe4f2cbd"><td class="memItemLeft" align="right" valign="top"><a id="a89eb19d3866e3f5535866a74fe4f2cbd" name="a89eb19d3866e3f5535866a74fe4f2cbd"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetWriting</b> (string path, bool writing)</td></tr>
+<tr class="memdesc:a89eb19d3866e3f5535866a74fe4f2cbd"><td class="mdescLeft">&#160;</td><td class="mdescRight">A file this process is writing is neither sent nor deleted until it says it is done with it. <br /></td></tr>
+<tr class="separator:a89eb19d3866e3f5535866a74fe4f2cbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab33ab11297be62caa667b02ffc2a92f8"><td class="memItemLeft" align="right" valign="top"><a id="ab33ab11297be62caa667b02ffc2a92f8" name="ab33ab11297be62caa667b02ffc2a92f8"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>NotifyFinished</b> ()</td></tr>
 <tr class="separator:ab33ab11297be62caa667b02ffc2a92f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
+Static Public Attributes</h2></td></tr>
+<tr class="memitem:a19f3af8b8e41221452fa6fee832c5576"><td class="memItemLeft" align="right" valign="top"><a id="a19f3af8b8e41221452fa6fee832c5576" name="a19f3af8b8e41221452fa6fee832c5576"></a>
+static bool&#160;</td><td class="memItemRight" valign="bottom"><b>sendWhileServing</b> = true</td></tr>
+<tr class="memdesc:a19f3af8b8e41221452fa6fee832c5576"><td class="mdescLeft">&#160;</td><td class="mdescRight">A dedicated server sends the recordings it finishes while it keeps running: it may not be offline for days. Every other machine waits until the game is offline, so sending never competes with play.  <br /></td></tr>
+<tr class="separator:a19f3af8b8e41221452fa6fee832c5576"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>

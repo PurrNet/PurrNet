@@ -35,12 +35,13 @@ var searchData=
   ['disposablelist_3c_20tkey_20_3e_32',['DisposableList&lt; TKey &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
   ['disposablelist_3c_20transform_20_3e_33',['DisposableList&lt; Transform &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
   ['disposablelist_3c_20ushort_20_3e_34',['DisposableList&lt; ushort &gt;',['../structPurrNet_1_1Pooling_1_1DisposableList.html',1,'PurrNet::Pooling']]],
-  ['distancerule_35',['DistanceRule',['../classPurrNet_1_1DistanceRule.html',1,'PurrNet']]],
-  ['divide_36',['Divide',['../structPurrNet_1_1Packing_1_1Half.html#a1fb5cb416564844a4ec3aeb711612384',1,'PurrNet::Packing::Half']]],
-  ['dontdeltacompressattribute_37',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
-  ['dontpackattribute_38',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]],
-  ['dontrecordattribute_39',['DontRecordAttribute',['../classPurrNet_1_1Recording_1_1DontRecordAttribute.html',1,'PurrNet::Recording']]],
-  ['dontrecordui_40',['DontRecordUI',['../classPurrNet_1_1Recording_1_1DontRecordUI.html',1,'PurrNet::Recording']]],
-  ['droppedsample_41',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]],
-  ['duplicate_42',['Duplicate',['../classPurrNet_1_1NetworkIdentity.html#a93bedb9131c12bd6088700a306261df0',1,'PurrNet.NetworkIdentity.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableArray.html#af50880b004472814beddb8344d8891f9',1,'PurrNet.Pooling.DisposableArray.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableDictionary.html#afdf3312df9ab7e8ea875e8d379b19b2d',1,'PurrNet.Pooling.DisposableDictionary.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableHashSet.html#ac9fe49989ed19f1260490d70b23ab9e6',1,'PurrNet.Pooling.DisposableHashSet.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableList.html#a68573e68b5c248c20d7b0558882f5ec8',1,'PurrNet.Pooling.DisposableList.Duplicate()']]]
+  ['dispose_35',['Dispose',['../classPurrNet_1_1Recording_1_1RecordingFile.html#a8eb49a37aa204f6a4fa34352f379bdb3',1,'PurrNet::Recording::RecordingFile']]],
+  ['distancerule_36',['DistanceRule',['../classPurrNet_1_1DistanceRule.html',1,'PurrNet']]],
+  ['divide_37',['Divide',['../structPurrNet_1_1Packing_1_1Half.html#a1fb5cb416564844a4ec3aeb711612384',1,'PurrNet::Packing::Half']]],
+  ['dontdeltacompressattribute_38',['DontDeltaCompressAttribute',['../classPurrNet_1_1DontDeltaCompressAttribute.html',1,'PurrNet']]],
+  ['dontpackattribute_39',['DontPackAttribute',['../classPurrNet_1_1DontPackAttribute.html',1,'PurrNet']]],
+  ['dontrecordattribute_40',['DontRecordAttribute',['../classPurrNet_1_1Recording_1_1DontRecordAttribute.html',1,'PurrNet::Recording']]],
+  ['dontrecordui_41',['DontRecordUI',['../classPurrNet_1_1Recording_1_1DontRecordUI.html',1,'PurrNet::Recording']]],
+  ['droppedsample_42',['DroppedSample',['../structPurrNet_1_1Profiler_1_1DroppedSample.html',1,'PurrNet::Profiler']]],
+  ['duplicate_43',['Duplicate',['../classPurrNet_1_1NetworkIdentity.html#a93bedb9131c12bd6088700a306261df0',1,'PurrNet.NetworkIdentity.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableArray.html#af50880b004472814beddb8344d8891f9',1,'PurrNet.Pooling.DisposableArray.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableDictionary.html#afdf3312df9ab7e8ea875e8d379b19b2d',1,'PurrNet.Pooling.DisposableDictionary.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableHashSet.html#ac9fe49989ed19f1260490d70b23ab9e6',1,'PurrNet.Pooling.DisposableHashSet.Duplicate()'],['../structPurrNet_1_1Pooling_1_1DisposableList.html#a68573e68b5c248c20d7b0558882f5ec8',1,'PurrNet.Pooling.DisposableList.Duplicate()']]]
 ];
