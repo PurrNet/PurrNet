@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using PurrNet.Logging;
 using PurrNet.Transports;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -190,6 +191,9 @@ namespace PurrNet.Recording
         {
             isDisposed = true;
             Stop(null);
+            foreach (var file in _closing)
+                file.Dispose();
+            FinishClosed();
             DisposeTransformJob();
             UnsubscribeNetwork();
             if (active == this)
@@ -227,6 +231,8 @@ namespace PurrNet.Recording
             UpdatePart(isServer);
 
             _file?.Pump();
+            if (_closing.Count > 0)
+                FinishClosed();
         }
 
         public static bool RecordsAutomatically(bool recordInDevelopment) =>
@@ -243,20 +249,40 @@ namespace PurrNet.Recording
                 RecordingUploader.Configure(endpoint, key, ResolveDirectory(directory), (long)maxLocalMegabytes * 1024 * 1024);
         }
 
-        public void Start(string directory, string fileName, int tickRate, ulong firstTick, string scene, bool host)
+        /// <summary>
+        /// The id the pieces of one long recording share: the recordingId of its first piece. A recording that was
+        /// not split is the only piece of its session.
+        /// </summary>
+        public string sessionId { get; private set; }
+
+        /// <summary>Which piece of its session the current (or last) file is, from 0.</summary>
+        public int segment { get; private set; }
+
+        /// <summary>
+        /// Starts a file. With <paramref name="continues"/> it is the next piece of the session the last file was
+        /// in: it starts on the tick after that file's last one and its name ends in the piece's number.
+        /// </summary>
+        public void Start(string directory, string fileName, int tickRate, ulong firstTick, string scene, bool host,
+            bool continues = false)
         {
             if (isRecording)
                 return;
 
+            continues &= sessionId != null;
+            int piece = continues ? segment + 1 : 0;
+            if (continues)
+                firstTick = Math.Max(firstTick, _lastTick + 1);
             directory = ResolveDirectory(directory);
             fileName ??= $"{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Application.productName}.purrrec";
+            if (piece > 0)
+                fileName = $"{Path.GetFileNameWithoutExtension(fileName)}-{piece + 1}{Path.GetExtension(fileName)}";
             foreach (char c in Path.GetInvalidFileNameChars())
                 fileName = fileName.Replace(c, '_');
 
             _types = new RecordingTypeRegistry { onError = AddError };
             _baseColumns.Clear();
-            _file = new RecordingFile(Path.Combine(directory, fileName), (long)maxLocalMegabytes * 1024 * 1024);
-            RecordingUploader.SetActiveRecording(_file.path);
+            _file = new RecordingFile(Path.Combine(directory, fileName), (long)maxLocalMegabytes * 1024 * 1024, lastClosing);
+            RecordingUploader.SetWriting(_file.path, true);
             _chunkTicks = Mathf.Max(1, Mathf.RoundToInt(chunkSeconds * tickRate));
             _chunkFirstTick = firstTick;
             _lastTick = 0;
@@ -274,25 +300,115 @@ namespace PurrNet.Recording
             transformsReadByJob = 0;
 
             BeginParts(firstTick);
+            segment = piece;
+            if (!continues)
+                sessionId = recordingId;
             WriteHeader(tickRate, firstTick, scene, host);
             BeginEffects();
             RecordedEffects.Watch(this);
 #if UNITY_PHYSICS_3D
             _hasStaticColliderKey = false;
+            int staticWork = _lastStaticWork;
             ResetStaticCheck();
-            RefreshStaticColliders(firstTick);
+            _staticSince = null;
+            if (continues)
+            {
+                _lastStaticWork = staticWork;
+                _staticSince = firstTick;
+                BeginStaticCheck();
+            }
+            else
+                RefreshStaticColliders(firstTick);
 #endif
         }
 
-        public void Stop(Action<JsonBuilder> footer)
+        /// <summary>What went wrong writing the current file, or null.</summary>
+        public Exception fileError => _file?.error;
+
+        /// <summary>
+        /// Ends the recording. The last chunk and the footer are written when they can be; what the recording holds
+        /// (the file, its entities, native memory, jobs) is let go of whether or not that worked. When the next
+        /// piece of the session follows (<paramref name="continued"/>), the footer says so and the file is finished
+        /// behind the game's back instead of being waited for: <see cref="onRecordingFinished"/> comes a moment later.
+        /// </summary>
+        public void Stop(Action<JsonBuilder> footer, bool continued = false) => End(footer, continued, !continued);
+
+        void End(Action<JsonBuilder> footer, bool continued, bool wait)
         {
             if (_file == null)
                 return;
 
+            try
+            {
+                WriteEnding(footer, continued);
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogError($"The recording could not be finished and ends where it is.\n{e}");
+            }
+
+            var file = _file;
+            _file = null;
+            try
+            {
+                Release(file, wait);
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogError($"The recorder could not let go of everything a recording held.\n{e}");
+            }
+            finally
+            {
+                RecordedEffects.Unwatch(this);
+                RecordedEffects.Remove(this);
+                DisposeTransformJob();
+#if UNITY_PHYSICS_3D
+                PumpMeshCaptures(true);
+                _meshIds.Clear();
+                _nextMeshId = 1;
+#endif
+                _errors.Clear();
+                _streams.Clear();
+                _entities.Clear();
+                _entitiesByGameObject.Clear();
+                _customStreams.Clear();
+                _names.Clear();
+                _nextEntityId = 1;
+                _nextStreamId = 1;
+            }
+
+            _closing.Add(file);
+            if (wait)
+                FinishClosed();
+        }
+
+        /// <summary>Files that were ended and are being written to their end by the writer thread, oldest first.</summary>
+        readonly List<RecordingFile> _closing = new List<RecordingFile>();
+
+        RecordingFile lastClosing => _closing.Count > 0 ? _closing[_closing.Count - 1] : null;
+
+        /// <summary>
+        /// A file is finished when its writer thread has closed it. Only then may it be sent, and only then is
+        /// anyone told.
+        /// </summary>
+        void FinishClosed()
+        {
+            while (_closing.Count > 0 && _closing[0].closed)
+            {
+                var file = _closing[0];
+                _closing.RemoveAt(0);
+                RecordingUploader.SetWriting(file.path, false);
+                RecordingUploader.NotifyFinished();
+                onRecordingFinished?.Invoke(file.path);
+            }
+        }
+
+        void WriteEnding(Action<JsonBuilder> footer, bool continued)
+        {
             TakeLaterTransforms();
             RecordedEffects.Unwatch(this);
             EndEffects();
-            EndParts();
+            EndParts(!continued);
             FlushChunk();
 #if UNITY_PHYSICS_3D
             PumpMeshCaptures(true);
@@ -306,6 +422,8 @@ namespace PurrNet.Recording
             _json.Clear().BeginObject()
                 .Prop("lastTick", _lastTick).Prop("ticks", _ticksRecorded).Prop("entities", _nextEntityId - 1)
                 .Prop("streams", _nextStreamId - 1).Prop("chunks", _chunks);
+            if (continued)
+                _json.Prop("continued", true);
             footer?.Invoke(_json);
             if (_errors.Count > 0)
             {
@@ -316,35 +434,29 @@ namespace PurrNet.Recording
                 _errors.Clear();
             }
             EnqueueJson(RecordKind.Footer, _json.EndObject(), true);
+        }
 
-            var file = _file;
-            _file = null;
-            file.Dispose();
+        void Release(RecordingFile file, bool wait)
+        {
+            if (wait)
+                file.Dispose();
+            else
+                file.Complete();
+            EndEffects();
             _lastEntities = _nextEntityId - 1;
             _stats.file = null;
             _lastFile = file;
 
+            DisposeTransformJob();
             foreach (var entity in _entities)
                 ReleaseEntity(entity);
-            DisposeTransformJob();
             ClearChanges();
 #if UNITY_PHYSICS_3D
             ReleaseColliders(_staticColliders);
             ResetStaticCheck();
             _staticMovingColliders = 0;
-            _meshIds.Clear();
-            _nextMeshId = 1;
 #endif
-            _streams.Clear();
-            _entities.Clear();
-            _entitiesByGameObject.Clear();
-            _customStreams.Clear();
-            _names.Clear();
-            _nextEntityId = 1;
-            _nextStreamId = 1;
-            RecordingUploader.SetActiveRecording(null);
-            RecordingUploader.NotifyFinished();
-            onRecordingFinished?.Invoke(file.path);
+            EndParts();
         }
 
         readonly List<(string kind, string detail)> _errors = new List<(string, string)>();
@@ -381,6 +493,8 @@ namespace PurrNet.Recording
                 .Prop("firstTick", firstTick)
                 .Prop("startedUtc", DateTime.UtcNow.ToString("o"))
                 .Prop("recordingId", recordingId)
+                .Prop("session", sessionId)
+                .Prop("segment", segment)
                 .Prop("scene", scene)
                 .Prop("recorder", host ? "host" : "server")
                 .Prop("serverBuild", PurrNet.Utils.ApplicationContext.isServerBuild)
@@ -816,24 +930,50 @@ namespace PurrNet.Recording
                 return;
             var chunk = _job.log;
             var log = chunk.bytes;
-            int start = log.length;
+            int start = log.length, count = rows.rowCount;
             bool hadTick = chunk.hasTick;
             ulong lastTick = chunk.lastTick;
-            BeginRow(rows, tick, chunk);
-            int at = log.length;
-            layout.WriteFixed(ref value, log);
-            bool write = !rows.forwardFill || first || !SameBytes(log.data, at, rows.lastOffset, layout.rowSize);
-            if (layout.hasManaged)
-                write |= WriteManaged(rows, ref value, first, log);
-            if (write)
+            try
             {
-                rows.lastOffset = at;
-                return;
+                BeginRow(rows, tick, chunk);
+                int at = log.length;
+                layout.WriteFixed(ref value, log);
+                bool write = !rows.forwardFill || first || !SameBytes(log.data, at, rows.lastOffset, layout.rowSize);
+                if (layout.hasManaged)
+                    write |= WriteManaged(rows, ref value, first, log);
+                if (write)
+                {
+                    rows.lastOffset = at;
+                    return;
+                }
+            }
+            catch
+            {
+                TakeBackRow(rows, chunk, start, count, hadTick, lastTick, first);
+                throw;
             }
             log.length = start;
             chunk.hasTick = hadTick;
             chunk.lastTick = lastTick;
             rows.rowCount--;
+        }
+
+        /// <summary>
+        /// A row that could not be written whole is taken out of the chunk again, so that what is in a chunk can
+        /// always be read: a row is in it complete or not at all.
+        /// </summary>
+        void TakeBackRow(StreamRows rows, ChunkLog chunk, int start, int count, bool hadTick, ulong lastTick, bool first)
+        {
+            chunk.bytes.length = start;
+            chunk.hasTick = hadTick;
+            chunk.lastTick = lastTick;
+            rows.rowCount = count;
+            Array.Clear(rows.lastObject, 0, rows.lastObject.Length);
+            if (!first || rows.slot < 0)
+                return;
+            if (_slots.Count > 0 && ReferenceEquals(_slots[_slots.Count - 1], rows))
+                _slots.RemoveAt(_slots.Count - 1);
+            rows.slot = -1;
         }
 
         internal RecordingTypeRegistry types => _types;
@@ -848,10 +988,21 @@ namespace PurrNet.Recording
             ulong tick = SampleTick();
             rows.aliveTick = tick;
             var chunk = _job.log;
-            BeginRow(rows, tick, chunk);
-            rows.layout.WriteFixed(ref value, chunk.bytes);
-            chunk.bytes.WriteInt32(managed.length);
-            chunk.bytes.WriteBytes(managed);
+            int start = chunk.bytes.length, count = rows.rowCount;
+            bool hadTick = chunk.hasTick, first = rows.slot < 0;
+            ulong lastTick = chunk.lastTick;
+            try
+            {
+                BeginRow(rows, tick, chunk);
+                rows.layout.WriteFixed(ref value, chunk.bytes);
+                chunk.bytes.WriteInt32(managed.length);
+                chunk.bytes.WriteBytes(managed);
+            }
+            catch
+            {
+                TakeBackRow(rows, chunk, start, count, hadTick, lastTick, first);
+                throw;
+            }
         }
 
         unsafe bool SameSources<T>(StreamRows rows, ref T value) where T : struct
@@ -1511,6 +1662,12 @@ namespace PurrNet.Recording
         enum StaticCheck { Idle, Scan, Poses }
 
         StaticCheck _staticCheck;
+
+        /// <summary>
+        /// The next piece of a session does not stop to read the whole static world again: the check that is spread
+        /// over ticks finds it. It was there all along, so its record carries the piece's first tick.
+        /// </summary>
+        ulong? _staticSince;
         readonly List<Transform> _staticStack = new List<Transform>();
         readonly List<Collider> _staticFound = new List<Collider>();
         readonly List<Collider> _nodeColliders = new List<Collider>();
@@ -1604,11 +1761,13 @@ namespace PurrNet.Recording
                         if (!_staticFound[i])
                             _staticFound.RemoveAt(i);
                     RefreshColliderSet(_staticFound, null, Matrix4x4.identity, _staticColliderKey, ref _hasStaticColliderKey,
-                        _staticColliders, ref _staticMovingColliders, -1, tick);
+                        _staticColliders, ref _staticMovingColliders, -1, _staticSince ?? tick);
+                    _staticSince = null;
                     _staticFound.Clear();
                     _staticCheck = StaticCheck.Idle;
                     return;
                 }
+                _staticSince = null;
                 _staticFound.Clear();
                 _staticCheck = StaticCheck.Poses;
                 _staticNext = 0;

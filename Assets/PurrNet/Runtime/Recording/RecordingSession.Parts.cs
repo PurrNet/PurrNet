@@ -87,7 +87,11 @@ namespace PurrNet.Recording
             OfferParts();
         }
 
-        void EndParts()
+        /// <summary>
+        /// The clients' parts of this file end with it. They are told so, unless the next piece of the session
+        /// follows: its offer ends the part a client has open and starts the next one.
+        /// </summary>
+        void EndParts(bool tell = true)
         {
             if (isPart)
             {
@@ -96,7 +100,7 @@ namespace PurrNet.Recording
                 return;
             }
 
-            if (_networkManager && _networkManager.isServer)
+            if (tell && _networkManager && _networkManager.isServer)
             {
                 var players = _networkManager.players;
                 for (int i = 0; i < players.Count; i++)
@@ -156,7 +160,7 @@ namespace PurrNet.Recording
             if (asServer || !_networkManager || _networkManager.isServer)
                 return;
 
-            ClosePart();
+            ClosePart(!packet.recording);
             _partTick = 0;
             _offer = packet;
             _partOffered = packet.recording;
@@ -164,10 +168,14 @@ namespace PurrNet.Recording
                 _sampleEpoch++;
         }
 
-        void ClosePart()
+        /// <summary>
+        /// Ends the part this client has open. When the offer of the next one is what ends it, the game goes on and
+        /// the file is finished behind its back; otherwise it is complete when this returns.
+        /// </summary>
+        void ClosePart(bool wait = true)
         {
             if (isPart)
-                Stop(null);
+                End(null, false, wait);
             _partOffered = false;
         }
 
@@ -209,9 +217,9 @@ namespace PurrNet.Recording
             _types = new RecordingTypeRegistry { onError = AddError };
             _baseColumns.Clear();
             _file = _partFile = new RecordingFile(Path.Combine(ResolveDirectory(partDirectory), fileName),
-                (long)maxLocalMegabytes * 1024 * 1024);
+                (long)maxLocalMegabytes * 1024 * 1024, lastClosing);
             _file.SetLink(LinkJson(id, true, player, token));
-            RecordingUploader.SetActiveRecording(_file.path);
+            RecordingUploader.SetWriting(_file.path, true);
             recordingId = id;
             _chunkTicks = Mathf.Max(1, Mathf.RoundToInt(chunkSeconds * tickRate));
             _chunkFirstTick = firstTick;

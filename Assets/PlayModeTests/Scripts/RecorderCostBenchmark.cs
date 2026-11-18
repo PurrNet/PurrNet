@@ -237,6 +237,8 @@ public sealed class RecorderCostBenchmark : MonoBehaviour
         if (Option("-costTransformJob", "on") == "off")
             RecordingSession.transformJobFrom = int.MaxValue;
         recorder.session.stats.enabled = true;
+        if (CommandLineUtils.TryGetArgument("-costSplitTicks", out var splitTicks))
+            Set(recorder, "_splitMinutes", float.Parse(splitTicks, CultureInfo.InvariantCulture) / (60f * manager.tickModule.tickRate));
         recorder.StartRecording($"cost-{label}.purrrec");
         if (!recorder.isRecording)
         {
@@ -338,7 +340,8 @@ public sealed class RecorderCostBenchmark : MonoBehaviour
                  $"frames: median {frameMs[frameMs.Count / 2]:0.00} ms, p99 {frameMs[(int)(frameMs.Count * 0.99)]:0.00} ms, max {frameMs[frameMs.Count - 1]:0.00} ms\n" +
                  recorder.DescribeLastRecording() + $" | objects that entered late (spawn budget): {recorder.spawnsDeferred}" +
                  $" | effect checks that waited a tick (effects budget): {recorder.session.effectChecksDeferred}" +
-                 $" | poses read by the job: {byJob}";
+                 $" | poses read by the job: {byJob}" +
+                 $" | splits: {recorder.splits}, the last one took the main thread {recorder.lastSplitMs:0.000} ms";
         File.WriteAllText(Path.Combine(directory, $"cost-{label}.txt"), report);
         Debug.Log(report);
         complete = levelSpawned == LevelPieces;

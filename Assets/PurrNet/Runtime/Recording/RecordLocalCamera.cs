@@ -37,12 +37,24 @@ namespace PurrNet.Recording
 
         void OnPreCullCamera(Camera cam) => OnRender(cam);
 
+        /// <summary>
+        /// Called while the camera is being rendered: a failure here stops this component and is noted in the
+        /// recording, it never reaches the renderer.
+        /// </summary>
         void OnRender(Camera cam)
         {
-            if (cam != target)
-                return;
-            _lastRenderFrame = Time.frameCount;
-            Sample(cam);
+            try
+            {
+                if (cam != target)
+                    return;
+                _lastRenderFrame = Time.frameCount;
+                Sample(cam);
+            }
+            catch (System.Exception e)
+            {
+                enabled = false;
+                RecordingSession.active?.AddError("camera", e.ToString());
+            }
         }
 
         void LateUpdate()

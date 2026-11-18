@@ -112,6 +112,147 @@ public class TestClockExtension : RecorderExtension, IRecordingContext
 
 public class RecordingMarker : MonoBehaviour { }
 
+public struct RecordedFiller
+{
+    public string text;
+}
+
+public sealed class FailingRecordingSource : RecordingSource
+{
+    public const string Message = "the recorder broke on purpose";
+    public int asked;
+
+    public override string name => "failing";
+    public override bool IsEntityObject(GameObject go) => false;
+    public override Transform NearestEntity(Transform t, bool includeInactive) => null;
+    public override bool HasNestedEntities(RecordedEntity entity) => false;
+
+    public override void RecordTick(ulong tick)
+    {
+        asked++;
+        throw new System.InvalidOperationException(Message);
+    }
+}
+
+public sealed class UnwritableFile : FileStream
+{
+    public UnwritableFile(string path) : base(path, FileMode.Create, FileAccess.Write) { }
+
+    public override void Flush() => throw new IOException("no space left on the device");
+}
+
+/// <summary>A recordings service on this machine that takes what the uploader sends: ticket, PUT, complete.</summary>
+public sealed class FakeRecordingsSite : System.IDisposable
+{
+    readonly System.Net.HttpListener _listener = new System.Net.HttpListener();
+    readonly Dictionary<string, byte[]> _puts = new Dictionary<string, byte[]>();
+    readonly List<string> _tickets = new List<string>();
+    readonly List<byte[]> _completed = new List<byte[]>();
+    readonly Dictionary<string, double> _putSeconds = new Dictionary<string, double>();
+    readonly List<double> _seconds = new List<double>();
+    int _next;
+
+    public readonly string endpoint;
+
+    public FakeRecordingsSite()
+    {
+        var probe = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+        probe.Start();
+        int port = ((System.Net.IPEndPoint)probe.LocalEndpoint).Port;
+        probe.Stop();
+        string root = $"http://localhost:{port}/";
+        _listener.Prefixes.Add(root);
+        _listener.Start();
+        endpoint = root + "recordings";
+        _listener.BeginGetContext(OnRequest, null);
+    }
+
+    public int completed
+    {
+        get
+        {
+            lock (_puts)
+                return _completed.Count;
+        }
+    }
+
+    public byte[] Completed(int index)
+    {
+        lock (_puts)
+            return _completed[index];
+    }
+
+    public string Ticket(int index)
+    {
+        lock (_puts)
+            return _tickets[index];
+    }
+
+    /// <summary>How long the file's bytes took to arrive, from its request to its last byte.</summary>
+    public double Seconds(int index)
+    {
+        lock (_puts)
+            return _seconds[index];
+    }
+
+    void OnRequest(System.IAsyncResult result)
+    {
+        System.Net.HttpListenerContext context;
+        try
+        {
+            context = _listener.EndGetContext(result);
+            _listener.BeginGetContext(OnRequest, null);
+        }
+        catch (System.Exception)
+        {
+            return;
+        }
+
+        var request = context.Request;
+        var body = new MemoryStream();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        request.InputStream.CopyTo(body);
+        double took = clock.Elapsed.TotalSeconds;
+        string path = request.Url.AbsolutePath;
+        string answer = "{}";
+        lock (_puts)
+        {
+            if (request.HttpMethod == "POST" && path.EndsWith("/uploads"))
+            {
+                string id = (++_next).ToString();
+                _tickets.Add(Encoding.UTF8.GetString(body.ToArray()));
+                answer = "{\"skip\":false,\"id\":\"" + id + "\",\"url\":\"" + endpoint + "/put/" + id +
+                         "\",\"contentType\":\"application/octet-stream\"}";
+            }
+            else if (request.HttpMethod == "PUT")
+            {
+                string id = path.Substring(path.LastIndexOf('/') + 1);
+                _puts[id] = body.ToArray();
+                _putSeconds[id] = took;
+            }
+            else if (request.HttpMethod == "POST" && path.EndsWith("/complete"))
+            {
+                string[] segments = path.Split('/');
+                if (_puts.TryGetValue(segments[segments.Length - 2], out var bytes))
+                {
+                    _completed.Add(bytes);
+                    _seconds.Add(_putSeconds[segments[segments.Length - 2]]);
+                }
+                answer = "{\"status\":\"complete\"}";
+            }
+        }
+
+        var reply = Encoding.UTF8.GetBytes(answer);
+        context.Response.StatusCode = 200;
+        context.Response.ContentType = "application/json";
+        context.Response.ContentLength64 = reply.Length;
+        context.Response.OutputStream.Write(reply, 0, reply.Length);
+        context.Response.Close();
+    }
+
+    public void Dispose() => _listener.Close();
+}
+
 public class NetworkRecorderTests
 {
     const BindingFlags Fields = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -387,6 +528,209 @@ public class NetworkRecorderTests
         Assert.That(FirstTick(second), Is.LessThan(TestClockExtension.Offset), "the second file runs on network ticks");
         Assert.That(onNetwork.Exists(m => m.kind == RecordKind.Entity && m.json.Contains("\"name\":\"Recorded")),
             "and has the object that was already spawned:\n" + Dump(onNetwork));
+    }
+
+    [UnityTest]
+    public IEnumerator ALongRecordingIsSplitIntoPiecesThatEachStandAlone() => SplitsIntoPieces(false);
+
+    [UnityTest]
+    public IEnumerator ARecordingOnAnExtensionsClockIsSplitTheSameWay() => SplitsIntoPieces(true);
+
+    IEnumerator SplitsIntoPieces(bool onAnExtensionsClock)
+    {
+        TestClockExtension.enabled = onAnExtensionsClock;
+        yield return StartHost(false);
+        var wall = new GameObject("SplitWall");
+        wall.AddComponent<BoxCollider>();
+        _created.Add(wall);
+        var instance = UnityProxy.Instantiate(_prefab, new Vector3(2, 0, 0), Quaternion.identity, _manager.gameObject.scene);
+        instance.SetActive(true);
+        _manager.Spawn(instance);
+        yield return WaitUntil(() => instance.GetComponent<RecordedThing>().isSpawned);
+
+        Set(_recorder, "_splitMinutes", 20f / (60f * _manager.tickModule.tickRate));
+        var finished = new List<string>();
+        var closed = new List<bool>();
+        _recorder.onRecordingFinished += path =>
+        {
+            finished.Add(path);
+            closed.Add(ReadMeta(path).Exists(m => m.kind == RecordKind.Footer));
+        };
+        _recorder.StartRecording("network-recorder-split.purrrec");
+        string first = _recorder.currentPath;
+        bool recording = true;
+        yield return WaitUntil(() =>
+        {
+            recording &= _recorder.isRecording;
+            return _recorder.splits >= 2;
+        }, 30f);
+        Assert.That(_recorder.splits, Is.GreaterThanOrEqualTo(2), "the recording was split");
+        Assert.That(recording, Is.True, "without a frame in which nothing was being recorded");
+        yield return Ticks(_manager, 3);
+        _recorder.StopRecording();
+        int pieces = _recorder.splits + 1;
+        yield return WaitUntil(() => finished.Count >= pieces);
+        Assert.That(finished.Count, Is.EqualTo(pieces), "every piece was reported as finished, once");
+        Assert.That(closed, Has.None.False, "and was complete and closed when it was");
+
+        static string Text(string json, string key) =>
+            System.Text.RegularExpressions.Regex.Match(json, "\"" + key + "\":\"([^\"]*)\"").Groups[1].Value;
+        static ulong Number(string json, string key) =>
+            ulong.Parse(System.Text.RegularExpressions.Regex.Match(json, "\"" + key + "\":(\\d+)").Groups[1].Value);
+
+        string session = null;
+        ulong lastTick = 0;
+        var ids = new HashSet<string>();
+        for (int i = 0; i < pieces; i++)
+        {
+            Assert.That(finished[i], Is.EqualTo(i == 0 ? first : first.Replace(".purrrec", $"-{i + 1}.purrrec")),
+                "pieces are finished in order, and named after the first with their number");
+            var meta = ReadMeta(finished[i]);
+            string header = meta.Find(m => m.kind == RecordKind.Header).json;
+            string footer = meta.Find(m => m.kind == RecordKind.Footer).json;
+            string id = Text(header, "recordingId");
+            session ??= id;
+            Assert.That(ids.Add(id), Is.True, "every piece is a recording with an id of its own");
+            Assert.That(Text(header, "session"), Is.EqualTo(session), "that names the session: the first piece's id");
+            Assert.That(Number(header, "segment"), Is.EqualTo((ulong)i), "and which piece of it this is");
+            ulong firstTick = Number(header, "firstTick");
+            Assert.That(firstTick >= TestClockExtension.Offset, Is.EqualTo(onAnExtensionsClock), "every piece runs on the clock the recording started on");
+            if (i > 0)
+                Assert.That(firstTick, Is.EqualTo(lastTick + 1), "a piece goes on with the tick after the last one's");
+            lastTick = Number(footer, "lastTick");
+            Assert.That(footer.Contains("\"continued\":true"), Is.EqualTo(i < pieces - 1), "only the last piece ends the session:\n" + footer);
+            if (i < pieces - 1)
+                Assert.That(Number(footer, "ticks"), Is.InRange(19UL, 22UL), "a piece is as long as asked for");
+
+            Assert.That(meta.Exists(m => m.kind == RecordKind.Entity && m.json.Contains("\"name\":\"Recorded")),
+                $"piece {i + 1} declares the object that was there all along:\n" + Dump(meta));
+            Assert.That(meta.Exists(m => m.kind == RecordKind.Stream && m.json.Contains("\"field\":\"health\"")), "and its sync types");
+            Assert.That(meta.Exists(m => m.kind == RecordKind.Player && m.json.Contains("\"event\":\"joined\"")), "and its players");
+            Assert.That(meta.Exists(m => m.kind == RecordKind.Colliders && m.json.Contains($"\"entity\":null,\"tick\":{firstTick},") &&
+                                         m.json.Contains("\"name\":\"SplitWall")),
+                $"piece {i + 1} has the static world from its first tick:\n" + Dump(meta));
+        }
+    }
+
+    [UnityTest]
+    public IEnumerator ADedicatedServerSendsEachPieceWhileItKeepsRunning()
+    {
+        yield return StartHost(false);
+        string directory = Path.GetFullPath(Path.Combine(Application.dataPath,
+            "../test-results/recorder-upload-" + System.Guid.NewGuid().ToString("N").Substring(0, 8)));
+        Set(_recorder, "_directory", directory);
+        const string prefs = "PurrDiction.RecordingUploader";
+        string savedPrefs = PlayerPrefs.GetString(prefs, "");
+        bool wasServer = RecordingUploader.dedicatedServer, wasSending = RecordingUploader.sendWhileServing;
+        double wasShare = RecordingUploader.sendingShare;
+        var site = new FakeRecordingsSite();
+        var random = new System.Random(7);
+        var text = new StringBuilder();
+        uint filled = 0;
+        void Fill()
+        {
+            uint tick = _manager.tickModule.localTick;
+            if (tick == filled || !_recorder.isRecording)
+                return;
+            filled = tick;
+            text.Clear();
+            for (int i = 0; i < 8192; i++)
+                text.Append((char)('0' + random.Next(64)));
+            _recorder.WriteSample("filler", new RecordedFiller { text = text.ToString() });
+        }
+        try
+        {
+            RecordingUploader.Configure(site.endpoint, "test-key", directory, 1L << 30);
+            RecordingUploader.dedicatedServer = true;
+            RecordingUploader.sendWhileServing = false;
+            RecordingUploader.sendingShare = 0.5;
+            Set(_recorder, "_splitMinutes", 20f / (60f * _manager.tickModule.tickRate));
+            _recorder.StartRecording("upload-split.purrrec");
+            string first = _recorder.currentPath;
+            yield return WaitUntil(() =>
+            {
+                Fill();
+                return _recorder.splits >= 2;
+            }, 30f);
+            Assert.That(_recorder.splits, Is.GreaterThanOrEqualTo(2), "the recording was split");
+            yield return new WaitForSecondsRealtime(0.5f);
+            Assert.That(site.completed, Is.EqualTo(0), "with sending while serving turned off, nothing is sent while the server runs");
+            Assert.That(File.Exists(first), Is.True, "and what is finished waits on disk");
+
+            RecordingUploader.sendWhileServing = true;
+            bool online = true;
+            yield return WaitUntil(() =>
+            {
+                Fill();
+                online &= _manager.isServer && _recorder.isRecording;
+                return site.completed >= 2;
+            }, 30f);
+            Assert.That(site.completed, Is.GreaterThanOrEqualTo(2), "the finished pieces were sent");
+            Assert.That(online, Is.True, "while the server stayed up and went on recording");
+            yield return WaitUntil(() => !File.Exists(first));
+            Assert.That(File.Exists(first), Is.False, "a piece that was sent is deleted");
+
+            string writing = _recorder.session.recordingId;
+            _recorder.StopRecording();
+            int pieces = _recorder.splits + 1;
+            yield return WaitUntil(() => site.completed >= pieces, 30f);
+            yield return WaitUntil(() => Directory.GetFiles(directory).Length == 0);
+            Assert.That(site.completed, Is.EqualTo(pieces), "every piece is sent once, the last one when it ends");
+            Assert.That(_manager.isServer, Is.True, "and the server is still up");
+            Assert.That(Directory.GetFiles(directory), Is.Empty, "nothing is left on disk");
+
+            static string Id(string json) =>
+                System.Text.RegularExpressions.Regex.Match(json, "\"recordingId\":\"([^\"]*)\"").Groups[1].Value;
+            var sent = new HashSet<string>();
+            int ends = 0, lastAt = -1;
+            for (int i = 0; i < pieces; i++)
+            {
+                var meta = ReadMeta(site.Completed(i));
+                string header = meta.Find(m => m.kind == RecordKind.Header).json;
+                string footer = meta.Find(m => m.kind == RecordKind.Footer).json;
+                Assert.That(footer, Is.Not.Null, "what is sent is a whole file, with its footer:\n" + Dump(meta));
+                Assert.That(sent.Add(Id(header)), Is.True, "no piece is sent twice");
+                Assert.That(Id(site.Ticket(i)), Is.EqualTo(Id(header)), "under its own id");
+                Assert.That(site.Ticket(i), Does.Contain("\"kind\":\"main\""));
+                if (!footer.Contains("\"continued\":true"))
+                {
+                    ends++;
+                    lastAt = i;
+                }
+                else
+                {
+                    int bytes = site.Completed(i).Length;
+                    Assert.That(bytes, Is.GreaterThan(64 * 1024), "a piece of this test is big enough to see how fast it is sent");
+                    Assert.That(site.Seconds(i), Is.GreaterThan(0.2),
+                        $"a piece of a second, {bytes / 1024} KiB, is spread over half a second (the share set here), not sent at once");
+                }
+                if (Id(header) == writing)
+                    Assert.That(i, Is.GreaterThanOrEqualTo(2), "the piece that was still being written was not among the first sent");
+            }
+            Assert.That(ends, Is.EqualTo(1), "one piece ends the session");
+            Assert.That(sent.Contains(writing), Is.True, "the last piece was sent after it ended");
+            Assert.That(lastAt, Is.EqualTo(pieces - 1), "after the others");
+        }
+        finally
+        {
+            RecordingUploader.dedicatedServer = wasServer;
+            RecordingUploader.sendWhileServing = wasSending;
+            RecordingUploader.sendingShare = wasShare;
+            foreach (var uploader in Resources.FindObjectsOfTypeAll<RecordingUploader>())
+                Object.DestroyImmediate(uploader.gameObject);
+            if (string.IsNullOrEmpty(savedPrefs))
+                PlayerPrefs.DeleteKey(prefs);
+            else
+                PlayerPrefs.SetString(prefs, savedPrefs);
+            site.Dispose();
+            try
+            {
+                Directory.Delete(directory, true);
+            }
+            catch (IOException)
+            {
+            }
+        }
     }
 
     [UnityTest]
@@ -1017,6 +1361,69 @@ public class NetworkRecorderTests
         Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
 
+    [UnityTest]
+    public IEnumerator ARecorderThatFailsStopsAndLeavesTheGameAlone()
+    {
+        yield return StartHost(true);
+        yield return WaitUntil(() => _recorder.isRecording);
+        Assert.That(_recorder.isRecording, Is.True, "recording started by itself");
+        string path = _recorder.currentPath;
+        var instance = UnityProxy.Instantiate(_prefab, Vector3.zero, Quaternion.identity, _manager.gameObject.scene);
+        instance.SetActive(true);
+        _manager.Spawn(instance);
+        yield return Ticks(_manager, 5);
+
+        var tickModule = _manager.tickModule;
+        int after = 0;
+        System.Action count = () => after++;
+        tickModule.onPostTick += count;
+        uint from = tickModule.localTick;
+        var failing = new FailingRecordingSource();
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("The recorder failed and has stopped recording"));
+        _recorder.session.AddSource(failing);
+        yield return Ticks(_manager, 6);
+        tickModule.onPostTick -= count;
+        uint ticks = tickModule.localTick - from;
+        _recorder.session.RemoveSource(failing);
+
+        Assert.That(failing.asked, Is.EqualTo(1), "it failed once and was not asked again");
+        Assert.That(after, Is.EqualTo((int)ticks), "what comes after the recorder in a tick ran on every tick, the failing one too");
+        Assert.That(_recorder.isRecording, Is.False, "the recording ended");
+        yield return Ticks(_manager, 4);
+        Assert.That(_recorder.isRecording, Is.False, "and no new one starts by itself");
+
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        var meta = ReadMeta(path);
+        string footer = meta.Find(m => m.kind == RecordKind.Footer).json;
+        Assert.That(footer, Is.Not.Null, "the file has its footer:\n" + Dump(meta));
+        Assert.That(footer, Does.Contain("\"errors\"").And.Contain(FailingRecordingSource.Message), "which says what went wrong");
+        Assert.That(footer, Does.Contain("\"chunks\":1"), "and what was recorded until then is in it");
+    }
+
+    [UnityTest]
+    public IEnumerator ARecordingThatCannotBeWrittenEnds()
+    {
+        yield return StartHost(false);
+        Set(_recorder, "_chunkSeconds", 0.2f);
+        _recorder.StartRecording("network-recorder-unwritable.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        string path = _recorder.currentPath;
+        yield return Ticks(_manager, 3);
+
+        var file = Get(_recorder.session, "_file");
+        var real = (FileStream)Get(file, "_stream");
+        var broken = new UnwritableFile(Path.ChangeExtension(path, ".tmp"));
+        Set(file, "_stream", broken);
+        real.Dispose();
+        LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("The recorder failed and has stopped recording"));
+        yield return WaitUntil(() => !_recorder.isRecording, 20f);
+        Assert.That(_recorder.isRecording, Is.False, "a recording whose file cannot be written ends");
+        yield return Ticks(_manager, 4);
+        Assert.That(_recorder.isRecording, Is.False, "and stays ended");
+    }
+
+    static object Get(object target, string name) => target.GetType().GetField(name, Fields)!.GetValue(target);
+
     static int EntityId(string json)
     {
         int start = json.IndexOf("\"entity\":", System.StringComparison.Ordinal) + 9;
@@ -1039,9 +1446,10 @@ public class NetworkRecorderTests
         target.GetType().GetField(name, Fields)!.SetValue(target, value);
 
     /// <summary>The JSON metadata records of a recording, in file order (batches expanded).</summary>
-    internal static List<(RecordKind kind, string json)> ReadMeta(string path)
+    internal static List<(RecordKind kind, string json)> ReadMeta(string path) => ReadMeta(File.ReadAllBytes(path));
+
+    internal static List<(RecordKind kind, string json)> ReadMeta(byte[] data)
     {
-        var data = File.ReadAllBytes(path);
         var result = new List<(RecordKind, string)>();
         Read(data, 10, data.Length, result);
         return result;

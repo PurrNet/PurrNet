@@ -205,6 +205,7 @@ namespace PurrNet.Recording
             AudioStream = "effect.audio", AnimatorCallStream = "effect.calls";
 
         internal bool effectsActive => _effectsActive;
+        static bool _effectsRehearsed;
 
         /// <summary>
         /// A recording starts on this machine. The effect streams are declared now, so that the first animation,
@@ -328,6 +329,9 @@ namespace PurrNet.Recording
         [Conditional("ENABLE_MONO")]
         void RehearseEffects()
         {
+            if (_effectsRehearsed)
+                return;
+            _effectsRehearsed = true;
             CheckEffects(_noEffects, _chunkFirstTick);
             var log = _job.log;
             bool empty = _slots.Count == 0 && log.bytes.length == 0;
@@ -872,6 +876,19 @@ namespace PurrNet.Recording
                 return;
 
             _stats.Begin(_statEffects);
+            try
+            {
+                CheckEffectsInTurn(tick);
+            }
+            catch (Exception e)
+            {
+                EffectsFailed(e);
+            }
+            _stats.End(_statEffects);
+        }
+
+        void CheckEffectsInTurn(ulong tick)
+        {
             if (_file == null || isPart)
                 tick = PartTick(_context.viewTick);
             if (_effectChunk != _chunks)
@@ -925,7 +942,6 @@ namespace PurrNet.Recording
                     break;
             }
             effectChecksDeferred += Math.Max(0, count - done);
-            _stats.End(_statEffects);
         }
 
 #if UNITY_ANIMATION

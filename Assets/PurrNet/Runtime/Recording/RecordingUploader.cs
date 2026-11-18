@@ -5,7 +5,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using PurrNet;
+using PurrNet.Utils;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -49,9 +51,33 @@ namespace PurrNet.Recording
         string _projectKey;
         string _directory;
         long _maxLocalBytes;
-        string _activePath;
+        readonly HashSet<string> _writing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// A dedicated server sends the recordings it finishes while it keeps running: it may not be offline for
+        /// days. Every other machine waits until the game is offline, so sending never competes with play.
+        /// </summary>
+        public static bool sendWhileServing = true;
+
+        /// <summary>Whether this process is a dedicated server. Tests set it to run a server's sending in the editor.</summary>
+        internal static bool dedicatedServer = ApplicationContext.isServerBuild;
+
+        /// <summary>
+        /// A recording sent while the server runs is spread over this share of the time it took to record, so
+        /// sending takes four times the bandwidth recording produced data at, whatever the game: it always keeps
+        /// up, and it never takes the connection for itself.
+        /// </summary>
+        internal static double sendingShare = 0.25;
+
+        /// <summary>However long a recording was, sending it stays well inside the hour its upload link is good for.</summary>
+        const float LongestPacedSeconds = 30 * 60;
 #if !PURRREC_WEB
         float _retryAt;
+        readonly List<string> _finished = new List<string>();
+        readonly Dictionary<string, float> _startedAt = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<string, float> _recordedSeconds = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+        readonly HashSet<string> _unpaced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PacedUpload _paced;
         readonly Dictionary<string, float> _held = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
         readonly HashSet<string> _done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         bool _blocked;
@@ -110,10 +136,39 @@ namespace PurrNet.Recording
                 Configure(saved.endpoint, saved.projectKey, saved.directory, saved.maxLocalBytes);
         }
 
-        public static void SetActiveRecording(string path)
+        /// <summary>A file this process is writing is neither sent nor deleted until it says it is done with it.</summary>
+        public static void SetWriting(string path, bool writing)
         {
-            if (_instance)
-                _instance._activePath = path;
+            if (!_instance)
+                return;
+            string full = Path.GetFullPath(path);
+            if (writing)
+            {
+                if (_instance._writing.Add(full))
+                    _instance.Started(full);
+            }
+            else if (_instance._writing.Remove(full))
+                _instance.Finished(full);
+        }
+
+        void Started(string full)
+        {
+#if !PURRREC_WEB
+            if (dedicatedServer)
+                _startedAt[full] = Time.realtimeSinceStartup;
+#endif
+        }
+
+        void Finished(string full)
+        {
+#if !PURRREC_WEB
+            if (!dedicatedServer)
+                return;
+            _finished.Add(full);
+            if (_startedAt.TryGetValue(full, out float started))
+                _recordedSeconds[full] = Time.realtimeSinceStartup - started;
+            _startedAt.Remove(full);
+#endif
         }
 
         public static void NotifyFinished()
@@ -141,17 +196,23 @@ namespace PurrNet.Recording
 #else
         void Update()
         {
+            bool idle = IsIdle();
+            bool serving = !idle && sendWhileServing && dedicatedServer;
             if (_uploading)
             {
-                if (!IsIdle() && _request != null)
-                    _request.Abort();
+                if (!idle && !serving)
+                {
+                    _request?.Abort();
+                    _paced?.Abort();
+                }
                 return;
             }
 
-            if (_blocked || Time.unscaledTime < _retryAt || !IsIdle() || string.IsNullOrEmpty(_projectKey))
+            if (_blocked || Time.unscaledTime < _retryAt || (!idle && !serving) || string.IsNullOrEmpty(_projectKey))
                 return;
 
-            string next = NextPending(out float heldUntil);
+            float heldUntil;
+            string next = idle ? NextPending(out heldUntil) : NextFinished(out heldUntil);
             if (next == null)
             {
                 _retryAt = Math.Min(heldUntil, Time.unscaledTime + RetryDelaySeconds);
@@ -168,6 +229,29 @@ namespace PurrNet.Recording
         }
 
 #if !PURRREC_WEB
+        /// <summary>
+        /// While the server runs, only what this process recorded and finished is sent, newest first. Nothing is
+        /// looked for on disk: what an earlier run left behind waits until the game is offline, and a file another
+        /// server on this machine is still writing is never touched.
+        /// </summary>
+        string NextFinished(out float heldUntil)
+        {
+            heldUntil = float.MaxValue;
+            for (int i = _finished.Count - 1; i >= 0; i--)
+            {
+                string full = _finished[i];
+                if (_held.TryGetValue(full, out float due) && Time.unscaledTime < due)
+                {
+                    heldUntil = Math.Min(heldUntil, due);
+                    continue;
+                }
+                if (File.Exists(full) && !IsDone(full))
+                    return full;
+                _finished.RemoveAt(i);
+            }
+            return null;
+        }
+
         string NextPending(out float heldUntil)
         {
             heldUntil = float.MaxValue;
@@ -217,6 +301,9 @@ namespace PurrNet.Recording
         void Finish(string path)
         {
             string full = Path.GetFullPath(path);
+            _finished.Remove(full);
+            _recordedSeconds.Remove(full);
+            _unpaced.Remove(full);
             if (TryDelete(full))
             {
                 _done.Remove(full);
@@ -262,9 +349,7 @@ namespace PurrNet.Recording
             }
         }
 
-        bool IsActive(string path) =>
-            !string.IsNullOrEmpty(_activePath) &&
-            string.Equals(Path.GetFullPath(path), Path.GetFullPath(_activePath), StringComparison.OrdinalIgnoreCase);
+        bool IsActive(string path) => _writing.Count > 0 && _writing.Contains(Path.GetFullPath(path));
 
         void TrimFolder()
         {
@@ -415,20 +500,35 @@ namespace PurrNet.Recording
                     yield break;
                 }
 
-                using (var put = new UnityWebRequest(response.url, UnityWebRequest.kHttpVerbPUT))
+                string contentType = string.IsNullOrEmpty(response.contentType) ? "application/octet-stream" : response.contentType;
+                bool sent;
+                double pacedSeconds = PacedSeconds(full);
+                if (pacedSeconds > 0)
                 {
+                    var paced = _paced = new PacedUpload(full, response.url, contentType, size, size / pacedSeconds);
+                    while (!paced.done)
+                        yield return null;
+                    _paced = null;
+                    sent = paced.sent;
+                    if (!sent)
+                        _unpaced.Add(full);
+                }
+                else
+                {
+                    using var put = new UnityWebRequest(response.url, UnityWebRequest.kHttpVerbPUT);
                     _request = put;
                     put.uploadHandler = new UploadHandlerFile(path);
                     put.downloadHandler = new DownloadHandlerBuffer();
-                    put.SetRequestHeader("Content-Type", string.IsNullOrEmpty(response.contentType)
-                        ? "application/octet-stream" : response.contentType);
+                    put.SetRequestHeader("Content-Type", contentType);
                     yield return put.SendWebRequest();
                     _request = null;
-                    if (put.result != UnityWebRequest.Result.Success)
-                    {
-                        _retryAt = Time.unscaledTime + RetryDelaySeconds;
-                        yield break;
-                    }
+                    sent = put.result == UnityWebRequest.Result.Success;
+                }
+
+                if (!sent)
+                {
+                    _retryAt = Time.unscaledTime + RetryDelaySeconds;
+                    yield break;
                 }
 
                 bool completed = false;
@@ -451,10 +551,114 @@ namespace PurrNet.Recording
             finally
             {
                 _request = null;
+                _paced?.Abort();
+                _paced = null;
                 _uploading = false;
                 if (answered)
                     _uploadPath = null;
                 claim.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Over how many seconds a file is sent, or 0 for as fast as the connection takes it: that is how an
+        /// offline game sends, and how a file is sent again whose paced upload did not arrive.
+        /// </summary>
+        double PacedSeconds(string full)
+        {
+            if (IsIdle() || _unpaced.Contains(full) || !_recordedSeconds.TryGetValue(full, out float recorded))
+                return 0;
+            return Math.Min(recorded * sendingShare, LongestPacedSeconds);
+        }
+
+        /// <summary>
+        /// Sends a file to its upload link at a set pace, from a thread of its own: the engine's own requests can
+        /// only send as fast as the connection allows, which a running server must not do next to its players.
+        /// </summary>
+        sealed class PacedUpload
+        {
+            const int Slice = 16 * 1024;
+
+            readonly string _path, _url, _contentType;
+            readonly long _size;
+            readonly double _bytesPerSecond;
+            volatile bool _aborted;
+            volatile System.Net.HttpWebRequest _request;
+
+            public volatile bool done;
+            public bool sent;
+
+            public PacedUpload(string path, string url, string contentType, long size, double bytesPerSecond)
+            {
+                _path = path;
+                _url = url;
+                _contentType = contentType;
+                _size = size;
+                _bytesPerSecond = bytesPerSecond;
+                new Thread(Run) { IsBackground = true, Name = "PurrNet recording upload", Priority = System.Threading.ThreadPriority.BelowNormal }.Start();
+            }
+
+            public void Abort()
+            {
+                _aborted = true;
+                try
+                {
+                    _request?.Abort();
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            void Run()
+            {
+                try
+                {
+                    var request = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(_url);
+                    request.Method = "PUT";
+                    request.ContentType = _contentType;
+                    request.ContentLength = _size;
+                    request.AllowWriteStreamBuffering = false;
+                    request.KeepAlive = false;
+                    request.ServicePoint.Expect100Continue = false;
+                    request.ReadWriteTimeout = 60000;
+                    _request = request;
+
+                    var buffer = new byte[Slice];
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    long written = 0;
+                    using (var file = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.Read, Slice))
+                    using (var body = request.GetRequestStream())
+                    {
+                        int read;
+                        while ((read = file.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            body.Write(buffer, 0, read);
+                            written += read;
+                            while (!_aborted)
+                            {
+                                double ahead = written / _bytesPerSecond - clock.Elapsed.TotalSeconds;
+                                if (ahead <= 0)
+                                    break;
+                                Thread.Sleep((int)Math.Min(250, ahead * 1000 + 1));
+                            }
+                            if (_aborted)
+                                return;
+                        }
+                    }
+
+                    using var response = (System.Net.HttpWebResponse)request.GetResponse();
+                    int status = (int)response.StatusCode;
+                    sent = status >= 200 && status < 300;
+                }
+                catch (Exception)
+                {
+                    sent = false;
+                }
+                finally
+                {
+                    done = true;
+                }
             }
         }
 
@@ -508,6 +712,9 @@ namespace PurrNet.Recording
 
         void OnDestroy()
         {
+#if !PURRREC_WEB
+            _paced?.Abort();
+#endif
             if (_request != null)
                 _request.Abort();
             if (_instance == this)

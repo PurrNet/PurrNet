@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using PurrNet.Logging;
 using PurrNet.Modules;
 using PurrNet.Transports;
 using UnityEngine;
@@ -45,10 +46,20 @@ namespace PurrNet.Recording
         [Tooltip("Folder for recordings. Relative paths are under Application.persistentDataPath.")]
         [SerializeField] private string _directory = "Recordings";
         [SerializeField] private float _chunkSeconds = 10f;
+        [Tooltip("A recording that has run for this many minutes is ended and the next one starts on the following " +
+                 "tick, so a server that runs for days is sent piece by piece instead of as one file nobody sees " +
+                 "until it stops. Every piece is a recording of its own that says which session it is a piece of. " +
+                 "0 never splits.")]
+        [SerializeField] private float _splitMinutes = 30f;
         [Tooltip("Send finished recordings to the PurrNet recordings service, then delete them. Needs a project key: " +
                  "the one below, or the project linked through PurrServices.")]
         [SerializeField] private bool _upload = true;
         [SerializeField] private string _uploadEndpoint = "https://purrnet.dev/api/services/recordings";
+        [Tooltip("A dedicated server sends each recording it finishes while it keeps running, so a server that is " +
+                 "up for days shows up piece by piece. It sends slowly: a recording is spread over a quarter of the " +
+                 "time it took to record, so it never takes the players' bandwidth. Off: it sends them once it is " +
+                 "offline, like every other machine.")]
+        [SerializeField] private bool _uploadWhileServing = true;
         [Tooltip("Project public key. Empty uses the project linked through PurrServices.")]
         [SerializeField] private string _projectKey = "";
         [Tooltip("Recordings that could not be sent yet are kept up to this size; the oldest are deleted first.")]
@@ -239,6 +250,14 @@ namespace PurrNet.Recording
         bool _stoppedThisSession;
         bool _extensionPlayers;
         long _spawnBudget, _spawnSpent;
+        string _fileName;
+        ulong _splitTicks;
+
+        /// <summary>How many times the recording started last was split into a next piece.</summary>
+        public int splits { get; private set; }
+
+        /// <summary>What the last split cost the main thread, in milliseconds.</summary>
+        public double lastSplitMs { get; private set; }
 
         /// <summary>Objects that entered the last recording later than they appeared, to keep within the spawn budget.</summary>
         public int spawnsDeferred { get; private set; }
@@ -361,6 +380,12 @@ namespace PurrNet.Recording
             else if (isRecording && !server && !_session.isPart)
                 StopFile();
 
+            if (server && isRecording && !_session.isPart && _splitTicks > 0 && _session.ticksRecorded >= _splitTicks)
+                Split();
+
+            if (isRecording && _session.fileError != null)
+                Fail("file", _session.fileError);
+
             _session.Update(server);
             if (server)
                 StopClientEffects();
@@ -376,10 +401,35 @@ namespace PurrNet.Recording
         {
             if (!_recordEffects || !_session.wantsSamples || !_networkManager || !_networkManager.isClient)
             {
+                _clientEffectsFailed = false;
                 StopClientEffects();
                 return;
             }
+            if (_clientEffectsFailed)
+                return;
 
+            try
+            {
+                FollowClientEffects(context);
+            }
+            catch (Exception e)
+            {
+                ClientEffectsFailed(e);
+            }
+        }
+
+        bool _clientEffectsFailed;
+
+        /// <summary>Effects are left out of the rest of this client's part; its other samples go on.</summary>
+        void ClientEffectsFailed(Exception e)
+        {
+            _clientEffectsFailed = true;
+            _session.AddError("effects", e.ToString());
+            StopClientEffects();
+        }
+
+        void FollowClientEffects(IRecordingContext context)
+        {
             int epoch = _session.sampleEpoch;
             if (_clientHierarchy == null || epoch != _clientEffectsEpoch || !_session.effectsActive)
             {
@@ -420,14 +470,28 @@ namespace PurrNet.Recording
 
         void OnClientIdentityAdded(NetworkIdentity identity)
         {
-            if (identity && identity.id.HasValue && !Excluded(identity))
-                _session.TrackIdentityObject(identity.gameObject, identity.id.Value.id.value);
+            try
+            {
+                if (identity && identity.id.HasValue && !Excluded(identity))
+                    _session.TrackIdentityObject(identity.gameObject, identity.id.Value.id.value);
+            }
+            catch (Exception e)
+            {
+                ClientEffectsFailed(e);
+            }
         }
 
         void OnClientIdentityRemoved(NetworkIdentity identity)
         {
-            if (identity)
-                _session.UntrackIdentityObject(identity.gameObject);
+            try
+            {
+                if (identity)
+                    _session.UntrackIdentityObject(identity.gameObject);
+            }
+            catch (Exception e)
+            {
+                ClientEffectsFailed(e);
+            }
         }
 
         /// <summary>Folder for the next recording. Relative paths are under Application.persistentDataPath.</summary>
@@ -457,19 +521,55 @@ namespace PurrNet.Recording
             ConfigureUploads();
         }
 
-        void ConfigureUploads() =>
+        void ConfigureUploads()
+        {
+            RecordingUploader.sendWhileServing = _uploadWhileServing;
             RecordingSession.ConfigureUploads(_upload, _uploadEndpoint, _projectKey, _directory, _maxLocalMegabytes);
+        }
 
         /// <summary>Starts a new recording file. Called automatically on the server when <c>recordOnServer</c> is set.</summary>
         public void StartRecording(string fileName = null)
         {
             if (isRecording)
                 return;
+            splits = 0;
+            Begin(fileName, false);
+        }
+
+        void Begin(string fileName, bool continues)
+        {
             _clock = CurrentClock();
             IRecordingContext context = this;
             if (!context.isReady || !context.isServer)
                 return;
 
+            try
+            {
+                BeginFile(context, fileName, continues);
+            }
+            catch (Exception e)
+            {
+                Fail("recorder", e);
+            }
+        }
+
+        /// <summary>
+        /// Ends the file and starts the next piece of the same session, which goes on with the following tick.
+        /// </summary>
+        void Split()
+        {
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            string fileName = _fileName;
+            StopFile(true);
+            Begin(fileName, true);
+            splits++;
+            lastSplitMs = (System.Diagnostics.Stopwatch.GetTimestamp() - start) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        }
+
+        void BeginFile(IRecordingContext context, string fileName, bool continues)
+        {
+            _fileName = fileName;
+            _splitTicks = _splitMinutes > 0 ? (ulong)Math.Max(1.0, _splitMinutes * 60.0 * context.tickRate) : 0;
             _clockAtStart = _clock;
             _extensionPlayers = false;
             spawnsDeferred = 0;
@@ -486,7 +586,7 @@ namespace PurrNet.Recording
             if (!scene.IsValid() || scene.buildIndex < 0 && scene.name == "DontDestroyOnLoad")
                 scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             bool host = context.isClient || (_networkManager && _networkManager.clientState != ConnectionState.Disconnected);
-            _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, host);
+            _session.Start(_directory, fileName, context.tickRate, context.localTick, scene.name, host, continues);
             foreach (var extension in _extensions)
                 extension.OnRecordingStarted();
             BeginCalls();
@@ -507,7 +607,7 @@ namespace PurrNet.Recording
             StopFile();
         }
 
-        void StopFile()
+        void StopFile(bool continued = false)
         {
             if (!isRecording)
                 return;
@@ -522,13 +622,20 @@ namespace PurrNet.Recording
             if (_tickManager != null)
                 _tickManager.onPostTick -= OnPostTick;
             _tickManager = null;
-            foreach (var extension in _extensions)
-                extension.OnRecordingStopping();
+            try
+            {
+                foreach (var extension in _extensions)
+                    extension.OnRecordingStopping();
+            }
+            catch (Exception e)
+            {
+                _session.AddError("extension", e.ToString());
+            }
             _session.Stop(json =>
             {
                 foreach (var extension in _extensions)
                     extension.WriteFooter(json);
-            });
+            }, continued);
             _players.Clear();
             _prefabNames.Clear();
         }
@@ -560,6 +667,48 @@ namespace PurrNet.Recording
             if (!isRecording)
                 return;
 
+            try
+            {
+                RecordRows(tick);
+            }
+            catch (Exception e)
+            {
+                Fail("recorder", e);
+            }
+        }
+
+        /// <summary>
+        /// The recorder itself failed. It says so once, ends the recording with the error in its footer, and stays
+        /// off until this machine is a server again: the game goes on without it.
+        /// </summary>
+        void Fail(string kind, Exception e)
+        {
+            _stoppedThisSession = true;
+            PurrLogger.LogError($"The recorder failed and has stopped recording. The game is not affected.\n{e}", this);
+            try
+            {
+                _session.AddError(kind, e.ToString());
+                StopFile();
+            }
+            catch (Exception again)
+            {
+                PurrLogger.LogException(again);
+                if (_tickManager != null)
+                    _tickManager.onPostTick -= OnPostTick;
+                _tickManager = null;
+                try
+                {
+                    _session.Stop(null);
+                }
+                catch (Exception last)
+                {
+                    PurrLogger.LogException(last);
+                }
+            }
+        }
+
+        void RecordRows(ulong tick)
+        {
             _session.BeginTick(tick);
             var stats = _session.stats;
             if (!_extensionPlayers)

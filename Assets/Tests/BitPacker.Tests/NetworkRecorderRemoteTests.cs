@@ -264,4 +264,92 @@ public class NetworkRecorderRemoteTests
         Assert.That(server.Exists(m => m.kind == RecordKind.Effects && m.json.Contains("\"object\":")), Is.False,
             "a dedicated server does not follow what only a client plays:\n" + NetworkRecorderTests.Dump(server));
     }
+
+    [UnityTest]
+    public IEnumerator AClientsPartsFollowTheServerFromPieceToPiece()
+    {
+        _prefab = new GameObject("RemoteActor");
+        _prefab.SetActive(false);
+        _prefab.AddComponent<RecordedActor>();
+        _created.Add(_prefab);
+
+        var clientTransport = CreateManager("RecorderRemoteClient", out _client);
+        var serverTransport = CreateManager("RecorderRemoteServer", out _server);
+        serverTransport.peer = clientTransport;
+        clientTransport.peer = serverTransport;
+        var clientRecorder = AddRecorder(_client);
+        _recorder = AddRecorder(_server);
+
+        ClearMainInstance();
+        _client.gameObject.SetActive(true);
+        ClearMainInstance();
+        _server.gameObject.SetActive(true);
+        NetworkManager.SetMainInstance(_server);
+
+        _server.StartServer();
+        yield return WaitUntil(() => _server.serverState == ConnectionState.Connected);
+        _client.StartClient();
+        yield return WaitUntil(() => _client.isLocalPlayerReady && _server.players.Count == 1);
+        Assert.That(_client.isLocalPlayerReady && _server.players.Count == 1, Is.True, "the client joined");
+        yield return Ticks(_server, 3);
+
+        static bool HasFooter(string path) => NetworkRecorderTests.ReadMeta(path).Exists(m => m.kind == RecordKind.Footer);
+        var pieces = new List<string>();
+        var parts = new List<string>();
+        var closed = new List<bool>();
+        _recorder.onRecordingFinished += pieces.Add;
+        clientRecorder.onRecordingFinished += path =>
+        {
+            parts.Add(path);
+            closed.Add(HasFooter(path));
+        };
+
+        Set(_recorder, "_splitMinutes", 20f / (60f * _server.tickModule.tickRate));
+        _recorder.StartRecording("network-recorder-remote-split.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        int notes = 0;
+        uint noted = 0;
+        void Note()
+        {
+            uint tick = _client.tickModule.localTick;
+            if (tick == noted)
+                return;
+            noted = tick;
+            clientRecorder.WriteSample("note", notes++);
+        }
+        yield return WaitUntil(() =>
+        {
+            Note();
+            return _recorder.splits >= 2;
+        }, 30f);
+        Assert.That(_recorder.splits, Is.GreaterThanOrEqualTo(2), "the recording was split");
+        uint until = _server.tickModule.localTick + 6;
+        string lastPart = null;
+        yield return WaitUntil(() =>
+        {
+            Note();
+            lastPart = clientRecorder.session.isPart ? clientRecorder.session.currentPath : null;
+            return lastPart != null && !parts.Contains(lastPart) && parts.Count >= _recorder.splits && _server.tickModule.localTick >= until;
+        });
+        _recorder.StopRecording();
+        int expected = _recorder.splits + 1;
+        yield return WaitUntil(() => pieces.Count >= expected && parts.Count >= expected);
+        Assert.That(pieces.Count, Is.EqualTo(expected), "every piece was finished");
+        Assert.That(parts.Count, Is.EqualTo(expected), "and the client wrote a part for each of them");
+        Assert.That(closed, Has.None.False, "each complete and closed when it was reported");
+
+        static string Id(string path) => System.Text.RegularExpressions.Regex.Match(
+            NetworkRecorderTests.ReadMeta(path).Find(m => m.kind == RecordKind.Header).json, "\"recordingId\":\"([^\"]*)\"").Groups[1].Value;
+        ulong player = _client.localPlayer.id.value;
+        for (int i = 0; i < expected; i++)
+        {
+            Assert.That(Id(parts[i]), Is.EqualTo(Id(pieces[i])), $"part {i + 1} belongs to piece {i + 1}");
+            var part = NetworkRecorderTests.ReadMeta(parts[i]);
+            Assert.That(part.Exists(m => m.kind == RecordKind.Stream && m.json.Contains("\"sample\":\"note\"")),
+                $"part {i + 1} holds what the client wrote during that piece:\n" + NetworkRecorderTests.Dump(part));
+            var piece = NetworkRecorderTests.ReadMeta(pieces[i]);
+            Assert.That(piece.Exists(m => m.kind == RecordKind.Part && m.json.Contains($"\"player\":{player},")),
+                $"piece {i + 1} vouches for the client's part:\n" + NetworkRecorderTests.Dump(piece));
+        }
+    }
 }

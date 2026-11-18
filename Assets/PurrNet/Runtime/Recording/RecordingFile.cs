@@ -64,12 +64,23 @@ namespace PurrNet.Recording
         readonly Queue<PendingRecord> _queue = new Queue<PendingRecord>(64);
         long _rawBytes;
         volatile Exception _error;
+
+        /// <summary>
+        /// What went wrong writing the file (the disk is full, the file was taken away), or null. Nothing more is
+        /// written after it: records are dropped as they come.
+        /// </summary>
+        public Exception error => _error;
         volatile bool _busy;
+        volatile bool _closed;
+
+        /// <summary>Everything that was added is in the file and the file is closed: it can be read, sent or deleted.</summary>
+        public bool closed => _closed;
         long _produceTicks, _maxRecordTicks;
 #if !PURRREC_WEB
         bool _completed;
         readonly Thread _thread;
-        readonly FileStream _stream;
+        Thread _after;
+        FileStream _stream;
         long _bytesWritten, _compressTicks;
         readonly BufferStream _compressed = new BufferStream(new RecordingBuffer(ByteShelf.shared, 1 << 16));
         GCHandle _compressedHandle;
@@ -114,7 +125,7 @@ namespace PurrNet.Recording
         readonly int _web;
         readonly RecordingBuffer _header = new RecordingBuffer(16);
 
-        public RecordingFile(string path, long maxLocalBytes)
+        public RecordingFile(string path, long maxLocalBytes, RecordingFile after = null)
         {
             this.path = path;
             _web = WebRecording.Open(Path.GetFileName(path), maxLocalBytes);
@@ -158,16 +169,15 @@ namespace PurrNet.Recording
 #else
         public void Pump() { }
 
-        public RecordingFile(string path, long maxLocalBytes)
+        /// <summary>
+        /// The file is created, written and closed by a thread of its own: the caller never waits for the disk.
+        /// <paramref name="after"/> is a file that was completed but may not be closed yet. This one's thread
+        /// starts where that one's ends, so the two never work at the same time.
+        /// </summary>
+        public RecordingFile(string path, long maxLocalBytes, RecordingFile after = null)
         {
             this.path = path;
-            Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
-            _stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
-            var magic = Encoding.ASCII.GetBytes("PURRREC\0");
-            _stream.Write(magic, 0, magic.Length);
-            _stream.WriteByte(1);
-            _stream.WriteByte(0);
-            _bytesWritten = 10;
+            _after = after?._thread;
             _compressedHandle = GCHandle.Alloc(_compressed.buffer);
             _nativeSinkHandle = GCHandle.Alloc(_nativeSink);
             _thread = new Thread(WriteLoop) { IsBackground = true, Name = "PurrDiction recording writer", Priority = System.Threading.ThreadPriority.BelowNormal };
@@ -179,6 +189,9 @@ namespace PurrNet.Recording
             UnityEngine.Profiling.Profiler.BeginThreadProfiling("PurrDiction", "Recording writer");
             try
             {
+                _after?.Join();
+                _after = null;
+                Open();
                 var header = new RecordingBuffer(16);
                 while (Take(out var record))
                 {
@@ -187,13 +200,64 @@ namespace PurrNet.Recording
                     lock (_queue)
                         idle = _queue.Count == 0;
                     if (idle)
-                        _stream.Flush();
+                        Flush();
                 }
-                _stream.Flush();
+                Flush();
             }
             finally
             {
+                Close();
                 UnityEngine.Profiling.Profiler.EndThreadProfiling();
+            }
+        }
+
+        void Open()
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
+                _stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
+                var magic = Encoding.ASCII.GetBytes("PURRREC\0");
+                _stream.Write(magic, 0, magic.Length);
+                _stream.WriteByte(1);
+                _stream.WriteByte(0);
+                Interlocked.Add(ref _bytesWritten, 10);
+            }
+            catch (Exception e)
+            {
+                _error = e;
+            }
+        }
+
+        void Close()
+        {
+            if (_compressedHandle.IsAllocated)
+                _compressedHandle.Free();
+            if (_nativeSinkHandle.IsAllocated)
+                _nativeSinkHandle.Free();
+            _nativeSink.Free();
+            try
+            {
+                _stream?.Dispose();
+            }
+            catch (Exception e)
+            {
+                _error ??= e;
+            }
+            _closed = true;
+        }
+
+        void Flush()
+        {
+            if (_error != null)
+                return;
+            try
+            {
+                _stream.Flush();
+            }
+            catch (Exception e)
+            {
+                _error = e;
             }
         }
 
@@ -416,28 +480,39 @@ namespace PurrNet.Recording
                 Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free((void*)record.native, Unity.Collections.Allocator.Persistent);
         }
 
-        public void Dispose()
+        /// <summary>
+        /// Nothing more will be added. The writer thread writes what is queued and closes the file, and
+        /// <see cref="closed"/> says when: the caller does not wait. Without threads (WebGL) it is done at once.
+        /// </summary>
+        public void Complete()
         {
 #if PURRREC_WEB
-            long start = System.Diagnostics.Stopwatch.GetTimestamp();
-            while (_queue.Count > 0)
-                WriteRecord(_queue.Dequeue(), _header);
-            _produceTicks += System.Diagnostics.Stopwatch.GetTimestamp() - start;
-            if (_web != 0)
-                WebRecording.Close(_web);
+            Dispose();
 #else
             lock (_queue)
             {
                 _completed = true;
                 Monitor.PulseAll(_queue);
             }
+#endif
+        }
+
+        /// <summary>Completes the file and waits until it is closed.</summary>
+        public void Dispose()
+        {
+#if PURRREC_WEB
+            if (_closed)
+                return;
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            while (_queue.Count > 0)
+                WriteRecord(_queue.Dequeue(), _header);
+            _produceTicks += System.Diagnostics.Stopwatch.GetTimestamp() - start;
+            if (_web != 0)
+                WebRecording.Close(_web);
+            _closed = true;
+#else
+            Complete();
             _thread.Join();
-            if (_compressedHandle.IsAllocated)
-                _compressedHandle.Free();
-            if (_nativeSinkHandle.IsAllocated)
-                _nativeSinkHandle.Free();
-            _nativeSink.Free();
-            _stream.Dispose();
 #endif
         }
     }
