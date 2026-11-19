@@ -1,3 +1,10 @@
+# [1.26.0-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.35...v1.26.0-beta.36) (2026-11-19)
+
+
+### Bug Fixes
+
+* UTP client reports a failed connect after 5 s instead of hanging in Connecting ([13e8d2e](https://github.com/PurrNet/PurrNet/commit/13e8d2e9fe7f02905613003fbe46c5d8f93210bf))
+
 # [1.26.0-beta.35](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.34...v1.26.0-beta.35) (2026-11-16)
 
 
