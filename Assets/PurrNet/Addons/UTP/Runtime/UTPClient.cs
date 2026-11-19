@@ -129,17 +129,13 @@ namespace PurrNet.UTP
             yield return null;
 #if UTP_NET_PACKAGE && !DISABLEUTPWORKS
 
+            NetworkSettings settings = CreateSettings();
             if (relayData.HasValue)
             {
                 RelayServerData relayDataValue = relayData.Value;
-                NetworkSettings settings = new NetworkSettings();
                 settings.WithRelayParameters(ref relayDataValue);
-                _driver = NetworkDriver.Create(settings);
             }
-            else
-            {
-                _driver = NetworkDriver.Create();
-            }
+            _driver = NetworkDriver.Create(settings);
 
             _reliablePipeline = _driver.CreatePipeline(typeof(ReliableSequencedPipelineStage));
             _unreliablePipeline = NetworkPipeline.Null;
@@ -187,7 +183,7 @@ namespace PurrNet.UTP
             }
 
             RelayServerData relayDataValue = relayData.Value;
-            NetworkSettings settings = new NetworkSettings();
+            NetworkSettings settings = CreateSettings();
             settings.WithRelayParameters(ref relayDataValue);
             _driver = NetworkDriver.Create(settings);
 
@@ -885,6 +881,13 @@ namespace PurrNet.UTP
         {
             if (_buffer.Length < packetLength)
                 Array.Resize(ref _buffer, packetLength);
+        }
+
+        private static NetworkSettings CreateSettings()
+        {
+            NetworkSettings settings = new NetworkSettings();
+            settings.WithNetworkConfigParameters(connectTimeoutMS: 500, maxConnectAttempts: 10);
+            return settings;
         }
 
         private void PostConnect()
