@@ -372,6 +372,7 @@ var hierarchy =
       [ "PurrNet.PrefabID", "structPurrNet_1_1PrefabID.html", null ],
       [ "PurrNet.RPCPacket", "structPurrNet_1_1RPCPacket.html", null ],
       [ "PurrNet.Recording.RecordingPartPacket", "structPurrNet_1_1Recording_1_1RecordingPartPacket.html", null ],
+      [ "PurrNet.Recording.RecordingPartRequest", "structPurrNet_1_1Recording_1_1RecordingPartRequest.html", null ],
       [ "PurrNet.SceneID", "structPurrNet_1_1SceneID.html", null ],
       [ "PurrNet.StaticRPCHeader", "structPurrNet_1_1StaticRPCHeader.html", null ],
       [ "PurrNet.StaticRPCPacket", "structPurrNet_1_1StaticRPCPacket.html", null ],

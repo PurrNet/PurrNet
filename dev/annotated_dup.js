@@ -206,6 +206,7 @@ var annotated_dup =
         [ "RecordingBuffer", "classPurrNet_1_1Recording_1_1RecordingBuffer.html", null ],
         [ "RecordingFile", "classPurrNet_1_1Recording_1_1RecordingFile.html", "classPurrNet_1_1Recording_1_1RecordingFile" ],
         [ "RecordingPartPacket", "structPurrNet_1_1Recording_1_1RecordingPartPacket.html", null ],
+        [ "RecordingPartRequest", "structPurrNet_1_1Recording_1_1RecordingPartRequest.html", null ],
         [ "RecordingSession", "classPurrNet_1_1Recording_1_1RecordingSession.html", "classPurrNet_1_1Recording_1_1RecordingSession" ],
         [ "RecordingSource", "classPurrNet_1_1Recording_1_1RecordingSource.html", "classPurrNet_1_1Recording_1_1RecordingSource" ],
         [ "RecordingTypeRegistry", "classPurrNet_1_1Recording_1_1RecordingTypeRegistry.html", null ],
