@@ -317,15 +317,10 @@ namespace PurrNet.Recording
             _hasStaticColliderKey = false;
             int staticWork = _lastStaticWork;
             ResetStaticCheck();
-            _staticSince = null;
             if (continues)
-            {
                 _lastStaticWork = staticWork;
-                _staticSince = firstTick;
-                BeginStaticCheck();
-            }
-            else
-                RefreshStaticColliders(firstTick);
+            _staticSince = firstTick;
+            BeginStaticCheck();
 #endif
         }
 
@@ -380,6 +375,8 @@ namespace PurrNet.Recording
                 _entitiesByGameObject.Clear();
                 _customStreams.Clear();
                 _names.Clear();
+                _colliderNames.Clear();
+                _rendererNames.Clear();
                 _nextEntityId = 1;
                 _nextStreamId = 1;
             }
@@ -413,6 +410,14 @@ namespace PurrNet.Recording
         void WriteEnding(Action<JsonBuilder> footer, bool continued)
         {
             TakeLaterTransforms();
+#if UNITY_PHYSICS_3D
+            foreach (var entity in _entities)
+                if (entity.shapeSince != 0 && entity.gameObject)
+                    RefreshEntityColliders(entity, _lastTick);
+            if (_staticSince.HasValue && !isPart)
+                RefreshStaticColliders(_staticSince.Value);
+            _staticSince = null;
+#endif
             RecordedEffects.Unwatch(this);
             EndEffects();
             EndParts(!continued);
@@ -604,6 +609,8 @@ namespace PurrNet.Recording
             AddJobTransform(entity);
             BeginChanges(entity);
             entity.poseTick = 0;
+            entity.shapeSince = 0;
+            entity.template = 0;
             entity.hasRendererKey = false;
             entity.effectsChecks = 0;
 #if UNITY_PHYSICS_3D
@@ -639,7 +646,8 @@ namespace PurrNet.Recording
         public void EndSpawn(RecordedEntity entity, ulong tick)
         {
 #if UNITY_PHYSICS_3D
-            RefreshEntityColliders(entity, tick);
+            entity.shapeSince = tick;
+            CheckSoon(entity);
 #else
             RefreshEntityRenderers(entity, tick);
 #endif
@@ -737,13 +745,10 @@ namespace PurrNet.Recording
 #if UNITY_PHYSICS_3D
             ReleaseColliders(entity.colliders);
             entity.movingColliders = 0;
-            entity.foundColliders.Clear();
 #endif
             ReleaseEffects(entity);
             entity.renderers.Clear();
             entity.rendererObjects.Clear();
-            entity.foundRenderers.Clear();
-            entity.foundGraphics.Clear();
             entity.detachedGraphics.Clear();
             entity.transform = null;
             entity.gameObject = null;
@@ -1368,8 +1373,50 @@ namespace PurrNet.Recording
 
         readonly List<string> _pathParts = new List<string>(16);
 
-        public void WritePath(JsonBuilder json, Transform t)
+        readonly Dictionary<long, List<string>> _colliderNames = new Dictionary<long, List<string>>();
+        readonly Dictionary<long, List<string>> _rendererNames = new Dictionary<long, List<string>>();
+        List<string> _nameTemplate;
+        int _nameIndex;
+        bool _nameFill;
+
+        /// <summary>
+        /// Objects made from the same prefab have parts with the same names: the first one's are kept and used for
+        /// the others, in the order the parts are found, so that asking the engine (which allocates the string
+        /// each time) happens once per prefab.
+        /// </summary>
+        void BeginNames(Dictionary<long, List<string>> templates, long template, int count)
         {
+            _nameTemplate = null;
+            _nameIndex = 0;
+            _nameFill = false;
+            if (template == 0)
+                return;
+            if (!templates.TryGetValue(template, out var names))
+            {
+                templates[template] = _nameTemplate = new List<string>(count);
+                _nameFill = true;
+            }
+            else if (names.Count == count)
+                _nameTemplate = names;
+        }
+
+        string TemplateName(UnityEngine.Object o)
+        {
+            if (_nameTemplate == null)
+                return Name(o);
+            if (!_nameFill)
+                return _nameTemplate[_nameIndex++];
+            string name = Name(o);
+            _nameTemplate.Add(name);
+            return name;
+        }
+
+        public void WritePath(JsonBuilder json, Transform t) => WritePath(json, t, null);
+
+        public void WritePath(JsonBuilder json, Transform t, string leaf)
+        {
+            if (leaf != null)
+                _pathParts.Add(leaf);
             for (var p = t; p; p = p.parent)
                 _pathParts.Add(Name(p.gameObject));
             json.BeginString();
@@ -1409,6 +1456,7 @@ namespace PurrNet.Recording
         }
 
         readonly List<Renderer> _rendererList = new List<Renderer>();
+        readonly List<Renderer> _foundRenderers = new List<Renderer>();
 
         bool RefreshEntityRenderers(RecordedEntity entity, ulong tick)
         {
@@ -1417,8 +1465,8 @@ namespace PurrNet.Recording
 
             entity.renderers.Clear();
             entity.rendererObjects.Clear();
-            root.GetComponentsInChildren(true, entity.foundRenderers);
-            foreach (var renderer in entity.foundRenderers)
+            root.GetComponentsInChildren(true, _foundRenderers);
+            foreach (var renderer in _foundRenderers)
             {
                 if (!IsBodyRenderer(renderer))
                     continue;
@@ -1428,6 +1476,7 @@ namespace PurrNet.Recording
                     entity.rendererObjects.Add(renderer.gameObject);
                 }
             }
+            _foundRenderers.Clear();
 
             entity.detachedGraphics.Clear();
             for (int i = 0, parts = entity.partCount; i < parts; i++)
@@ -1444,13 +1493,11 @@ namespace PurrNet.Recording
                     entity.graphicsRoots.Add(id);
                 }
             }
-            entity.foundGraphics.Clear();
             foreach (var graphics in entity.detachedGraphics)
             {
                 if (!graphics || graphics.IsChildOf(root.transform))
                     continue;
                 graphics.GetComponentsInChildren(true, _rendererList);
-                entity.foundGraphics.AddRange(_rendererList);
                 foreach (var renderer in _rendererList)
                 {
                     if (IsBodyRenderer(renderer))
@@ -1462,7 +1509,7 @@ namespace PurrNet.Recording
             }
             _rendererList.Clear();
             LookAgain(entity);
-            RecordRenderers(entity, tick);
+            RecordRenderers(entity, entity.shapeSince != 0 ? entity.shapeSince : tick);
             RefreshEntityEffects(entity, nested, tick);
             return nested;
         }
@@ -1490,6 +1537,7 @@ namespace PurrNet.Recording
             entity.hasRendererKey = true;
 
             var worldToEntity = entity.root.worldToLocalMatrix;
+            BeginNames(_rendererNames, entity.template, renderers.Count);
             var json = _json.Clear().BeginObject().Prop("entity", entity.id).Prop("tick", tick).Key("renderers").BeginArray();
             for (int i = 0; i < renderers.Count; i++)
             {
@@ -1513,7 +1561,7 @@ namespace PurrNet.Recording
                 var r = local.ValidTRS() ? local.rotation : Quaternion.identity;
                 var s = local.lossyScale;
                 json.BeginObject().Prop("kind", kind).Prop("id", RecordingObjectId.Of(renderer))
-                    .Prop("name", Name(renderer.gameObject)).Key("mesh");
+                    .Prop("name", TemplateName(renderer.gameObject)).Key("mesh");
                 if (shape) json.Value(Name(shape)); else json.Null();
                 json.Key("material");
                 if (material) json.Value(Name(material)); else json.Null();
@@ -1526,6 +1574,7 @@ namespace PurrNet.Recording
                     .Floats("size", bounds.size.x, bounds.size.y, bounds.size.z)
                     .EndObject();
             }
+            _nameTemplate = null;
             WriteMeta(RecordKind.Renderers, json.EndArray().EndObject());
         }
 
@@ -1602,7 +1651,7 @@ namespace PurrNet.Recording
                 if (!entity.checkSoon)
                     continue;
                 entity.checkSoon = false;
-                if (entity.gameObject && entity.spawnTick != tick)
+                if (entity.gameObject && (entity.spawnTick != tick || entity.shapeSince != 0))
                 {
                     first = false;
                     CheckEntity(entity, tick);
@@ -1657,7 +1706,7 @@ namespace PurrNet.Recording
             _colliderScratch.Clear();
 
             RefreshColliderSet(_colliderList, null, Matrix4x4.identity, _staticColliderKey, ref _hasStaticColliderKey,
-                _staticColliders, ref _staticMovingColliders, -1, tick);
+                _staticColliders, ref _staticMovingColliders, -1, 0, tick);
             _colliderList.Clear();
         }
 
@@ -1716,7 +1765,8 @@ namespace PurrNet.Recording
             {
                 var key = _colliderKey;
                 int walked = 0;
-                while (budget > 0 && _staticStack.Count > 0 && (budget > minimum || (++walked & 7) != 0 || !OverBudget))
+                _terrainSampled = false;
+                while (budget > 0 && _staticStack.Count > 0 && !_terrainSampled && (budget > minimum || (++walked & 7) != 0 || !OverBudget))
                 {
                     var t = _staticStack[_staticStack.Count - 1];
                     _staticStack.RemoveAt(_staticStack.Count - 1);
@@ -1768,7 +1818,7 @@ namespace PurrNet.Recording
                         if (!_staticFound[i])
                             _staticFound.RemoveAt(i);
                     RefreshColliderSet(_staticFound, null, Matrix4x4.identity, _staticColliderKey, ref _hasStaticColliderKey,
-                        _staticColliders, ref _staticMovingColliders, -1, _staticSince ?? tick);
+                        _staticColliders, ref _staticMovingColliders, -1, 0, _staticSince ?? tick);
                     _staticSince = null;
                     _staticFound.Clear();
                     _staticCheck = StaticCheck.Idle;
@@ -1812,8 +1862,10 @@ namespace PurrNet.Recording
         readonly Stack<TrackedCollider> _trackedPool = new Stack<TrackedCollider>(256);
         const int StillChecksBeforeIdle = 2;
 
+        bool _terrainSampled;
+
         void RefreshColliderSet(List<Collider> colliders, Transform space, Matrix4x4 worldToSpace, RecordingBuffer lastKey,
-            ref bool hasKey, List<TrackedCollider> tracked, ref int moving, int entity, ulong tick)
+            ref bool hasKey, List<TrackedCollider> tracked, ref int moving, int entity, long template, ulong tick)
         {
             var key = _colliderKey;
             key.Clear();
@@ -1865,8 +1917,10 @@ namespace PurrNet.Recording
                 var json = _json.Clear().BeginObject().Key("entity");
                 if (entity >= 0) json.Value(entity); else json.Null();
                 json.Prop("tick", tick).Key("colliders").BeginArray();
+                BeginNames(_colliderNames, template, colliders.Count);
                 foreach (var collider in colliders)
                     WriteCollider(json, collider, worldToSpace);
+                _nameTemplate = null;
                 json.EndArray().EndObject();
                 WriteMeta(RecordKind.Colliders, json);
                 return;
@@ -2013,16 +2067,19 @@ namespace PurrNet.Recording
 
             bool nested = RefreshEntityRenderers(entity, tick);
 
-            root.GetComponentsInChildren(false, entity.foundColliders);
+            root.GetComponentsInChildren(false, _colliderScratch);
             _colliderList.Clear();
-            foreach (var collider in entity.foundColliders)
+            foreach (var collider in _colliderScratch)
             {
                 if (collider.enabled && !IsLocalPhysics(collider) && (!nested || OwnedBy(collider, root)))
                     _colliderList.Add(collider);
             }
+            _colliderScratch.Clear();
 
+            ulong since = entity.shapeSince != 0 ? entity.shapeSince : tick;
+            entity.shapeSince = 0;
             RefreshColliderSet(_colliderList, entity.root, entity.root.worldToLocalMatrix, entity.colliderKey,
-                ref entity.hasColliderKey, entity.colliders, ref entity.movingColliders, entity.id, tick);
+                ref entity.hasColliderKey, entity.colliders, ref entity.movingColliders, entity.id, entity.template, since);
             _colliderList.Clear();
         }
 
@@ -2098,7 +2155,7 @@ namespace PurrNet.Recording
                 .Floats("s", Round(s.x), Round(s.y), Round(s.z))
                 .EndObject()
                 .Prop("trigger", collider.isTrigger).Prop("layer", collider.gameObject.layer)
-                .Prop("name", Name(collider));
+                .Prop("name", TemplateName(collider));
         }
 
         static float Round(float value) => (float)Math.Round(value, 4) + 0f;

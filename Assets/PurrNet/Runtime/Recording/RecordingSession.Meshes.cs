@@ -452,6 +452,7 @@ namespace PurrNet.Recording
                 float step = 1f / (side - 1);
                 var size = data.size;
                 var heights = data.GetInterpolatedHeights(0f, 0f, side, side, step, step);
+                _terrainSampled = true;
 
                 if (_terrainSide != side)
                 {

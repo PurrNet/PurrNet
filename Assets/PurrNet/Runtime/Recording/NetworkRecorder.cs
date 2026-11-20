@@ -90,8 +90,8 @@ namespace PurrNet.Recording
         [SerializeField] private float _effectsBudgetMs = 0.02f;
         [Tooltip("Most time per tick, in milliseconds, spent on objects the recording has not seen before (declaring " +
                  "their streams, colliders and renderers). When more objects appear in one tick than fit, the rest " +
-                 "enter the recording on the following ticks. Objects that are there when a recording starts all " +
-                 "enter on its first tick. 0 records every object on the tick it appears, whatever that costs.")]
+                 "enter the recording on the following ticks. 0 records every object on the tick it appears, " +
+                 "whatever that costs.")]
         [SerializeField] private float _spawnBudgetMs = 0.25f;
 
         static readonly List<Type> ExtensionTypes = new List<Type>();
@@ -131,9 +131,9 @@ namespace PurrNet.Recording
             public NetworkIdentity identity;
             public EntityData data;
             public int index;
-            public readonly List<NetworkModule> modules = new List<NetworkModule>(4);
-            public readonly List<StreamRows> rows = new List<StreamRows>(4);
-            public readonly List<int> polled = new List<int>(4);
+            public readonly List<NetworkModule> modules = new List<NetworkModule>();
+            public readonly List<StreamRows> rows = new List<StreamRows>();
+            public readonly List<int> polled = new List<int>();
             public readonly RecordedLife life = new RecordedLife();
             public PlayerID? owner;
             public int observersVersion;
@@ -251,11 +251,11 @@ namespace PurrNet.Recording
         readonly HashSet<ulong> _players = new HashSet<ulong>();
         readonly List<ulong> _playersLeft = new List<ulong>();
         readonly Dictionary<int, string> _prefabNames = new Dictionary<int, string>();
+        readonly Dictionary<long, string> _instanceNames = new Dictionary<long, string>();
         RecorderStats.Section _statPlayers, _statIdentities, _statCalls;
         bool _stoppedThisSession;
         bool _extensionPlayers;
         long _spawnBudget, _spawnSpent;
-        bool _spawnAll;
         readonly HashSet<NetworkIdentity> _deferred = new HashSet<NetworkIdentity>(IdentityComparer.instance);
         string _fileName;
         ulong _splitTicks;
@@ -582,7 +582,6 @@ namespace PurrNet.Recording
             _extensionPlayers = false;
             spawnsDeferred = 0;
             _deferred.Clear();
-            _spawnAll = !continues;
             foreach (var extension in _extensions)
                 _extensionPlayers |= extension.recordsPlayers;
             _hierarchy = null;
@@ -649,6 +648,7 @@ namespace PurrNet.Recording
             }, continued);
             _players.Clear();
             _prefabNames.Clear();
+            _instanceNames.Clear();
             _deferred.Clear();
         }
 
@@ -782,7 +782,7 @@ namespace PurrNet.Recording
 
             bool chunkStart = _session.chunkStart;
             _spawnSpent = 0;
-            _spawnBudget = _spawnBudgetMs > 0 && !_spawnAll ? (long)(_spawnBudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency) : long.MaxValue;
+            _spawnBudget = _spawnBudgetMs > 0 ? (long)(_spawnBudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency) : long.MaxValue;
             int at = 0;
             var hierarchies = _hierarchy.hierarchies;
             for (int h = 0; h < hierarchies.Count; h++)
@@ -846,7 +846,6 @@ namespace PurrNet.Recording
                 }
             }
 
-            _spawnAll = false;
             _session.DespawnUnseen(_source, tick);
         }
 
@@ -902,6 +901,13 @@ namespace PurrNet.Recording
             _session.CreateTransformStream(entity);
 
             int prefabId = identity.isSceneObject ? -1 : identity.prefabId;
+            long template = prefabId < 0 ? 0 : ((long)(prefabId + 1) << 32) ^ (uint)identity.componentIndex;
+            string name;
+            if (template == 0)
+                name = _session.Name(go);
+            else if (!_instanceNames.TryGetValue(template, out name))
+                _instanceNames[template] = name = _session.Name(go);
+            entity.template = template;
             var parent = _session.ParentEntity(go.transform.parent, true);
             entity.spawnTick = tick;
             entity.owner = identity.owner;
@@ -911,12 +917,12 @@ namespace PurrNet.Recording
             var record = _session.json.Clear().BeginObject()
                 .Prop("entity", entity.id).Prop("tick", tick)
                 .Prop("networkId", identity.id.HasValue ? (ulong)identity.id.Value.id.value : 0)
-                .Prop("name", _session.Name(go)).Prop("prefabId", prefabId).Prop("prefabName", PrefabName(prefabId))
+                .Prop("name", name).Prop("prefabId", prefabId).Prop("prefabName", PrefabName(prefabId))
                 .Key("owner");
             if (entity.owner.HasValue) record.Value(entity.owner.Value.id.value); else record.Null();
             record.Key("parent");
             if (parent != null) record.Value(parent.id); else record.Null();
-            _session.WritePath(record.Key("path"), go.transform);
+            _session.WritePath(record.Key("path"), go.transform.parent, name);
             WriteComponents(record, created);
             record.Prop("transform", entity.transform.id).EndObject();
             _session.WriteMeta(RecordKind.Entity, record);
