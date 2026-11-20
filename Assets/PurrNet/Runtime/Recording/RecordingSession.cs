@@ -367,6 +367,7 @@ namespace PurrNet.Recording
 #if UNITY_PHYSICS_3D
                 PumpMeshCaptures(true);
                 _meshIds.Clear();
+                _terrainPrints.Clear();
                 _nextMeshId = 1;
 #endif
                 _errors.Clear();
@@ -1589,6 +1590,7 @@ namespace PurrNet.Recording
         readonly List<Collider> _colliderScratch = new List<Collider>();
         readonly List<GameObject> _sceneRoots = new List<GameObject>();
         readonly Dictionary<long, int> _meshIds = new Dictionary<long, int>();
+        readonly Dictionary<long, int> _terrainPrints = new Dictionary<long, int>();
         int _nextMeshId = 1;
 
         long _checkDeadline;
@@ -1624,6 +1626,7 @@ namespace PurrNet.Recording
 
             _checkDeadline = Stopwatch.GetTimestamp() + (long)(colliderCheckBudgetMs * 0.001 * Stopwatch.Frequency);
             _stats.Begin(_statChecks);
+            CheckStaticShift(tick);
             CheckEntityColliders(tick);
             if (_staticCheck == StaticCheck.Idle && tick % StaticColliderCheckTicks == 0)
                 BeginStaticCheck();
@@ -1864,6 +1867,70 @@ namespace PurrNet.Recording
 
         bool _terrainSampled;
 
+        const int ShiftProbes = 4, ShiftWitnesses = 32;
+        readonly TrackedCollider[] _shiftProbe = new TrackedCollider[ShiftProbes];
+        readonly Vector3[] _shiftProbeAt = new Vector3[ShiftProbes], _shiftProbeMoved = new Vector3[ShiftProbes];
+        int _staticEpoch;
+
+        /// <summary>
+        /// A game that moves its whole world at once (a floating origin, a level on something that travels) moves
+        /// every static collider by the same amount on one tick. A few of them are watched every tick; when they
+        /// all move alike and a wider sample agrees, the move is written as one small record on that tick instead
+        /// of being found collider by collider over the next seconds.
+        /// </summary>
+        void CheckStaticShift(ulong tick)
+        {
+            var tracked = _staticColliders;
+            int count = tracked.Count;
+            if (count < ShiftProbes)
+            {
+                Array.Clear(_shiftProbe, 0, ShiftProbes);
+                return;
+            }
+
+            bool known = true;
+            for (int i = 0; i < ShiftProbes; i++)
+            {
+                var t = tracked[(int)((long)i * (count - 1) / (ShiftProbes - 1))];
+                if (!t.collider)
+                {
+                    _shiftProbe[i] = null;
+                    known = false;
+                    continue;
+                }
+                var at = t.collider.transform.position;
+                if (ReferenceEquals(_shiftProbe[i], t))
+                    _shiftProbeMoved[i] = at - _shiftProbeAt[i];
+                else
+                    known = false;
+                _shiftProbe[i] = t;
+                _shiftProbeAt[i] = at;
+            }
+            if (!known)
+                return;
+            var shift = _shiftProbeMoved[0];
+            if (shift.sqrMagnitude < 1e-6f)
+                return;
+            for (int i = 1; i < ShiftProbes; i++)
+                if ((_shiftProbeMoved[i] - shift).sqrMagnitude > 1e-6f)
+                    return;
+
+            int step = Math.Max(1, count / ShiftWitnesses);
+            for (int i = 0; i < count; i += step)
+            {
+                var t = tracked[i];
+                if (!t.streamable || t.moving || !t.collider || t.epoch != _staticEpoch)
+                    continue;
+                if ((t.collider.transform.position - shift - t.position).sqrMagnitude > 1e-4f)
+                    return;
+            }
+
+            if (++_staticEpoch == 0)
+                _staticEpoch = 1;
+            WriteMeta(RecordKind.Colliders, _json.Clear().BeginObject().Key("entity").Null().Prop("tick", tick)
+                .Floats("shift", shift.x, shift.y, shift.z).EndObject());
+        }
+
         void RefreshColliderSet(List<Collider> colliders, Transform space, Matrix4x4 worldToSpace, RecordingBuffer lastKey,
             ref bool hasKey, List<TrackedCollider> tracked, ref int moving, int entity, long template, ulong tick)
         {
@@ -1898,6 +1965,7 @@ namespace PurrNet.Recording
                         t.moving = false;
                         t.stillChecks = 0;
                     }
+                    t.epoch = _staticEpoch;
                     t.streamable = HasShapePose(collider) && !ReferenceEquals(collider.transform, space);
                     RoundedPose(collider, worldToSpace, out t.position, out t.rotation, out t.scale);
                     _trackedScratch.Add(t);
@@ -1939,6 +2007,11 @@ namespace PurrNet.Recording
                     continue;
                 RoundedPose(t.collider, worldToSpace, out var position, out var rotation, out var scale);
                 bool moved = !position.Equals(t.position) || !rotation.Equals(t.rotation) || !scale.Equals(t.scale);
+                if (entity < 0 && t.epoch != _staticEpoch)
+                {
+                    t.epoch = _staticEpoch;
+                    moved = false;
+                }
                 t.position = position;
                 t.rotation = rotation;
                 t.scale = scale;
@@ -2040,7 +2113,8 @@ namespace PurrNet.Recording
                 }
 #if PURRNET_TERRAIN
                 case TerrainCollider terrain when terrain.terrainData:
-                    key.WriteByte(7); key.WriteVarInt(WriteTerrain(terrain.terrainData));
+                    key.WriteByte(7); KeyVector(key, terrain.transform.position);
+                    key.WriteVarInt(WriteTerrain(terrain.terrainData));
                     break;
 #endif
                 default:

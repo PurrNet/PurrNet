@@ -442,8 +442,10 @@ namespace PurrNet.Recording
         unsafe int WriteTerrain(TerrainData data)
         {
             long key = RecordingObjectId.Of(data);
-            if (_meshIds.TryGetValue(key, out int existing))
+            int print = TerrainPrint(data);
+            if (_meshIds.TryGetValue(key, out int existing) && _terrainPrints.TryGetValue(key, out int last) && last == print)
                 return existing;
+            _terrainPrints[key] = print;
 
             var capture = _terrainCapture;
             try
@@ -507,6 +509,24 @@ namespace PurrNet.Recording
                 capture.output = null;
                 return _meshIds[key] = 0;
             }
+        }
+
+        /// <summary>
+        /// A few heights and the height range of a terrain: a game that reuses a terrain somewhere else with other
+        /// heights changes them, and the terrain is sampled again.
+        /// </summary>
+        static int TerrainPrint(TerrainData data)
+        {
+            int resolution = data.heightmapResolution, quarter = resolution / 4, far = quarter * 3;
+            var bounds = data.bounds;
+            int print = BitConverter.SingleToInt32Bits(bounds.center.y);
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(bounds.size.y));
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(quarter, quarter)));
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(far, quarter)));
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(quarter, far)));
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(far, far)));
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(resolution / 2, resolution / 2)));
+            return print;
         }
 
         readonly MeshCapture _terrainCapture = new MeshCapture();

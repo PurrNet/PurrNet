@@ -228,6 +228,7 @@ namespace PurrNet.Recording
         public StreamRows stream;
         public bool moving;
         public int stillChecks;
+        public int epoch;
     }
 #endif
 
