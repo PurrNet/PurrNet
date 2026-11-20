@@ -28,7 +28,7 @@ namespace PurrNet.Recording
     public struct RawInputSample
     {
         public const ushort Typing = 1, HasKeyboard = 2, HasPointer = 4, HasGamepad = 8, Focused = 16,
-            FromInputSystem = 32, FromLegacyInput = 64;
+            FromInputSystem = 32, FromLegacyInput = 64, CursorLocked = 128, CursorConfined = 256, CursorHidden = 512;
 
         public ushort flags;
         public byte mouseButtons;
@@ -107,6 +107,13 @@ namespace PurrNet.Recording
             }
             if (Application.isFocused)
                 _row.flags |= RawInputSample.Focused;
+            var lockState = UnityEngine.Cursor.lockState;
+            if (lockState == CursorLockMode.Locked)
+                _row.flags |= RawInputSample.CursorLocked;
+            else if (lockState == CursorLockMode.Confined)
+                _row.flags |= RawInputSample.CursorConfined;
+            if (!UnityEngine.Cursor.visible)
+                _row.flags |= RawInputSample.CursorHidden;
             session.WriteSample(Stream, _row);
 #if PURRREC_INPUT_SYSTEM
             WriteActions(session);
