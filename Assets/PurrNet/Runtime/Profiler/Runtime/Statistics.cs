@@ -161,10 +161,13 @@ namespace PurrNet.Profiler
                 samples.RemoveAt(0);
             }
 
-            samples.Add(_currentSample);
-            onSample?.Invoke(_currentSample);
-
+            // Start the next sample before notifying subscribers, so one that throws
+            // cannot leave the finished sample to be stored a second time.
+            var finished = _currentSample;
             _currentSample = new TickSample();
+
+            samples.Add(finished);
+            onSample?.Invoke(finished);
             onSampleEnded?.Invoke();
         }
 
