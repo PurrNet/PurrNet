@@ -445,28 +445,30 @@ namespace PurrNet.Recording
 
         static byte ToByte(float value) => (byte)(value <= 0f ? 0 : value >= 1f ? 255 : (int)(value * 255f + 0.5f));
 
-        const float RectTolerance = 0.00002f;
+        const float RectTolerancePixels = 0.25f;
 
-        static bool Near(float a, float b)
+        static bool Near(float a, float b, float tolerance)
         {
             float d = a - b;
-            return d < RectTolerance && d > -RectTolerance;
+            return d < tolerance && d > -tolerance;
         }
 
-        static bool Same(ref UISample a, ref UISample b)
+        bool Same(ref UISample a, ref UISample b)
         {
+            float nearX = RectTolerancePixels / Mathf.Max(1, _screenWidth), nearY = RectTolerancePixels / Mathf.Max(1, _screenHeight);
+            float nearFill = RectTolerancePixels / Mathf.Max(1f, Mathf.Max(b.width * _screenWidth, b.height * _screenHeight));
             return a.kind == b.kind && a.widget == b.widget && a.flags == b.flags && a.parent == b.parent &&
                    a.root == b.root && a.order == b.order &&
-                   Near(a.x, b.x) && Near(a.y, b.y) && Near(a.width, b.width) && Near(a.height, b.height) &&
+                   Near(a.x, b.x, nearX) && Near(a.y, b.y, nearY) && Near(a.width, b.width, nearX) && Near(a.height, b.height, nearY) &&
                    Mathf.Abs(a.rotation - b.rotation) < 0.01f &&
-                   Same(a.color, b.color) && Same(a.textColor, b.textColor) && Near(a.fontSize, b.fontSize) &&
+                   Same(a.color, b.color) && Same(a.textColor, b.textColor) && Near(a.fontSize, b.fontSize, nearY) &&
                    a.align == b.align && a.fill == b.fill && a.fillOrigin == b.fillOrigin &&
-                   a.fillAmount == b.fillAmount && a.value == b.value &&
+                   Near(a.fillAmount, b.fillAmount, nearFill) && a.value == b.value &&
                    a.worldPosition.x == b.worldPosition.x && a.worldPosition.y == b.worldPosition.y &&
                    a.worldPosition.z == b.worldPosition.z &&
                    a.worldRotation.x == b.worldRotation.x && a.worldRotation.y == b.worldRotation.y &&
                    a.worldRotation.z == b.worldRotation.z && a.worldRotation.w == b.worldRotation.w &&
-                   a.worldSize.x == b.worldSize.x && a.worldSize.y == b.worldSize.y &&
+                   Mathf.Approximately(a.worldSize.x, b.worldSize.x) && Mathf.Approximately(a.worldSize.y, b.worldSize.y) &&
                    Same(a.name, b.name) && Same(a.type, b.type) && Same(a.sprite, b.sprite) && Same(a.text, b.text);
         }
 

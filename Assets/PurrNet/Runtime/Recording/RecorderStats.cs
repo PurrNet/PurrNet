@@ -232,6 +232,8 @@ namespace PurrNet.Recording
 
         public string Summary(ulong ticks, string name)
         {
+            if (_commits == 0)
+                return "";
             var text = new StringBuilder($"[{name}] main-thread cost per tick it ran in: ");
             foreach (var s in _sections)
             {

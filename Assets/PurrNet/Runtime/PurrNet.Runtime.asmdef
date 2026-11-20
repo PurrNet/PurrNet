@@ -60,6 +60,11 @@
             "define": "PURRNET_PARTICLES"
         },
         {
+            "name": "com.unity.modules.terrainphysics",
+            "expression": "",
+            "define": "PURRNET_TERRAIN"
+        },
+        {
             "name": "com.unity.modules.audio",
             "expression": "",
             "define": "PURRNET_AUDIO"

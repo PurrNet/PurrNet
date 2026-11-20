@@ -16,6 +16,11 @@ namespace PurrNet.Recording
         public ulong tick;
     }
 
+    public struct RecordingPartRequest : IPackedAuto
+    {
+        public bool recording;
+    }
+
     public sealed partial class RecordingSession
     {
         public string partDirectory = "Recordings";
@@ -66,14 +71,19 @@ namespace PurrNet.Recording
         void SubscribeParts()
         {
             _networkManager.Subscribe<RecordingPartPacket>(OnPartPacket, false);
+            _networkManager.Subscribe<RecordingPartRequest>(OnPartRequest, true);
             _networkManager.onPlayerJoined += OnPlayerJoinedParts;
             if (isRecording && !isPart)
                 OfferParts();
+            else if (!_networkManager.isServer && _networkManager.isLocalPlayerReady && !_partOffered &&
+                     _networkManager.TryGetModule<PurrNet.PlayersBroadcaster>(false, out var broadcaster))
+                broadcaster.SendToServer(new RecordingPartRequest { recording = true });
         }
 
         void UnsubscribeParts()
         {
             _networkManager.Unsubscribe<RecordingPartPacket>(OnPartPacket, false);
+            _networkManager.Unsubscribe<RecordingPartRequest>(OnPartRequest, true);
             _networkManager.onPlayerJoined -= OnPlayerJoinedParts;
         }
 
@@ -124,6 +134,12 @@ namespace PurrNet.Recording
         {
             if (asServer && isRecording && !isPart)
                 OfferPart(player);
+        }
+
+        void OnPartRequest(PlayerID sender, RecordingPartRequest packet, bool asServer)
+        {
+            if (asServer && packet.recording && isRecording && !isPart)
+                OfferPart(sender);
         }
 
         void OfferPart(PlayerID player)
@@ -188,9 +204,17 @@ namespace PurrNet.Recording
                 ClosePart();
                 return;
             }
-            if (isPart && _slots.Count > 0 &&
-                (PartTick(_context.viewTick) - _chunkFirstTick >= (ulong)_chunkTicks || _job.log.bytes.length * 2 > _logCapacity))
+            if (!isPart || _slots.Count == 0)
+                return;
+            int length = _job.log.bytes.length;
+            int most = Mathf.NextPowerOfTwo(Mathf.Max(64, chunkBufferKilobytes) * 1024);
+            if (PartTick(_context.viewTick) - _chunkFirstTick >= (ulong)_chunkTicks || (length * 2 > _logCapacity && _logCapacity >= most))
                 FlushChunk();
+            else if (length * 2 > _logCapacity)
+            {
+                _logCapacity = Mathf.Min(most, Mathf.NextPowerOfTwo(length * 4));
+                ReserveChunkMemory();
+            }
         }
 
         ulong PartTick(double view)

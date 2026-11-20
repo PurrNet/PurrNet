@@ -98,6 +98,7 @@ namespace PurrNet.Recording
         public float chunkSeconds = 10f;
         public int maxLocalMegabytes = 1024;
         public float colliderCheckBudgetMs = 0.1f;
+        public int terrainSamples = 33;
         public int chunkBufferKilobytes = 2048;
         public ulong localTick => _context.isReady ? _context.localTick : 0;
 
@@ -170,6 +171,9 @@ namespace PurrNet.Recording
             _startTime = Time.realtimeSinceStartup;
             active = this;
 
+#if UNITY_PHYSICS_3D && PURRNET_TERRAIN
+            TerrainCallbacks.heightmapChanged += OnTerrainChanged;
+#endif
             _stats = new RecorderStats(logName);
             _statTick = _stats.Add("tick");
             foreach (var name in recorderSections)
@@ -196,6 +200,9 @@ namespace PurrNet.Recording
             FinishClosed();
             DisposeTransformJob();
             UnsubscribeNetwork();
+#if UNITY_PHYSICS_3D && PURRNET_TERRAIN
+            TerrainCallbacks.heightmapChanged -= OnTerrainChanged;
+#endif
             if (active == this)
                 active = null;
         }
@@ -1977,6 +1984,11 @@ namespace PurrNet.Recording
                     key.WriteByte(mesh && WriteMesh(mesh) > 0 ? (byte)1 : (byte)0);
                     break;
                 }
+#if PURRNET_TERRAIN
+                case TerrainCollider terrain when terrain.terrainData:
+                    key.WriteByte(7); key.WriteVarInt(WriteTerrain(terrain.terrainData));
+                    break;
+#endif
                 default:
                 {
                     var b = collider.bounds;
@@ -2057,6 +2069,12 @@ namespace PurrNet.Recording
                     }
                     break;
                 }
+#if PURRNET_TERRAIN
+                case TerrainCollider terrain when terrain.terrainData && WriteTerrain(terrain.terrainData) > 0:
+                    BeginCollider(json, "mesh", collider, worldToSpace * Matrix4x4.Translate(collider.transform.position));
+                    json.Prop("mesh", WriteTerrain(terrain.terrainData)).Prop("convex", false);
+                    break;
+#endif
                 default:
                 {
                     var b = collider.bounds;

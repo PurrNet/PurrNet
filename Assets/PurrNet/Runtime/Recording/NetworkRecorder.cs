@@ -71,9 +71,14 @@ namespace PurrNet.Recording
                  "check, which comes round to an object every half second or so, and less often to one nothing " +
                  "has changed on.")]
         [SerializeField] private float _colliderCheckBudgetMs = 0.1f;
+        [Tooltip("A terrain is recorded as a surface of this many heights along each side, whatever its own " +
+                 "resolution. More shows finer ground and makes the recording larger.")]
+        [SerializeField] private int _terrainSamples = 33;
         [Tooltip("Memory reserved when recording starts for one chunk's rows, in KiB (two such buffers, plus the " +
                  "writer's working memory of about the same size). A chunk ends early when its buffer is full, so " +
-                 "recording never allocates during play; bigger buffers make slightly smaller files for big games.")]
+                 "these buffers never grow during play; bigger buffers make slightly smaller files for big games. " +
+                 "A client's part starts with small buffers that grow up to this size. An object allocates a " +
+                 "little memory the first time it enters a recording.")]
         [SerializeField] private int _chunkBufferKilobytes = 2048;
         [Tooltip("Records what recorded objects' animators, particle systems and audio sources do: a row when an " +
                  "animation state, a particle system or a sound starts or stops.")]
@@ -85,8 +90,8 @@ namespace PurrNet.Recording
         [SerializeField] private float _effectsBudgetMs = 0.02f;
         [Tooltip("Most time per tick, in milliseconds, spent on objects the recording has not seen before (declaring " +
                  "their streams, colliders and renderers). When more objects appear in one tick than fit, the rest " +
-                 "enter the recording on the following ticks. 0 records every object on the tick it appears, " +
-                 "whatever that costs.")]
+                 "enter the recording on the following ticks. Objects that are there when a recording starts all " +
+                 "enter on its first tick. 0 records every object on the tick it appears, whatever that costs.")]
         [SerializeField] private float _spawnBudgetMs = 0.25f;
 
         static readonly List<Type> ExtensionTypes = new List<Type>();
@@ -250,6 +255,8 @@ namespace PurrNet.Recording
         bool _stoppedThisSession;
         bool _extensionPlayers;
         long _spawnBudget, _spawnSpent;
+        bool _spawnAll;
+        readonly HashSet<NetworkIdentity> _deferred = new HashSet<NetworkIdentity>(IdentityComparer.instance);
         string _fileName;
         ulong _splitTicks;
 
@@ -507,6 +514,7 @@ namespace PurrNet.Recording
             _session.partDirectory = _directory;
             _session.chunkSeconds = _chunkSeconds;
             _session.maxLocalMegabytes = _maxLocalMegabytes;
+            _session.chunkBufferKilobytes = _chunkBufferKilobytes;
         }
 
         /// <summary>
@@ -573,12 +581,15 @@ namespace PurrNet.Recording
             _clockAtStart = _clock;
             _extensionPlayers = false;
             spawnsDeferred = 0;
+            _deferred.Clear();
+            _spawnAll = !continues;
             foreach (var extension in _extensions)
                 _extensionPlayers |= extension.recordsPlayers;
             _hierarchy = null;
             _session.chunkSeconds = _chunkSeconds;
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
+            _session.terrainSamples = _terrainSamples;
             _session.recordEffects = _recordEffects;
             _session.effectsBudgetMs = _effectsBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;
@@ -638,6 +649,7 @@ namespace PurrNet.Recording
             }, continued);
             _players.Clear();
             _prefabNames.Clear();
+            _deferred.Clear();
         }
 
         /// <summary>
@@ -770,7 +782,7 @@ namespace PurrNet.Recording
 
             bool chunkStart = _session.chunkStart;
             _spawnSpent = 0;
-            _spawnBudget = _spawnBudgetMs > 0 ? (long)(_spawnBudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency) : long.MaxValue;
+            _spawnBudget = _spawnBudgetMs > 0 && !_spawnAll ? (long)(_spawnBudgetMs * 0.001 * System.Diagnostics.Stopwatch.Frequency) : long.MaxValue;
             int at = 0;
             var hierarchies = _hierarchy.hierarchies;
             for (int h = 0; h < hierarchies.Count; h++)
@@ -794,7 +806,8 @@ namespace PurrNet.Recording
                                 continue;
                             if (_spawnSpent > _spawnBudget)
                             {
-                                spawnsDeferred++;
+                                if (_deferred.Add(identity))
+                                    spawnsDeferred++;
                                 continue;
                             }
                             long spawnStart = System.Diagnostics.Stopwatch.GetTimestamp();
@@ -833,6 +846,7 @@ namespace PurrNet.Recording
                 }
             }
 
+            _spawnAll = false;
             _session.DespawnUnseen(_source, tick);
         }
 

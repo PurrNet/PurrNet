@@ -433,6 +433,92 @@ namespace PurrNet.Recording
             WriteMeta(RecordKind.Mesh, buffer.data, buffer.length);
             return id;
         }
+
+#if PURRNET_TERRAIN
+        /// <summary>
+        /// A terrain's surface as a mesh of <see cref="terrainSamples"/> heights a side, in the terrain's own space.
+        /// It is sampled again after the terrain's heights change.
+        /// </summary>
+        unsafe int WriteTerrain(TerrainData data)
+        {
+            long key = RecordingObjectId.Of(data);
+            if (_meshIds.TryGetValue(key, out int existing))
+                return existing;
+
+            var capture = _terrainCapture;
+            try
+            {
+                int side = Mathf.Clamp(terrainSamples, 2, data.heightmapResolution);
+                float step = 1f / (side - 1);
+                var size = data.size;
+                var heights = data.GetInterpolatedHeights(0f, 0f, side, side, step, step);
+
+                if (_terrainSide != side)
+                {
+                    _terrainSide = side;
+                    _terrainVertices = new float[side * side * 3];
+                    _terrainIndices = new int[(side - 1) * (side - 1) * 6];
+                    int at = 0;
+                    for (int z = 0; z < side - 1; z++)
+                    {
+                        for (int x = 0; x < side - 1; x++)
+                        {
+                            int corner = z * side + x;
+                            _terrainIndices[at++] = corner;
+                            _terrainIndices[at++] = corner + side;
+                            _terrainIndices[at++] = corner + 1;
+                            _terrainIndices[at++] = corner + 1;
+                            _terrainIndices[at++] = corner + side;
+                            _terrainIndices[at++] = corner + side + 1;
+                        }
+                    }
+                }
+
+                var vertices = _terrainVertices;
+                int v = 0;
+                for (int z = 0; z < side; z++)
+                {
+                    float depth = z * step * size.z;
+                    for (int x = 0; x < side; x++)
+                    {
+                        vertices[v++] = x * step * size.x;
+                        vertices[v++] = heights[z, x];
+                        vertices[v++] = depth;
+                    }
+                }
+
+                capture.id = _nextMeshId++;
+                capture.vertexCount = side * side;
+                capture.indexCount = _terrainIndices.Length;
+                BeginPayload(capture, Name(data));
+                fixed (float* from = vertices)
+                    UnsafeUtility.MemCpy(capture.output + capture.vertexBytesAt, from, (long)vertices.Length * 4);
+                fixed (int* from = _terrainIndices)
+                    UnsafeUtility.MemCpy(capture.output + capture.indexBytesAt, from, (long)_terrainIndices.Length * 4);
+                _file.EnqueueNative(RecordKind.Mesh, (IntPtr)capture.output, capture.outputLength, true);
+                capture.output = null;
+                return _meshIds[key] = capture.id;
+            }
+            catch (Exception)
+            {
+                if (capture.output != null)
+                    UnsafeUtility.Free(capture.output, Allocator.Persistent);
+                capture.output = null;
+                return _meshIds[key] = 0;
+            }
+        }
+
+        readonly MeshCapture _terrainCapture = new MeshCapture();
+        float[] _terrainVertices;
+        int[] _terrainIndices;
+        int _terrainSide;
+
+        void OnTerrainChanged(Terrain terrain, RectInt region, bool synched)
+        {
+            if (_file != null && terrain && terrain.terrainData)
+                _meshIds.Remove(RecordingObjectId.Of(terrain.terrainData));
+        }
+#endif
     }
 }
 #endif
