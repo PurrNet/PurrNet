@@ -80,7 +80,7 @@ namespace PurrNet
         {
             if (_toActivate is { Length: > 0 } || _toDeactivate is { Length: > 0 })
             {
-                int totalLength = _toActivate?.Length ?? 0 + _toDeactivate?.Length ?? 0;
+                int totalLength = (_toActivate?.Length ?? 0) + (_toDeactivate?.Length ?? 0);
                 int offset = _toActivate?.Length ?? 0;
 
                 _gameObjects = new OwnershipGameObjectToggle[totalLength];
@@ -109,7 +109,7 @@ namespace PurrNet
 
             if (_toEnable is { Length: > 0 } || _toDisable is { Length: > 0 })
             {
-                int totalLength = _toEnable?.Length ?? 0 + _toDisable?.Length ?? 0;
+                int totalLength = (_toEnable?.Length ?? 0) + (_toDisable?.Length ?? 0);
                 int offset = _toEnable?.Length ?? 0;
 
                 _components = new OwnershipComponentToggle[totalLength];
