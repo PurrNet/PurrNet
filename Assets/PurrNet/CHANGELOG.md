@@ -1,3 +1,12 @@
+# [1.26.0-beta.37](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.36...v1.26.0-beta.37) (2026-11-20)
+
+
+### Bug Fixes
+
+* BandwidthProfilerToFile keeps the newest samples when trimming the file instead of wiping it ([05dfb83](https://github.com/PurrNet/PurrNet/commit/05dfb83ce4af22f1053bbbd22fc2b3756b53515d))
+* BitPacker.WriteInteger asserts only when the value is outside its range ([739858b](https://github.com/PurrNet/PurrNet/commit/739858b3d44f04d2ff87df10c4c714e6faeaeaa2))
+* NetworkOwnershipToggle migrates legacy toggle arrays without an IndexOutOfRangeException ([d50ffbb](https://github.com/PurrNet/PurrNet/commit/d50ffbb879869241c72ce6ef7331267dc851bda0))
+
 # [1.26.0-beta.36](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.35...v1.26.0-beta.36) (2026-11-19)
 
 
