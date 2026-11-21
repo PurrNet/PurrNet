@@ -153,6 +153,7 @@ Stream kinds:
 | `collider`  | one per tick while the collider moves within its entity, type `RecordedColliderPose` | `entity` (null: static) + `collider` |
 | `sync`      | one per tick while the entity exists, type `RecordedValue<T>` (or `RecordedTimer`) | `entity` + `component` + `module` |
 | `owner`     | one per tick while the entity exists, type `RecordedOwner` | `entity` |
+| `part`      | one per tick while the part moves, type `RecordedTransform` | `entity` + `path` |
 
 A `sync` stream is one of a network identity's sync types (PurrNet): `module` is its index in the component and
 `field` its name. `RecordedValue<T>` has one column or managed field, `value`: a SyncVar's value, or a SyncList's
@@ -160,6 +161,17 @@ items as a list. `RecordedTimer` has `state` (enum) and `remaining` (f32, second
 
 An `owner` stream is the entity's owner over time, written when ownership changes after it spawned (ENTITY `owner`
 is the owner it spawned with). `RecordedOwner` has one column, `owner` (i32): a player id, or -1 for no owner.
+
+A `part` stream is a child transform of the entity that moves on its own (a relay recording places it from what an
+RPC's code does with its arguments). `path` is the child's path under the entity's root; rows are its pose relative
+to the root. `rest` (`p`, `r`, `s`) is the pose the entity's colliders were described at: a collider under `path`
+(its collider `path` equal to it or below it) is drawn at `pose · rest⁻¹ · colliderPose`. The deepest matching part
+wins.
+
+```json
+{ "id": 41, "name": "e9.part.Interior/Spoon", "kind": "part", "type": 2, "entity": 9, "path": "Interior/Spoon",
+  "rest": { "p": [0.5, 1, 0], "r": [0, 0, 0, 1], "s": [1, 1, 1] }, "fill": true }
+```
 
 ### ENTITY / DESPAWN
 
@@ -177,7 +189,9 @@ components; other sources add theirs with ATTACH records.
 ```
 
 `prefabId` is -1 for scene objects. `owner` is a player id or null. `parent` is the nearest entity above this one,
-from any source.
+from any source. A component may carry `path`: where it sits under the entity's root (absent or "" for the root).
+Colliders in a COLLIDERS set may carry the same `path`, and `"active": false` when their GameObject is inactive in
+the build (not drawn).
 
 Written by PurrNet's recorder, components are network identities (each NetworkBehaviour of the object) with their
 `sync` streams, and `networkId` replaces `objectId`:
