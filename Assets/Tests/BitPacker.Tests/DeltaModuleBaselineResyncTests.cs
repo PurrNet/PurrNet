@@ -229,6 +229,24 @@ public class DeltaModuleBaselineResyncTests
     }
 
     [Test]
+    public void LatePacket_BelowCleanupFloor_IsDroppedWithoutError()
+    {
+        var wire = new Wire<string>();
+        wire.Deliver("one");
+        wire.Deliver("two");
+        uint baseline = wire.lastReceivedId;
+
+        using var late = wire.Write("three");
+        Assert.That(Wire<string>.PeekBaseline(late), Is.EqualTo(baseline));
+
+        wire.receiver.CleanupForTests<string>(KeyHash, baseline + 1);
+
+        Assert.Throws<BypassLoggingException>(() => wire.Read(late),
+            "A packet older than the sender's cleanup is stale: dropped like a lost packet, no missing-baseline error");
+        LogAssert.NoUnexpectedReceived();
+    }
+
+    [Test]
     public void ReportForSupersededBaseline_IsIgnored()
     {
         var wire = new Wire<string>();

@@ -19,6 +19,8 @@ namespace PurrNet.Modules
 
         public uint resyncFloor;
 
+        public uint cleanupFloor;
+
         public bool reliableStream;
 
         public uint GenerateId()

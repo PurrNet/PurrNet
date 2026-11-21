@@ -1010,7 +1010,8 @@ namespace PurrNet.Modules
         private void RejectMissingBaseline<T>(ClientDeltaTracker tracker, PlayerID sender, uint precomputedHash,
             uint missingId, PlayerID player)
         {
-            if (!tracker.awaitingResync && missingId > tracker.resyncFloor && tracker.reportedMissingId != missingId)
+            if (!tracker.awaitingResync && missingId > tracker.resyncFloor && missingId >= tracker.cleanupFloor &&
+                tracker.reportedMissingId != missingId)
             {
                 tracker.reportedMissingId = missingId;
                 PurrLogger.LogError(
@@ -1082,7 +1083,7 @@ namespace PurrNet.Modules
         internal void CleanupForTests<T>(uint keyHash, uint upToId)
         {
             var player = _players?.localPlayerId ?? default;
-            GetOrCreateTracker<T>(player, keyHash, false).CleanupUpTo(upToId);
+            ApplyCleanup(GetOrCreateTracker<T>(player, keyHash, false), upToId);
         }
 
         internal void ConfirmDeliveryForTests<T>(PlayerID player, uint keyHash, PackedUInt valueId)
@@ -1190,7 +1191,14 @@ namespace PurrNet.Modules
                 !clientDict.TryGetValue(key, out var tracker))
                 return;
 
-            tracker.CleanupUpTo(data.upToId);
+            ApplyCleanup(tracker, data.upToId);
+        }
+
+        private static void ApplyCleanup(ClientDeltaTracker tracker, uint upToId)
+        {
+            if (upToId > tracker.cleanupFloor)
+                tracker.cleanupFloor = upToId;
+            tracker.CleanupUpTo(upToId);
         }
 
         public void PostFixedUpdate()
