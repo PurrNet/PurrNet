@@ -96,7 +96,7 @@ namespace PurrNet.Recording
         internal int visibleEpoch;
         internal int checkRounds = 1, checkWait, checkHierarchy;
         internal bool checkSoon;
-        internal readonly List<long> ancestors = new List<long>(2);
+        internal readonly List<long> ancestors = new List<long>();
         internal readonly List<long> graphicsRoots = new List<long>();
         internal int effectsHierarchy;
         internal ulong shapeSince;
@@ -204,13 +204,13 @@ namespace PurrNet.Recording
 
         internal RecordingSource SourceAt(int index) => index == 0 ? source0 : more[index - 1].source;
 
-        internal readonly List<Renderer> renderers = new List<Renderer>(8);
-        internal readonly List<GameObject> rendererObjects = new List<GameObject>(8);
+        internal readonly List<Renderer> renderers = new List<Renderer>();
+        internal readonly List<GameObject> rendererObjects = new List<GameObject>();
         internal readonly List<Transform> detachedGraphics = new List<Transform>();
 #if UNITY_PHYSICS_3D
-        internal readonly RecordingBuffer colliderKey = new RecordingBuffer(ByteShelf.shared, 256);
+        internal readonly RecordingBuffer colliderKey = new RecordingBuffer(ByteShelf.shared, 16);
         internal bool hasColliderKey;
-        internal readonly List<TrackedCollider> colliders = new List<TrackedCollider>(8);
+        internal readonly List<TrackedCollider> colliders = new List<TrackedCollider>();
         internal int movingColliders;
 #endif
     }

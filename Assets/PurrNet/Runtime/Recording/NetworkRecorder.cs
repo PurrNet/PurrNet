@@ -122,8 +122,7 @@ namespace PurrNet.Recording
         sealed class EntityData
         {
             public RecordedEntity entity;
-            public readonly List<Component> components = new List<Component>(2);
-            public readonly List<NetworkIdentity> found = new List<NetworkIdentity>(2);
+            public readonly List<Component> components = new List<Component>(1);
         }
 
         sealed class Component
@@ -131,13 +130,17 @@ namespace PurrNet.Recording
             public NetworkIdentity identity;
             public EntityData data;
             public int index;
-            public readonly List<NetworkModule> modules = new List<NetworkModule>();
-            public readonly List<StreamRows> rows = new List<StreamRows>();
-            public readonly List<int> polled = new List<int>();
+            public List<NetworkModule> modules = NoModules;
+            public List<StreamRows> rows = NoRows;
+            public List<int> polled = NoPolled;
             public readonly RecordedLife life = new RecordedLife();
             public PlayerID? owner;
             public int observersVersion;
         }
+
+        static readonly List<NetworkModule> NoModules = new List<NetworkModule>();
+        static readonly List<StreamRows> NoRows = new List<StreamRows>();
+        static readonly List<int> NoPolled = new List<int>();
 
         sealed class IdentityComparer : IEqualityComparer<NetworkIdentity>
         {
@@ -211,7 +214,7 @@ namespace PurrNet.Recording
 
             public override bool HasNestedEntities(RecordedEntity entity)
             {
-                var list = entity.DataOf(this) is EntityData data ? data.found : _scratch;
+                var list = _scratch;
                 var root = entity.gameObject;
                 root.GetComponentsInChildren(true, list);
                 bool nested = false;
@@ -965,6 +968,12 @@ namespace PurrNet.Recording
                 var type = module?.recordedType;
                 if (type == null || (excludedFields != null && excludedFields.Contains(module.name)))
                     continue;
+                if (ReferenceEquals(component.modules, NoModules))
+                {
+                    component.modules = new List<NetworkModule>(2);
+                    component.rows = new List<StreamRows>(2);
+                    component.polled = new List<int>(2);
+                }
                 if (module.recordedOnChange)
                     module.recordedLife = component.life;
                 else
@@ -1023,7 +1032,6 @@ namespace PurrNet.Recording
                 _componentPool.Push(c);
             }
             data.components.Clear();
-            data.found.Clear();
             data.entity = null;
             _dataPool.Push(data);
         }

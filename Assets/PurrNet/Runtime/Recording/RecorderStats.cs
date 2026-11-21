@@ -45,6 +45,19 @@ namespace PurrNet.Recording
         readonly Stopwatch _since = new Stopwatch();
         ProfilerRecorder _gcAllocated;
         bool _counted;
+        bool _precise;
+
+        static long ThreadAllocated()
+        {
+            try
+            {
+                return GC.GetAllocatedBytesForCurrentThread();
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
         public RecordingFile file;
         readonly Stopwatch _clock = Stopwatch.StartNew();
         int _collectionsAtStart;
@@ -96,7 +109,7 @@ namespace PurrNet.Recording
                 return;
             if (ReferenceEquals(section, _sections[0]))
                 _collectionsAtTick = GC.CollectionCount(0);
-            section.startCounted = _counted ? _gcAllocated.CurrentValue : 0;
+            section.startCounted = _precise ? ThreadAllocated() : _counted ? _gcAllocated.CurrentValue : 0;
             section.startMemory = file != null && file.busy ? -1 : GC.GetTotalMemory(false);
             section.start = _clock.ElapsedTicks;
         }
@@ -111,9 +124,9 @@ namespace PurrNet.Recording
             long elapsed = _clock.ElapsedTicks - section.start;
             bool clean = section.startMemory >= 0 && !(file != null && file.busy);
             long memory = clean ? GC.GetTotalMemory(false) - section.startMemory : 0;
-            if (_counted && clean)
+            if (_counted && (clean || _precise))
             {
-                long counted = _gcAllocated.CurrentValue - section.startCounted;
+                long counted = (_precise ? ThreadAllocated() : _gcAllocated.CurrentValue) - section.startCounted;
                 if (counted > 0)
                     section.pendingCounted += counted;
             }
@@ -208,9 +221,10 @@ namespace PurrNet.Recording
             }
             if (!enabled)
                 return;
-            if (!_gcAllocated.Valid)
+            _precise = ThreadAllocated() > 0;
+            if (!_precise && !_gcAllocated.Valid)
                 _gcAllocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
-            _counted = _gcAllocated.Valid;
+            _counted = _precise || _gcAllocated.Valid;
             _collectionsAtStart = GC.CollectionCount(0);
             Array.Clear(_timelineBytes, 0, TimelineSlots);
             Array.Clear(_timelineTicks, 0, TimelineSlots);

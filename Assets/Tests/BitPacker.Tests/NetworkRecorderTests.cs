@@ -1361,6 +1361,86 @@ public class NetworkRecorderTests
         Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
 
+    /// <summary>
+    /// What the recorder allocates for an object it has not seen before, by what the object is made of. Run it by
+    /// name; the numbers go to test-local/recorder-cost/alloc-probe.txt.
+    /// </summary>
+    [UnityTest, Explicit]
+    public IEnumerator WhatANewObjectAllocates([Values(0, 1, 2, 3, 4, 5)] int variant)
+    {
+        yield return StartHost(false);
+        var prefab = new GameObject("Probe" + variant);
+        prefab.SetActive(false);
+        prefab.AddComponent<RecordedPlumbingFree>();
+        string what = "one identity, nothing else";
+        if (variant == 1 || variant == 5)
+        {
+            for (int i = 0; i < 3; i++)
+                prefab.AddComponent<RecordedPlumbingFree>();
+            what = "+ 3 identities without sync fields";
+        }
+        if (variant == 2 || variant == 5)
+        {
+            prefab.AddComponent<RecordedThing>();
+            what = "+ 1 identity with 3 recorded sync fields";
+        }
+        if (variant == 3 || variant == 5)
+        {
+            for (int i = 0; i < 5; i++)
+            {
+                var part = new GameObject("Hit" + i);
+                part.transform.SetParent(prefab.transform, false);
+                part.transform.localPosition = new Vector3(0f, i, 0f);
+                part.AddComponent<BoxCollider>();
+            }
+            what = "+ 5 child box colliders";
+        }
+        if (variant == 4 || variant == 5)
+        {
+            var mesh = Grid("ProbeBody", 4, false);
+            for (int i = 0; i < 3; i++)
+            {
+                var part = new GameObject("Body" + i);
+                part.transform.SetParent(prefab.transform, false);
+                part.AddComponent<MeshFilter>().sharedMesh = mesh;
+                part.AddComponent<MeshRenderer>();
+            }
+            what = "+ 3 child mesh renderers";
+        }
+        if (variant == 5)
+            what = "all of the above";
+        _created.Add(prefab);
+        _provider.AddRuntimePrefab(prefab.name, prefab);
+
+        _recorder.session.stats.enabled = true;
+        _recorder.StartRecording("alloc-probe-" + variant + ".purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        yield return Ticks(_manager, 5);
+        const int count = 200;
+        for (int i = 0; i < count; i++)
+        {
+            var instance = UnityProxy.Instantiate(prefab, new Vector3(i * 2f, 0f, 0f), Quaternion.identity, _manager.gameObject.scene);
+            instance.SetActive(true);
+            _manager.Spawn(instance);
+            if (i % 10 == 9)
+                yield return Ticks(_manager, 1);
+        }
+        yield return Ticks(_manager, 120);
+        _recorder.StopRecording();
+        string summary = _recorder.DescribeLastRecording();
+
+        var line = new StringBuilder(what).Append(": per object");
+        foreach (string section in new[] { "tick", "identities", "spawn", "managed", "colliders", "checks", "effects", "poses" })
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(summary, "\\n\\s+" + section + "\\s+ticks=[^\\n]*gcAlloc=([0-9.]+)KiB");
+            double bytes = match.Success ? double.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) * 1024.0 / count : 0;
+            line.Append(' ').Append(section).Append('=').Append(bytes.ToString("0", System.Globalization.CultureInfo.InvariantCulture)).Append('B');
+        }
+        Directory.CreateDirectory("test-local/recorder-cost");
+        File.AppendAllText("test-local/recorder-cost/alloc-probe.txt", line.Append('\n').ToString());
+        Debug.Log(line.ToString());
+    }
+
     [UnityTest]
     public IEnumerator TheStaticWorldIsRecordedAsWhatChanged()
     {
