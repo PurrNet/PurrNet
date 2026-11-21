@@ -1362,6 +1362,81 @@ public class NetworkRecorderTests
     }
 
     [UnityTest]
+    public IEnumerator TheStaticWorldIsRecordedAsWhatChanged()
+    {
+        yield return StartHost(false);
+        var world = new List<GameObject>();
+        for (int i = 0; i < 8; i++)
+        {
+            var box = new GameObject("StaticBox" + i);
+            box.transform.position = new Vector3(i * 3f, 0f, 20f);
+            box.AddComponent<BoxCollider>();
+            world.Add(box);
+            _created.Add(box);
+        }
+        var data = new TerrainData { heightmapResolution = 33, size = new Vector3(64f, 10f, 64f) };
+        var terrain = Terrain.CreateTerrainGameObject(data);
+        terrain.name = "StaticTerrain";
+        terrain.transform.position = new Vector3(0f, -5f, 40f);
+        world.Add(terrain);
+        _created.Add(terrain);
+
+        _recorder.StartRecording("network-recorder-static.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        var tickModule = _manager.tickModule;
+        uint firstTick = tickModule.localTick;
+        yield return Ticks(_manager, 70);
+
+        var late = new GameObject("StaticLate");
+        late.transform.position = new Vector3(0f, 0f, 30f);
+        late.AddComponent<SphereCollider>();
+        world.Add(late);
+        _created.Add(late);
+        world.Remove(world[0]);
+        Object.DestroyImmediate(_created.Find(o => o && o.name == "StaticBox0"));
+        yield return Ticks(_manager, 130);
+
+        foreach (var part in world)
+            part.transform.position += new Vector3(100f, 0f, 0f);
+        uint shiftedAt = tickModule.localTick;
+        yield return Ticks(_manager, 3);
+
+        var heights = new float[33, 33];
+        for (int z = 0; z < 33; z++)
+            for (int x = 0; x < 33; x++)
+                heights[z, x] = (x + z) / 66f;
+        data.SetHeights(0, 0, heights);
+        yield return Ticks(_manager, 140);
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        var meta = ReadMeta(path);
+        var statics = meta.FindAll(m => m.kind == RecordKind.Colliders && m.json.StartsWith("{\"entity\":null,"));
+        var text = new StringBuilder();
+        foreach (var record in statics)
+            text.Append(record.json).Append('\n');
+        string all = text.ToString();
+
+        Assert.That(statics.Count, Is.GreaterThan(0), "the static world is in the recording:\n" + Dump(meta));
+        uint Tick(string json) => uint.Parse(System.Text.RegularExpressions.Regex.Match(json, "\"tick\":(\\d+)").Groups[1].Value);
+        Assert.That(Tick(statics[0].json), Is.LessThanOrEqualTo(firstTick + 1), "what was there when the recording started is there from its first tick");
+        Assert.That(all, Does.Not.Contain("\"colliders\":["), "never written as a whole");
+        Assert.That(statics[0].json, Does.Contain("StaticBox7").And.Contain("StaticTerrain"), all);
+        Assert.That(all, Does.Contain("\"removed\":["), "the collider that was destroyed is taken out:\n" + all);
+        Assert.That(statics.Exists(m => m.json.Contains("StaticLate") && !m.json.Contains("StaticBox7")), Is.True,
+            "the one that was added is written without the others:\n" + all);
+        var moved = statics.Find(m => m.json.Contains("\"shift\":[100,0,0]"));
+        Assert.That(moved.json, Is.Not.Null, "the world moving at once is one record:\n" + all);
+        Assert.That(Tick(moved.json) - shiftedAt, Is.LessThanOrEqualTo(2), "on the tick it moved");
+        var surfaces = new HashSet<string>();
+        foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(all, "\"name\":\"StaticTerrain\",\"mesh\":(\\d+)"))
+            surfaces.Add(match.Groups[1].Value);
+        Assert.That(surfaces.Count, Is.GreaterThanOrEqualTo(2), "a terrain whose heights changed is sampled again:\n" + all);
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+    }
+
+    [UnityTest]
     public IEnumerator ARecorderThatFailsStopsAndLeavesTheGameAlone()
     {
         yield return StartHost(true);

@@ -229,6 +229,9 @@ namespace PurrNet.Recording
         public bool moving;
         public int stillChecks;
         public int epoch;
+        /// <summary>Static colliders: what it looked like when it was last written, and the scan that last saw it.</summary>
+        public ulong key;
+        public int scan;
     }
 #endif
 

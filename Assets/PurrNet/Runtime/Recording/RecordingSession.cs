@@ -314,7 +314,6 @@ namespace PurrNet.Recording
             BeginEffects();
             RecordedEffects.Watch(this);
 #if UNITY_PHYSICS_3D
-            _hasStaticColliderKey = false;
             int staticWork = _lastStaticWork;
             ResetStaticCheck();
             if (continues)
@@ -415,8 +414,13 @@ namespace PurrNet.Recording
             foreach (var entity in _entities)
                 if (entity.shapeSince != 0 && entity.gameObject)
                     RefreshEntityColliders(entity, _lastTick);
-            if (_staticSince.HasValue && !isPart)
-                RefreshStaticColliders(_staticSince.Value);
+            if (!isPart && (_staticSince.HasValue || _staticCheck == StaticCheck.Apply))
+            {
+                _staticFinish = true;
+                while (_staticCheck == StaticCheck.Scan || _staticCheck == StaticCheck.Apply)
+                    ContinueStaticCheck(_lastTick);
+                _staticFinish = false;
+            }
             _staticSince = null;
 #endif
             RecordedEffects.Unwatch(this);
@@ -1583,8 +1587,6 @@ namespace PurrNet.Recording
 
         const ulong ColliderCheckTicks = 10;
         const ulong StaticColliderCheckTicks = 60;
-        readonly RecordingBuffer _staticColliderKey = new RecordingBuffer(256);
-        bool _hasStaticColliderKey;
         readonly RecordingBuffer _colliderKey = new RecordingBuffer(256);
         readonly List<Collider> _colliderList = new List<Collider>();
         readonly List<Collider> _colliderScratch = new List<Collider>();
@@ -1686,62 +1688,38 @@ namespace PurrNet.Recording
             }
         }
 
-        void RefreshStaticColliders(ulong tick)
-        {
-            _colliderList.Clear();
-            for (int s = 0; s < SceneManager.sceneCount; s++)
-            {
-                var scene = SceneManager.GetSceneAt(s);
-                if (!scene.isLoaded)
-                    continue;
-                scene.GetRootGameObjects(_sceneRoots);
-                foreach (var root in _sceneRoots)
-                {
-                    if (!root.activeInHierarchy)
-                        continue;
-                    root.GetComponentsInChildren(false, _colliderScratch);
-                    foreach (var collider in _colliderScratch)
-                        if (collider.enabled && !IsLocalPhysics(collider) && !IsUnderEntity(collider))
-                            _colliderList.Add(collider);
-                }
-            }
-            _sceneRoots.Clear();
-            _colliderScratch.Clear();
-
-            RefreshColliderSet(_colliderList, null, Matrix4x4.identity, _staticColliderKey, ref _hasStaticColliderKey,
-                _staticColliders, ref _staticMovingColliders, -1, 0, tick);
-            _colliderList.Clear();
-        }
-
         readonly List<TrackedCollider> _staticColliders = new List<TrackedCollider>();
         int _staticMovingColliders;
 
         const int StaticCheckSpreadTicks = 45;
         const int StaticCheckMinimumWork = 32;
-        enum StaticCheck { Idle, Scan, Poses }
+        enum StaticCheck { Idle, Scan, Apply, Poses }
 
         StaticCheck _staticCheck;
 
         /// <summary>
-        /// The next piece of a session does not stop to read the whole static world again: the check that is spread
-        /// over ticks finds it. It was there all along, so its record carries the piece's first tick.
+        /// A recording does not stop to read the whole static world when it starts: the check that is spread over
+        /// ticks finds it. It was there all along, so its records carry the recording's first tick.
         /// </summary>
         ulong? _staticSince;
         readonly List<Transform> _staticStack = new List<Transform>();
-        readonly List<Collider> _staticFound = new List<Collider>();
         readonly List<Collider> _nodeColliders = new List<Collider>();
         List<UnityEngine.Object> _scanned = new List<UnityEngine.Object>(256), _scanning = new List<UnityEngine.Object>(256);
+        readonly Dictionary<long, TrackedCollider> _staticById = new Dictionary<long, TrackedCollider>();
+        readonly List<Collider> _staticPending = new List<Collider>();
+        readonly List<long> _staticRemoved = new List<long>();
+        int _staticPendingAt;
+        int _staticScan;
+        ulong _staticApplyTick;
+        bool _staticFinish;
         int _staticNext;
         int _staticBudget;
-        int _staticKeyMatched;
-        bool _staticChanged;
         int _staticWork;
         int _lastStaticWork;
 
         void BeginStaticCheck()
         {
             _staticStack.Clear();
-            _staticFound.Clear();
             for (int s = SceneManager.sceneCount - 1; s >= 0; s--)
             {
                 var scene = SceneManager.GetSceneAt(s);
@@ -1754,22 +1732,36 @@ namespace PurrNet.Recording
             _sceneRoots.Clear();
 
             _staticCheck = StaticCheck.Scan;
-            _staticKeyMatched = 0;
-            _staticChanged = false;
+            _staticScan++;
             _staticWork = 0;
             _staticBudget = Math.Max(256, (_lastStaticWork + _staticColliders.Count) / StaticCheckSpreadTicks + 1);
         }
 
+        static ulong KeyHash(RecordingBuffer key)
+        {
+            ulong hash = 14695981039346656037UL;
+            var data = key.data;
+            for (int i = 0; i < key.length; i++)
+                hash = (hash ^ data[i]) * 1099511628211UL;
+            return hash;
+        }
+
+        /// <summary>
+        /// The static world is walked a little every tick. A collider that is new or looks different is written
+        /// when the walk is over, and so is the going of one that was not found: only what changed is written,
+        /// a few colliders a tick, never the whole world at once.
+        /// </summary>
         void ContinueStaticCheck(ulong tick)
         {
-            int budget = _staticBudget;
+            int budget = _staticFinish ? int.MaxValue : _staticBudget;
             int minimum = budget - StaticCheckMinimumWork;
             if (_staticCheck == StaticCheck.Scan)
             {
                 var key = _colliderKey;
                 int walked = 0;
                 _terrainSampled = false;
-                while (budget > 0 && _staticStack.Count > 0 && !_terrainSampled && (budget > minimum || (++walked & 7) != 0 || !OverBudget))
+                while (budget > 0 && _staticStack.Count > 0 &&
+                       (_staticFinish || (!_terrainSampled && (budget > minimum || (++walked & 7) != 0 || !OverBudget))))
                 {
                     var t = _staticStack[_staticStack.Count - 1];
                     _staticStack.RemoveAt(_staticStack.Count - 1);
@@ -1791,15 +1783,16 @@ namespace PurrNet.Recording
                         _staticWork++;
                         if (!collider.enabled || IsLocalPhysics(collider))
                             continue;
-                        _staticFound.Add(collider);
-                        if (_staticChanged)
-                            continue;
                         key.Clear();
                         ShapeKey(key, collider);
-                        if (_staticKeyMatched + key.length > _staticColliderKey.length ||
-                            !_staticColliderKey.SameBytes(_staticKeyMatched, key.length, key.data, 0, key.length))
-                            _staticChanged = true;
-                        _staticKeyMatched += key.length;
+                        if (_staticById.TryGetValue(RecordingObjectId.Of(collider), out var known) && ReferenceEquals(known.collider, collider))
+                        {
+                            known.scan = _staticScan;
+                            if (known.key != KeyHash(key))
+                                _staticPending.Add(collider);
+                        }
+                        else
+                            _staticPending.Add(collider);
                     }
                     _nodeColliders.Clear();
 
@@ -1812,25 +1805,91 @@ namespace PurrNet.Recording
                 (_scanned, _scanning) = (_scanning, _scanned);
                 _scanning.Clear();
                 _lastStaticWork = _staticWork;
-                bool changed = _hasStaticColliderKey
-                    ? _staticChanged || _staticKeyMatched != _staticColliderKey.length
-                    : _staticFound.Count > 0;
-                if (changed)
+
+                int kept = 0;
+                for (int i = 0; i < _staticColliders.Count; i++)
                 {
-                    for (int i = _staticFound.Count - 1; i >= 0; i--)
-                        if (!_staticFound[i])
-                            _staticFound.RemoveAt(i);
-                    RefreshColliderSet(_staticFound, null, Matrix4x4.identity, _staticColliderKey, ref _hasStaticColliderKey,
-                        _staticColliders, ref _staticMovingColliders, -1, 0, _staticSince ?? tick);
-                    _staticSince = null;
-                    _staticFound.Clear();
-                    _staticCheck = StaticCheck.Idle;
-                    return;
+                    var t = _staticColliders[i];
+                    if (t.scan == _staticScan && t.collider)
+                    {
+                        _staticColliders[kept++] = t;
+                        continue;
+                    }
+                    _staticRemoved.Add(t.id);
+                    if (_staticById.TryGetValue(t.id, out var known) && ReferenceEquals(known, t))
+                        _staticById.Remove(t.id);
+                    if (t.moving)
+                        _staticMovingColliders--;
+                    if (t.stream != null)
+                        t.stream.retired = true;
+                    t.stream = null;
+                    t.collider = null;
+                    t.moving = false;
+                    _trackedPool.Push(t);
                 }
-                _staticSince = null;
-                _staticFound.Clear();
-                _staticCheck = StaticCheck.Poses;
+                _staticColliders.RemoveRange(kept, _staticColliders.Count - kept);
+
+                _staticPendingAt = 0;
                 _staticNext = 0;
+                _staticApplyTick = _staticSince ?? tick;
+                if (_staticRemoved.Count == 0 && _staticPending.Count == 0)
+                {
+                    _staticSince = null;
+                    _staticCheck = StaticCheck.Poses;
+                }
+                else
+                    _staticCheck = StaticCheck.Apply;
+                return;
+            }
+
+            if (_staticCheck == StaticCheck.Apply)
+            {
+                var json = _json.Clear().BeginObject().Key("entity").Null().Prop("tick", _staticApplyTick);
+                if (_staticRemoved.Count > 0)
+                {
+                    json.Key("removed").BeginArray();
+                    foreach (long id in _staticRemoved)
+                        json.Value(id);
+                    json.EndArray();
+                    _staticRemoved.Clear();
+                }
+                json.Key("added").BeginArray();
+                int done = 0;
+                while (_staticPendingAt < _staticPending.Count &&
+                       (_staticFinish || done < StaticCheckMinimumWork || (done & 7) != 0 || !OverBudget))
+                {
+                    var collider = _staticPending[_staticPendingAt++];
+                    if (!collider)
+                        continue;
+                    done++;
+                    long id = RecordingObjectId.Of(collider);
+                    if (!_staticById.TryGetValue(id, out var t))
+                    {
+                        t = _trackedPool.Count > 0 ? _trackedPool.Pop() : new TrackedCollider();
+                        t.id = id;
+                        t.stream = null;
+                        t.moving = false;
+                        t.stillChecks = 0;
+                        _staticById[id] = t;
+                        _staticColliders.Add(t);
+                    }
+                    t.collider = collider;
+                    _colliderKey.Clear();
+                    ShapeKey(_colliderKey, collider);
+                    t.key = KeyHash(_colliderKey);
+                    t.scan = _staticScan;
+                    t.epoch = _staticEpoch;
+                    t.streamable = HasShapePose(collider);
+                    RoundedPose(collider, Matrix4x4.identity, out t.position, out t.rotation, out t.scale);
+                    WriteCollider(json, collider, Matrix4x4.identity);
+                }
+                WriteMeta(RecordKind.Colliders, json.EndArray().EndObject());
+                if (_staticPendingAt < _staticPending.Count)
+                    return;
+                _staticPending.Clear();
+                _staticPendingAt = 0;
+                _staticSince = null;
+                _staticCheck = StaticCheck.Poses;
                 return;
             }
 
@@ -1852,7 +1911,10 @@ namespace PurrNet.Recording
         {
             _staticCheck = StaticCheck.Idle;
             _staticStack.Clear();
-            _staticFound.Clear();
+            _staticById.Clear();
+            _staticPending.Clear();
+            _staticRemoved.Clear();
+            _staticPendingAt = 0;
             _scanned.Clear();
             _scanning.Clear();
             _lastStaticWork = 0;
@@ -1869,6 +1931,7 @@ namespace PurrNet.Recording
 
         const int ShiftProbes = 4, ShiftWitnesses = 32;
         readonly TrackedCollider[] _shiftProbe = new TrackedCollider[ShiftProbes];
+        readonly long[] _shiftProbeId = new long[ShiftProbes];
         readonly Vector3[] _shiftProbeAt = new Vector3[ShiftProbes], _shiftProbeMoved = new Vector3[ShiftProbes];
         int _staticEpoch;
 
@@ -1891,19 +1954,24 @@ namespace PurrNet.Recording
             bool known = true;
             for (int i = 0; i < ShiftProbes; i++)
             {
-                var t = tracked[(int)((long)i * (count - 1) / (ShiftProbes - 1))];
-                if (!t.collider)
+                var t = _shiftProbe[i];
+                bool same = t != null && t.id == _shiftProbeId[i] && t.collider &&
+                            _staticById.TryGetValue(t.id, out var current) && ReferenceEquals(current, t);
+                if (!same)
                 {
-                    _shiftProbe[i] = null;
+                    t = tracked[(int)((long)i * (count - 1) / (ShiftProbes - 1))];
                     known = false;
-                    continue;
+                    if (!t.collider)
+                    {
+                        _shiftProbe[i] = null;
+                        continue;
+                    }
                 }
                 var at = t.collider.transform.position;
-                if (ReferenceEquals(_shiftProbe[i], t))
+                if (same)
                     _shiftProbeMoved[i] = at - _shiftProbeAt[i];
-                else
-                    known = false;
                 _shiftProbe[i] = t;
+                _shiftProbeId[i] = t.id;
                 _shiftProbeAt[i] = at;
             }
             if (!known)
@@ -1927,6 +1995,7 @@ namespace PurrNet.Recording
 
             if (++_staticEpoch == 0)
                 _staticEpoch = 1;
+            _staticApplyTick = tick;
             WriteMeta(RecordKind.Colliders, _json.Clear().BeginObject().Key("entity").Null().Prop("tick", tick)
                 .Floats("shift", shift.x, shift.y, shift.z).EndObject());
         }
