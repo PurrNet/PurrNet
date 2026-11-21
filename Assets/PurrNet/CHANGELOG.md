@@ -1,3 +1,10 @@
+# [1.26.0-beta.38](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.37...v1.26.0-beta.38) (2026-11-21)
+
+
+### Bug Fixes
+
+* delta module cleanup ([edd63d8](https://github.com/PurrNet/PurrNet/commit/edd63d8e01548cf81d6ca1143272fcda9acdeb8b))
+
 # [1.26.0-beta.37](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.36...v1.26.0-beta.37) (2026-11-20)
 
 
