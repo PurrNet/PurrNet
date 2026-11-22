@@ -1,3 +1,10 @@
+# [1.26.0-beta.39](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.38...v1.26.0-beta.39) (2026-11-22)
+
+
+### Bug Fixes
+
+* NetworkIdentity inspector uses UI Toolkit when no inspector integration is installed, so UITK property drawers work ([f6f748c](https://github.com/PurrNet/PurrNet/commit/f6f748cf184c341c58664b82a8667cb924008919))
+
 # [1.26.0-beta.38](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.37...v1.26.0-beta.38) (2026-11-21)
 
 
