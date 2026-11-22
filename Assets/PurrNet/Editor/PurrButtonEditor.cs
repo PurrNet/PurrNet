@@ -4,6 +4,7 @@ using System.Reflection;
 using PurrNet.Editor;
 using PurrNet.Logging;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -21,6 +22,13 @@ namespace PurrNet
         public override VisualElement CreateInspectorGUI()
         {
             var root = OptionalInspectorIntegration.CreateInspectorGUI(this);
+#if !TRI_INSPECTOR_PACKAGE && !ODIN_INSPECTOR
+            if (root == null)
+            {
+                root = new VisualElement();
+                InspectorElement.FillDefaultInspector(root, serializedObject, this);
+            }
+#endif
             if (root == null)
                 return null;
             root.Add(new IMGUIContainer(DrawButtons));

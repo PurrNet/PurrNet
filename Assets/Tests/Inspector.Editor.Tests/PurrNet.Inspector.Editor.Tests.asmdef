@@ -1,0 +1,27 @@
+{
+    "name": "PurrNet.Inspector.Editor.Tests",
+    "rootNamespace": "PurrNet.Editor.Tests",
+    "references": [
+        "GUID:6e20f757a1bae164fa42750dd2b27dcb",
+        "GUID:629ad64ea20117f43b28b33033f75b88",
+        "PurrNet.Inspector.Tests.Probe"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
