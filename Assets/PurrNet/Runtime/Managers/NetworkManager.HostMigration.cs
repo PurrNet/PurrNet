@@ -24,11 +24,23 @@ namespace PurrNet
         /// </summary>
         public bool wasLocalRequest { get; }
 
+        /// <summary>
+        /// True when the server kicked this client (<see cref="PurrNet.Modules.PlayersManager.KickPlayer"/>): the
+        /// host is still there, so this is not a host loss.
+        /// </summary>
+        public bool wasKicked { get; }
+
         public ClientDisconnectInfo(Connection connection, DisconnectReason reason, bool wasLocalRequest)
+            : this(connection, reason, wasLocalRequest, false)
+        {
+        }
+
+        public ClientDisconnectInfo(Connection connection, DisconnectReason reason, bool wasLocalRequest, bool wasKicked)
         {
             this.connection = connection;
             this.reason = reason;
             this.wasLocalRequest = wasLocalRequest;
+            this.wasKicked = wasKicked;
         }
     }
 
@@ -43,14 +55,24 @@ namespace PurrNet
         // Set by every local request to stop the client; consumed by the next client disconnect.
         private bool _clientStopRequested;
 
+        // Set when the server says it kicked this client; consumed by the next client disconnect.
+        private bool _clientKicked;
+
+        internal void MarkClientKicked()
+        {
+            _clientKicked = true;
+        }
+
         private void RaiseClientDisconnected(Connection conn, DisconnectReason reason)
         {
             bool local = _clientStopRequested;
+            bool kicked = _clientKicked;
             _clientStopRequested = false;
+            _clientKicked = false;
 
             try
             {
-                onClientDisconnected?.Invoke(new ClientDisconnectInfo(conn, reason, local));
+                onClientDisconnected?.Invoke(new ClientDisconnectInfo(conn, reason, local, kicked));
             }
             catch (Exception e)
             {

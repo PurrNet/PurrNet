@@ -5,6 +5,7 @@ using PurrNet.Logging;
 using PurrNet.Packing;
 using PurrNet.Pooling;
 using PurrNet.Transports;
+using UnityEngine;
 
 namespace PurrNet.Modules
 {
@@ -67,6 +68,23 @@ namespace PurrNet.Modules
         }
     }
 
+    /// <summary>
+    /// Server -> client: the server kicked this client's player and is about to close the connection. The client
+    /// acks with <see cref="PlayerKickedAck"/> and reports the disconnect that follows with
+    /// <see cref="ClientDisconnectInfo.wasKicked"/>.
+    /// </summary>
+    public struct PlayerKickedPacket : IPackedAuto
+    {
+    }
+
+    /// <summary>
+    /// Client -> server ack of a <see cref="PlayerKickedPacket"/>, so the server can close the connection without
+    /// waiting for the timeout.
+    /// </summary>
+    public struct PlayerKickedAck : IPackedAuto
+    {
+    }
+
     public delegate void OnPlayerJoinedEvent(PlayerID player, bool isReconnect, bool asServer);
 
     public delegate void OnPlayerLeftEvent(PlayerID player, bool asServer);
@@ -74,8 +92,22 @@ namespace PurrNet.Modules
     public delegate void OnPlayerEvent(PlayerID player);
 
     [PackerDependencies]
-    public class PlayersManager : INetworkModule, IConnectionListener, IConnectionStateListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer
+    public class PlayersManager : INetworkModule, IConnectionListener, IConnectionStateListener, IPlayerBroadcaster, IPromoteToServerModule, ITransferToNewServer, IPostTransferToNewServer, IFixedUpdate
     {
+        /// <summary>
+        /// How long the server waits for a kicked client's <see cref="PlayerKickedAck"/> before it closes the
+        /// connection anyway.
+        /// </summary>
+        public const float KICK_ACK_TIMEOUT = 2f;
+
+        private struct PendingKick
+        {
+            public Connection conn;
+            public float sentAt;
+        }
+
+        private readonly List<PendingKick> _pendingKicks = new List<PendingKick>();
+
         private readonly AuthModule _authModule;
         private readonly BroadcastModule _broadcastModule;
         private readonly ITransport _transport;
@@ -315,15 +347,94 @@ namespace PurrNet.Modules
 
         /// <summary>
         /// Kick a player from the server.
-        /// If the user has a connection, it will be closed.
+        /// The player leaves at once. If the user has a connection, the client is told it was kicked
+        /// (<see cref="ClientDisconnectInfo.wasKicked"/>) and the connection is closed when it acks, or after
+        /// <see cref="KICK_ACK_TIMEOUT"/> seconds.
         /// </summary>
         /// <param name="playerId"></param>
         public void KickPlayer(PlayerID playerId)
         {
             if (_playerToConnection.TryGetValue(playerId, out var conn))
-                _transport.CloseConnection(conn);
+                CloseKickedConnection(conn);
             UnregisterPlayer(playerId);
             SendUserLeftToAllClients(playerId);
+        }
+
+        private void CloseKickedConnection(Connection conn)
+        {
+            // Closing at once would drop the packet: the transport stops sending once it starts disconnecting.
+            try
+            {
+                _broadcastModule.Send(conn, new PlayerKickedPacket());
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+                _transport.CloseConnection(conn);
+                return;
+            }
+
+            for (int i = 0; i < _pendingKicks.Count; i++)
+            {
+                if (_pendingKicks[i].conn == conn)
+                    return;
+            }
+
+            _pendingKicks.Add(new PendingKick
+            {
+                conn = conn,
+                sentAt = Time.unscaledTime
+            });
+        }
+
+        private void OnPlayerKickedAck(Connection conn, PlayerKickedAck _, bool asServer)
+        {
+            if (!asServer)
+                return;
+
+            for (int i = _pendingKicks.Count - 1; i >= 0; i--)
+            {
+                if (_pendingKicks[i].conn != conn)
+                    continue;
+
+                _pendingKicks.RemoveAt(i);
+                _transport.CloseConnection(conn);
+                return;
+            }
+        }
+
+        private void OnPlayerKicked(Connection conn, PlayerKickedPacket _, bool asServer)
+        {
+            if (asServer)
+                return;
+
+            _networkManager.MarkClientKicked();
+
+            try
+            {
+                _broadcastModule.SendToServer(new PlayerKickedAck());
+            }
+            catch (Exception e)
+            {
+                PurrLogger.LogException(e);
+            }
+        }
+
+        public void FixedUpdate()
+        {
+            if (_pendingKicks.Count == 0)
+                return;
+
+            float now = Time.unscaledTime;
+            for (int i = _pendingKicks.Count - 1; i >= 0; i--)
+            {
+                var pending = _pendingKicks[i];
+                if (now - pending.sentAt <= KICK_ACK_TIMEOUT)
+                    continue;
+
+                _pendingKicks.RemoveAt(i);
+                _transport.CloseConnection(pending.conn);
+            }
         }
 
         public void PromoteToServerModule()
@@ -386,9 +497,11 @@ namespace PurrNet.Modules
             if (asServer)
             {
                 _authModule.onConnection += OnClientAuthed;
+                _broadcastModule.Subscribe<PlayerKickedAck>(OnPlayerKickedAck);
             }
             else
             {
+                _broadcastModule.Subscribe<PlayerKickedPacket>(OnPlayerKicked);
                 _broadcastModule.Subscribe<ServerLoginResponse>(OnClientLoginResponse);
                 _broadcastModule.Subscribe<PlayerSnapshotEvent>(OnPlayerSnapshotEvent);
                 _broadcastModule.Subscribe<PlayerJoinedEvent>(OnPlayerJoinedEvent);
@@ -401,9 +514,12 @@ namespace PurrNet.Modules
             if (asServer)
             {
                 _authModule.onConnection -= OnClientAuthed;
+                _broadcastModule.Unsubscribe<PlayerKickedAck>(OnPlayerKickedAck);
+                _pendingKicks.Clear();
             }
             else
             {
+                _broadcastModule.Unsubscribe<PlayerKickedPacket>(OnPlayerKicked);
                 _broadcastModule.Unsubscribe<ServerLoginResponse>(OnClientLoginResponse);
                 _broadcastModule.Unsubscribe<PlayerSnapshotEvent>(OnPlayerSnapshotEvent);
                 _broadcastModule.Unsubscribe<PlayerJoinedEvent>(OnPlayerJoinedEvent);
@@ -673,6 +789,8 @@ namespace PurrNet.Modules
             if (!asServer || state != ConnectionState.Disconnected)
                 return;
 
+            _pendingKicks.Clear();
+
             for (var i = _players.Count - 1; i >= 0; i--)
                 UnregisterPlayer(_players[i]);
         }
@@ -680,6 +798,12 @@ namespace PurrNet.Modules
         public void OnDisconnected(Connection conn, bool asServer)
         {
             if (!asServer) return;
+
+            for (int i = _pendingKicks.Count - 1; i >= 0; i--)
+            {
+                if (_pendingKicks[i].conn == conn)
+                    _pendingKicks.RemoveAt(i);
+            }
 
             if (_promotedStaleConnectionIds.Remove(conn.connectionId))
                 return;
