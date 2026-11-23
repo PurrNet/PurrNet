@@ -530,7 +530,6 @@ var hierarchy =
       [ "PurrNet.UnityLatestUpdate", "classPurrNet_1_1UnityLatestUpdate.html", null ],
       [ "PurrNet.UnityUpdate", "classPurrNet_1_1UnityUpdate.html", null ]
     ] ],
-    [ "PurrNet.Recording.NativeSink", "classPurrNet_1_1Recording_1_1NativeSink.html", null ],
     [ "PurrNet.NetworkAssetResolver", "classPurrNet_1_1NetworkAssetResolver.html", null ],
     [ "PurrNet.NetworkIdentityRules", "structPurrNet_1_1NetworkIdentityRules.html", null ],
     [ "PurrNet.NetworkLODTier", "structPurrNet_1_1NetworkLODTier.html", null ],
@@ -680,7 +679,8 @@ var hierarchy =
       [ "PurrNet.StateMachine.StateNode< T >", "classPurrNet_1_1StateMachine_1_1StateNode.html", null ]
     ] ],
     [ "Stream", null, [
-      [ "PurrNet.Recording.BufferStream", "classPurrNet_1_1Recording_1_1BufferStream.html", null ]
+      [ "PurrNet.Recording.BufferStream", "classPurrNet_1_1Recording_1_1BufferStream.html", null ],
+      [ "PurrNet.Recording.NativeSink", "classPurrNet_1_1Recording_1_1NativeSink.html", null ]
     ] ],
     [ "PurrNet.Recording.StreamRows", "classPurrNet_1_1Recording_1_1StreamRows.html", null ],
     [ "PurrNet.SyncArrayChange< T >", "structPurrNet_1_1SyncArrayChange.html", null ],

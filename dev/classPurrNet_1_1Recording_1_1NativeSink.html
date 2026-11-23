@@ -93,6 +93,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1NativeSin
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#properties">Properties</a> &#124;
 <a href="classPurrNet_1_1Recording_1_1NativeSink-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">PurrNet.Recording.NativeSink Class Reference</div></div>
 </div><!--header-->
@@ -100,9 +101,30 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Recording_1_1NativeSin
 
 <p>Compressed output that grows in native memory, for records too large to pass through the managed heap.  
  <a href="classPurrNet_1_1Recording_1_1NativeSink.html#details">More...</a></p>
+<div class="dynheader">
+Inheritance diagram for PurrNet.Recording.NativeSink:</div>
+<div class="dyncontent">
+ <div class="center">
+  <img src="classPurrNet_1_1Recording_1_1NativeSink.png" alt=""/>
+ </div></div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a1ef6081de245f4d868d256738b208861"><td class="memItemLeft" align="right" valign="top"><a id="a1ef6081de245f4d868d256738b208861" name="a1ef6081de245f4d868d256738b208861"></a>
+override void&#160;</td><td class="memItemRight" valign="bottom"><b>Flush</b> ()</td></tr>
+<tr class="separator:a1ef6081de245f4d868d256738b208861"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2af9aa1d119c9e836bdf9223404d6c0f"><td class="memItemLeft" align="right" valign="top"><a id="a2af9aa1d119c9e836bdf9223404d6c0f" name="a2af9aa1d119c9e836bdf9223404d6c0f"></a>
+override int&#160;</td><td class="memItemRight" valign="bottom"><b>Read</b> (byte[] buffer, int offset, int count)</td></tr>
+<tr class="separator:a2af9aa1d119c9e836bdf9223404d6c0f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a848eb8c8825da688fe99dfc51dc30a1c"><td class="memItemLeft" align="right" valign="top"><a id="a848eb8c8825da688fe99dfc51dc30a1c" name="a848eb8c8825da688fe99dfc51dc30a1c"></a>
+override long&#160;</td><td class="memItemRight" valign="bottom"><b>Seek</b> (long offset, SeekOrigin origin)</td></tr>
+<tr class="separator:a848eb8c8825da688fe99dfc51dc30a1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0045f74a03391ca0be6da06f775093ea"><td class="memItemLeft" align="right" valign="top"><a id="a0045f74a03391ca0be6da06f775093ea" name="a0045f74a03391ca0be6da06f775093ea"></a>
+override void&#160;</td><td class="memItemRight" valign="bottom"><b>SetLength</b> (long value)</td></tr>
+<tr class="separator:a0045f74a03391ca0be6da06f775093ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a883fbfac70d4aa7568a5b75e20925d06"><td class="memItemLeft" align="right" valign="top"><a id="a883fbfac70d4aa7568a5b75e20925d06" name="a883fbfac70d4aa7568a5b75e20925d06"></a>
+override void&#160;</td><td class="memItemRight" valign="bottom"><b>Write</b> (byte[] buffer, int offset, int count)</td></tr>
+<tr class="separator:a883fbfac70d4aa7568a5b75e20925d06"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a59d691ab47edd6c3a405aa0e6ccb9135"><td class="memItemLeft" align="right" valign="top"><a id="a59d691ab47edd6c3a405aa0e6ccb9135" name="a59d691ab47edd6c3a405aa0e6ccb9135"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Begin</b> (int reserve)</td></tr>
 <tr class="separator:a59d691ab47edd6c3a405aa0e6ccb9135"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -127,6 +149,24 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>capacity</b></td></tr>
 <tr class="memitem:a9abb54bbdc8e105f1bd7a5536f66a4ff"><td class="memItemLeft" align="right" valign="top"><a id="a9abb54bbdc8e105f1bd7a5536f66a4ff" name="a9abb54bbdc8e105f1bd7a5536f66a4ff"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>failed</b></td></tr>
 <tr class="separator:a9abb54bbdc8e105f1bd7a5536f66a4ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
+Properties</h2></td></tr>
+<tr class="memitem:aace79f18e9d1756f34b8fc3cf03f20ff"><td class="memItemLeft" align="right" valign="top"><a id="aace79f18e9d1756f34b8fc3cf03f20ff" name="aace79f18e9d1756f34b8fc3cf03f20ff"></a>
+override bool&#160;</td><td class="memItemRight" valign="bottom"><b>CanRead</b><code> [get]</code></td></tr>
+<tr class="separator:aace79f18e9d1756f34b8fc3cf03f20ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2b535d3548a40f1ff8ef5f2563180e9e"><td class="memItemLeft" align="right" valign="top"><a id="a2b535d3548a40f1ff8ef5f2563180e9e" name="a2b535d3548a40f1ff8ef5f2563180e9e"></a>
+override bool&#160;</td><td class="memItemRight" valign="bottom"><b>CanSeek</b><code> [get]</code></td></tr>
+<tr class="separator:a2b535d3548a40f1ff8ef5f2563180e9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae89924e237b8e6e93cf296dacc766583"><td class="memItemLeft" align="right" valign="top"><a id="ae89924e237b8e6e93cf296dacc766583" name="ae89924e237b8e6e93cf296dacc766583"></a>
+override bool&#160;</td><td class="memItemRight" valign="bottom"><b>CanWrite</b><code> [get]</code></td></tr>
+<tr class="separator:ae89924e237b8e6e93cf296dacc766583"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a05049e9b19943dcaa2d95d2890c207c3"><td class="memItemLeft" align="right" valign="top"><a id="a05049e9b19943dcaa2d95d2890c207c3" name="a05049e9b19943dcaa2d95d2890c207c3"></a>
+override long&#160;</td><td class="memItemRight" valign="bottom"><b>Length</b><code> [get]</code></td></tr>
+<tr class="separator:a05049e9b19943dcaa2d95d2890c207c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42d0e22fc0a2688fe2a8421816e71e8e"><td class="memItemLeft" align="right" valign="top"><a id="a42d0e22fc0a2688fe2a8421816e71e8e" name="a42d0e22fc0a2688fe2a8421816e71e8e"></a>
+override long&#160;</td><td class="memItemRight" valign="bottom"><b>Position</b><code> [get, set]</code></td></tr>
+<tr class="separator:a42d0e22fc0a2688fe2a8421816e71e8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >Compressed output that grows in native memory, for records too large to pass through the managed heap. </p>
