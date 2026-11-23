@@ -71,9 +71,6 @@ namespace PurrNet.Recording
                  "check, which comes round to an object every half second or so, and less often to one nothing " +
                  "has changed on.")]
         [SerializeField] private float _colliderCheckBudgetMs = 0.1f;
-        [Tooltip("A terrain is recorded as a surface of this many heights along each side, whatever its own " +
-                 "resolution. More shows finer ground and makes the recording larger.")]
-        [SerializeField] private int _terrainSamples = 33;
         [Tooltip("Memory reserved when recording starts for one chunk's rows, in KiB (two such buffers, plus the " +
                  "writer's working memory of about the same size). A chunk ends early when its buffer is full, so " +
                  "these buffers never grow during play; bigger buffers make slightly smaller files for big games. " +
@@ -591,7 +588,6 @@ namespace PurrNet.Recording
             _session.chunkSeconds = _chunkSeconds;
             _session.maxLocalMegabytes = _maxLocalMegabytes;
             _session.colliderCheckBudgetMs = _colliderCheckBudgetMs;
-            _session.terrainSamples = _terrainSamples;
             _session.recordEffects = _recordEffects;
             _session.effectsBudgetMs = _effectsBudgetMs;
             _session.chunkBufferKilobytes = _chunkBufferKilobytes;

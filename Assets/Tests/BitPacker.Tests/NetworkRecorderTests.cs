@@ -1454,7 +1454,8 @@ public class NetworkRecorderTests
             world.Add(box);
             _created.Add(box);
         }
-        var data = new TerrainData { heightmapResolution = 33, size = new Vector3(64f, 10f, 64f) };
+        const int terrainSide = 513;
+        var data = new TerrainData { heightmapResolution = terrainSide, size = new Vector3(64f, 10f, 64f) };
         var terrain = Terrain.CreateTerrainGameObject(data);
         terrain.name = "StaticTerrain";
         terrain.transform.position = new Vector3(0f, -5f, 40f);
@@ -1481,17 +1482,17 @@ public class NetworkRecorderTests
         uint shiftedAt = tickModule.localTick;
         yield return Ticks(_manager, 3);
 
-        var heights = new float[33, 33];
-        for (int z = 0; z < 33; z++)
-            for (int x = 0; x < 33; x++)
-                heights[z, x] = (x + z) / 66f;
-        data.SetHeights(0, 0, heights);
+        const int sampleX = 7, sampleZ = 131;
+        data.SetHeights(sampleX, sampleZ, new float[,] { { 0.5f } });
+        yield return Ticks(_manager, 140);
+        data.SetHoles(sampleX, sampleZ, new bool[,] { { false } });
         yield return Ticks(_manager, 140);
 
         string path = _recorder.currentPath;
         _recorder.StopRecording();
         yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
-        var meta = ReadMeta(path);
+        var terrainRecords = new List<byte[]>();
+        var meta = ReadMeta(File.ReadAllBytes(path), terrainRecords);
         var statics = meta.FindAll(m => m.kind == RecordKind.Colliders && m.json.StartsWith("{\"entity\":null,"));
         var text = new StringBuilder();
         foreach (var record in statics)
@@ -1512,9 +1513,106 @@ public class NetworkRecorderTests
         var surfaces = new HashSet<string>();
         foreach (System.Text.RegularExpressions.Match match in System.Text.RegularExpressions.Regex.Matches(all, "\"name\":\"StaticTerrain\",\"mesh\":(\\d+)"))
             surfaces.Add(match.Groups[1].Value);
-        Assert.That(surfaces.Count, Is.GreaterThanOrEqualTo(2), "a terrain whose heights changed is sampled again:\n" + all);
+        Assert.That(surfaces.Count, Is.GreaterThanOrEqualTo(3), "height and hole edits both record a new surface:\n" + all);
+        Assert.That(terrainRecords.Count, Is.GreaterThanOrEqualTo(3));
+        var payload = terrainRecords[terrainRecords.Count - 1];
+        int at = 0;
+        Assert.That(surfaces, Does.Contain(VarUInt(payload, ref at).ToString()));
+        int nameLength = (int)VarUInt(payload, ref at);
+        at += nameLength;
+        Assert.That(VarUInt(payload, ref at), Is.EqualTo(terrainSide));
+        Assert.That(System.BitConverter.ToSingle(payload, at + 4), Is.EqualTo(data.size.y));
+        at += 12;
+        int heightOffset = (sampleZ * terrainSide + sampleX) * sizeof(float);
+        Assert.That(System.BitConverter.ToSingle(payload, at + heightOffset),
+            Is.EqualTo(data.GetHeights(sampleX, sampleZ, 1, 1)[0, 0]), "the off-grid sample survives exactly");
+        at += terrainSide * terrainSide * sizeof(float);
+        int quad = sampleZ * (terrainSide - 1) + sampleX;
+        Assert.That(payload.Length - at, Is.EqualTo((terrainSide - 1) * (terrainSide - 1) / 8));
+        Assert.That(payload[at + (quad >> 3)], Is.EqualTo(1 << (quad & 7)));
         Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+    [UnityTest]
+    public IEnumerator AnEditDiscardsPartialTerrainAndStoppingKeepsItsBounds()
+    {
+        yield return StartHost(false);
+        var data = new TerrainData { heightmapResolution = 1025, size = new Vector3(64f, 10f, 64f) };
+        var terrain = Terrain.CreateTerrainGameObject(data);
+        terrain.name = "InterruptedTerrain";
+        _created.Add(data);
+        _created.Add(terrain);
+        _recorder.StartRecording("network-recorder-terrain-interrupted.purrrec");
+        var requests = (IDictionary)typeof(RecordingSession).GetField("_terrainRequests", Fields).GetValue(_recorder.session);
+        object capture = null;
+        bool StartedReading()
+        {
+            foreach (var value in requests.Values)
+            {
+                var rows = (int)value.GetType().GetField("nextHeight", Fields).GetValue(value);
+                if (rows == 0)
+                    continue;
+                capture = value;
+                return true;
+            }
+            return false;
+        }
+        yield return WaitUntil(StartedReading);
+        Assert.That(capture, Is.Not.Null);
+        var firstRead = capture;
+        data.SetHeights(0, 0, new float[,] { { 0.5f } });
+        Assert.That(requests.Count, Is.Zero, "the already sampled rows are discarded when the heightmap changes");
+        yield return WaitUntil(StartedReading);
+        Assert.That(capture, Is.Not.SameAs(firstRead), "the edited terrain gets a new snapshot");
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        var terrains = new List<byte[]>();
+        var meta = ReadMeta(File.ReadAllBytes(path), terrains);
+        Assert.That(terrains, Is.Empty, "closing does not force either unfinished heightmap through the main thread");
+        Assert.That(meta.Exists(m => m.kind == RecordKind.Colliders && m.json.Contains("\"name\":\"InterruptedTerrain\",\"mesh\":")
+            && m.json.Contains("\"size\":[")), Is.True, Dump(meta));
+    }
+
+    [Test]
+    public void TerrainUsesManagedCompressionWhenTheNativeCompressorIsUnavailable()
+    {
+        string path = Path.GetTempFileName();
+        var state = typeof(NativeDeflate).GetField("_state", BindingFlags.Static | BindingFlags.NonPublic);
+        var previous = state.GetValue(null);
+        try
+        {
+            state.SetValue(null, -1);
+            var prefix = new RecordingBuffer();
+            prefix.WriteByte(0x12);
+            var heights = new float[65, 65];
+            heights[3, 7] = 0.5f;
+            var holes = new byte[512];
+            holes[7] = 0x10;
+            var file = new RecordingFile(path);
+            using (file)
+                file.EnqueueTerrain(prefix, new List<float[,]> { new float[1, 65], heights }, holes);
+
+            Assert.That(file.error, Is.Null);
+            Assert.That(file.nativeDeflate, Is.False);
+            byte[] bytes = File.ReadAllBytes(path);
+            Assert.That(bytes[10], Is.EqualTo((byte)RecordKind.Terrain | 0x80));
+            var terrains = new List<byte[]>();
+            ReadMeta(bytes, terrains);
+            Assert.That(terrains.Count, Is.EqualTo(1));
+            var payload = terrains[0];
+            Assert.That(payload[0], Is.EqualTo(0x12));
+            Assert.That(System.BitConverter.ToSingle(payload, 1 + (4 * 65 + 7) * sizeof(float)), Is.EqualTo(0.5f));
+            Assert.That(payload[1 + (65 + heights.Length) * sizeof(float) + 7], Is.EqualTo(0x10));
+        }
+        finally
+        {
+            state.SetValue(null, previous);
+            File.Delete(path);
+        }
+    }
+#endif
 
     [UnityTest]
     public IEnumerator ARecorderThatFailsStopsAndLeavesTheGameAlone()
@@ -1603,14 +1701,14 @@ public class NetworkRecorderTests
     /// <summary>The JSON metadata records of a recording, in file order (batches expanded).</summary>
     internal static List<(RecordKind kind, string json)> ReadMeta(string path) => ReadMeta(File.ReadAllBytes(path));
 
-    internal static List<(RecordKind kind, string json)> ReadMeta(byte[] data)
+    internal static List<(RecordKind kind, string json)> ReadMeta(byte[] data, List<byte[]> terrainRecords = null)
     {
         var result = new List<(RecordKind, string)>();
-        Read(data, 10, data.Length, result);
+        Read(data, 10, data.Length, result, terrainRecords);
         return result;
     }
 
-    static void Read(byte[] data, int pos, int end, List<(RecordKind, string)> into)
+    static void Read(byte[] data, int pos, int end, List<(RecordKind, string)> into, List<byte[]> terrainRecords)
     {
         while (pos < end)
         {
@@ -1638,7 +1736,9 @@ public class NetworkRecorderTests
             }
             var k = (RecordKind)(kind & 0x7F);
             if (k == RecordKind.Batch)
-                Read(payload, 0, payload.Length, into);
+                Read(payload, 0, payload.Length, into, terrainRecords);
+            else if (k == RecordKind.Terrain)
+                terrainRecords?.Add(payload);
             else if (k != RecordKind.Chunk && k != RecordKind.Mesh)
                 into.Add((k, Encoding.UTF8.GetString(payload)));
         }

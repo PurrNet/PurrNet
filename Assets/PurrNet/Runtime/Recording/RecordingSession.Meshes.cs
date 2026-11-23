@@ -435,79 +435,162 @@ namespace PurrNet.Recording
         }
 
 #if PURRNET_TERRAIN
+        const int TerrainHeightReadBytes = 256 * 1024;
+        const int TerrainHoleReadBytes = 64 * 1024;
+
+        sealed class TerrainCapture
+        {
+            public TerrainData data;
+            public long key;
+            public int id, print, side, nextHeight;
+            public List<float[,]> heights;
+            public byte[] holes;
+        }
+
+        readonly Queue<TerrainCapture> _terrainCaptures = new Queue<TerrainCapture>();
+        readonly Dictionary<long, TerrainCapture> _terrainRequests = new Dictionary<long, TerrainCapture>();
+        int _lastTerrainFrame = -1;
+        bool _terrainRefresh;
+
         /// <summary>
-        /// A terrain's surface as a mesh of <see cref="terrainSamples"/> heights a side, in the terrain's own space.
-        /// It is sampled again after the terrain's heights change.
+        /// Writes a native-resolution height grid. The viewer derives the vertices and triangles from the grid.
         /// </summary>
-        unsafe int WriteTerrain(TerrainData data)
+        int WriteTerrain(TerrainData data)
         {
             long key = RecordingObjectId.Of(data);
             int print = TerrainPrint(data);
             if (_meshIds.TryGetValue(key, out int existing) && _terrainPrints.TryGetValue(key, out int last) && last == print)
                 return existing;
+            CancelTerrainCapture(key);
             _terrainPrints[key] = print;
 
-            var capture = _terrainCapture;
             try
             {
-                int side = Mathf.Clamp(terrainSamples, 2, data.heightmapResolution);
-                float step = 1f / (side - 1);
-                var size = data.size;
-                var heights = data.GetInterpolatedHeights(0f, 0f, side, side, step, step);
-                _terrainSampled = true;
-
-                if (_terrainSide != side)
+                int side = data.heightmapResolution;
+                int id = _nextMeshId++;
+                if (!RecordingFile.encodesOnMainThread && side * side * sizeof(float) > TerrainHeightReadBytes)
                 {
-                    _terrainSide = side;
-                    _terrainVertices = new float[side * side * 3];
-                    _terrainIndices = new int[(side - 1) * (side - 1) * 6];
-                    int at = 0;
-                    for (int z = 0; z < side - 1; z++)
-                    {
-                        for (int x = 0; x < side - 1; x++)
-                        {
-                            int corner = z * side + x;
-                            _terrainIndices[at++] = corner;
-                            _terrainIndices[at++] = corner + side;
-                            _terrainIndices[at++] = corner + 1;
-                            _terrainIndices[at++] = corner + 1;
-                            _terrainIndices[at++] = corner + side;
-                            _terrainIndices[at++] = corner + side + 1;
-                        }
-                    }
+                    // The reference can be backdated immediately. The file contains the complete grid only
+                    // after all reads agree with the same terrain revision.
+                    var capture = new TerrainCapture { data = data, key = key, id = id, print = print, side = side };
+                    _terrainCaptures.Enqueue(capture);
+                    _terrainRequests.Add(key, capture);
                 }
-
-                var vertices = _terrainVertices;
-                int v = 0;
-                for (int z = 0; z < side; z++)
+                else
                 {
-                    float depth = z * step * size.z;
-                    for (int x = 0; x < side; x++)
-                    {
-                        vertices[v++] = x * step * size.x;
-                        vertices[v++] = heights[z, x];
-                        vertices[v++] = depth;
-                    }
+                    var heights = new List<float[,]> { data.GetHeights(0, 0, side, side) };
+                    byte[] holes = null;
+                    int holeSide = side - 1;
+                    int rowsPerRead = TerrainHoleReadBytes / holeSide;
+                    for (int z = 0; z < holeSide; z += rowsPerRead)
+                        ReadTerrainHoles(data, holeSide, z, Math.Min(rowsPerRead, holeSide - z), ref holes);
+                    _terrainSampled = true;
+                    EnqueueTerrain(data, side, id, heights, holes);
                 }
-
-                capture.id = _nextMeshId++;
-                capture.vertexCount = side * side;
-                capture.indexCount = _terrainIndices.Length;
-                BeginPayload(capture, Name(data));
-                fixed (float* from = vertices)
-                    UnsafeUtility.MemCpy(capture.output + capture.vertexBytesAt, from, (long)vertices.Length * 4);
-                fixed (int* from = _terrainIndices)
-                    UnsafeUtility.MemCpy(capture.output + capture.indexBytesAt, from, (long)_terrainIndices.Length * 4);
-                _file.EnqueueNative(RecordKind.Mesh, (IntPtr)capture.output, capture.outputLength, true);
-                capture.output = null;
-                return _meshIds[key] = capture.id;
+                return _meshIds[key] = id;
             }
             catch (Exception)
             {
-                if (capture.output != null)
-                    UnsafeUtility.Free(capture.output, Allocator.Persistent);
-                capture.output = null;
                 return _meshIds[key] = 0;
+            }
+        }
+
+        void PumpTerrainCapture()
+        {
+            if (_file == null || _file.error != null || _terrainCaptures.Count == 0 || _lastTerrainFrame == Time.frameCount)
+                return;
+            _lastTerrainFrame = Time.frameCount;
+            var capture = _terrainCaptures.Peek();
+            if (!_terrainRequests.TryGetValue(capture.key, out var pending) || !ReferenceEquals(pending, capture))
+            {
+                _terrainCaptures.Dequeue();
+                return;
+            }
+            if (capture.heights == null && (_file.pendingTerrainBytes > TerrainHeightReadBytes || lastClosing != null))
+                return;
+            var data = capture.data;
+            if (!data || TerrainPrint(data) != capture.print)
+            {
+                InvalidateTerrain(capture.key);
+                _terrainCaptures.Dequeue();
+                return;
+            }
+
+            try
+            {
+                int side = capture.side;
+                int z = capture.nextHeight;
+                int rows = Math.Min(TerrainHeightReadBytes / (side * sizeof(float)), side - z);
+                capture.heights ??= new List<float[,]>();
+                capture.heights.Add(data.GetHeights(0, z, side, rows));
+                int holeSide = side - 1;
+                int holeRows = Math.Min(rows, holeSide - z);
+                if (holeRows > 0)
+                    ReadTerrainHoles(data, holeSide, z, holeRows, ref capture.holes);
+                capture.nextHeight += rows;
+                if (capture.nextHeight < side)
+                    return;
+
+                EnqueueTerrain(data, side, capture.id, capture.heights, capture.holes);
+            }
+            catch (Exception)
+            {
+                // Its collider has bounds available even when Unity cannot read the grid.
+            }
+            _terrainCaptures.Dequeue();
+            CancelTerrainCapture(capture.key);
+        }
+
+        void EnqueueTerrain(TerrainData data, int side, int id, List<float[,]> heights, byte[] holes)
+        {
+            // Id, UTF-8 name, side (varuints), size.xyz, normalized heights in z/x order,
+            // then a bit per quad (least-significant bit first) if any quads are holes.
+            var prefix = _meshBuffer;
+            prefix.Clear();
+            prefix.WriteVarUInt((ulong)id);
+            prefix.WriteString(Name(data));
+            prefix.WriteVarUInt((ulong)side);
+            var size = data.size;
+            prefix.WriteFloat(size.x);
+            prefix.WriteFloat(size.y);
+            prefix.WriteFloat(size.z);
+            _file.EnqueueTerrain(prefix, heights, holes);
+        }
+
+        void CancelTerrainCapture(long key)
+        {
+            if (_terrainRequests.Remove(key, out var capture))
+            {
+                capture.heights = null;
+                capture.holes = null;
+            }
+        }
+
+        void InvalidateTerrain(long key)
+        {
+            CancelTerrainCapture(key);
+            _terrainRefresh |= _meshIds.Remove(key);
+        }
+
+        static unsafe void ReadTerrainHoles(TerrainData data, int side, int z, int rows, ref byte[] mask)
+        {
+            // Skip solid rows with one comparison.
+            byte* solid = stackalloc byte[side];
+            UnsafeUtility.MemSet(solid, 1, side);
+            var holes = data.GetHoles(0, z, side, rows);
+            fixed (bool* surface = &holes[0, 0])
+            {
+                for (int row = 0; row < rows; row++)
+                {
+                    bool* rowSurface = surface + row * side;
+                    if (UnsafeUtility.MemCmp(rowSurface, solid, side) == 0)
+                        continue;
+                    mask ??= new byte[(side * side + 7) / 8];
+                    int cell = (z + row) * side;
+                    for (int x = 0; x < side; x++, cell++)
+                        if (!rowSurface[x])
+                            mask[cell >> 3] |= (byte)(1 << (cell & 7));
+                }
             }
         }
 
@@ -519,7 +602,8 @@ namespace PurrNet.Recording
         {
             int resolution = data.heightmapResolution, quarter = resolution / 4, far = quarter * 3;
             var bounds = data.bounds;
-            int print = BitConverter.SingleToInt32Bits(bounds.center.y);
+            int print = unchecked(resolution * 31 + data.size.GetHashCode());
+            print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(bounds.center.y));
             print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(bounds.size.y));
             print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(quarter, quarter)));
             print = unchecked(print * 31 + BitConverter.SingleToInt32Bits(data.GetHeight(far, quarter)));
@@ -529,15 +613,16 @@ namespace PurrNet.Recording
             return print;
         }
 
-        readonly MeshCapture _terrainCapture = new MeshCapture();
-        float[] _terrainVertices;
-        int[] _terrainIndices;
-        int _terrainSide;
-
         void OnTerrainChanged(Terrain terrain, RectInt region, bool synched)
         {
             if (_file != null && terrain && terrain.terrainData)
-                _meshIds.Remove(RecordingObjectId.Of(terrain.terrainData));
+                InvalidateTerrain(RecordingObjectId.Of(terrain.terrainData));
+        }
+
+        void OnTerrainTextureChanged(Terrain terrain, string textureName, RectInt region, bool synched)
+        {
+            if (textureName == TerrainData.HolesTextureName)
+                OnTerrainChanged(terrain, region, synched);
         }
 #endif
     }

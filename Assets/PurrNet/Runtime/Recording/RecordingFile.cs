@@ -32,7 +32,8 @@ namespace PurrNet.Recording
         Owner = 15,
         Observers = 16,
         Renderers = 17,
-        Effects = 18
+        Effects = 18,
+        Terrain = 19
     }
 
     interface IStepwiseRecordProducer : IRecordProducer
@@ -59,10 +60,17 @@ namespace PurrNet.Recording
             public bool compress;
             public IntPtr native;
             public int nativeLength;
+#if !PURRREC_WEB
+            public List<float[,]> terrainHeights;
+            public byte[] terrainHoles;
+#endif
         }
 
         readonly Queue<PendingRecord> _queue = new Queue<PendingRecord>(64);
         long _rawBytes;
+#if !PURRREC_WEB
+        long _pendingTerrainBytes;
+#endif
         volatile Exception _error;
 
         /// <summary>
@@ -116,8 +124,10 @@ namespace PurrNet.Recording
 
 #if PURRREC_WEB
         public static bool encodesOnMainThread => true;
+        internal long pendingTerrainBytes => 0;
 #else
         public static bool encodesOnMainThread => false;
+        internal long pendingTerrainBytes => Interlocked.Read(ref _pendingTerrainBytes);
 #endif
         public long rawBytes => Interlocked.Read(ref _rawBytes);
 
@@ -263,15 +273,14 @@ namespace PurrNet.Recording
 
         bool Take(out PendingRecord record)
         {
+            // Release the previous snapshot before the writer blocks on an empty queue.
+            record = default;
             lock (_queue)
             {
                 while (_queue.Count == 0)
                 {
                     if (_completed)
-                    {
-                        record = default;
                         return false;
-                    }
                     Monitor.Wait(_queue);
                 }
                 record = _queue.Dequeue();
@@ -344,43 +353,115 @@ namespace PurrNet.Recording
 #endif
         }
 
+        internal void EnqueueTerrain(RecordingBuffer prefix, List<float[,]> heights, byte[] holes)
+        {
+            if (_error != null)
+                return;
+            int heightBytes = 0;
+            foreach (var rows in heights)
+                heightBytes += rows.Length * sizeof(float);
+            int holeBytes = holes?.Length ?? 0;
+            int length = prefix.length + heightBytes + holeBytes;
+#if PURRREC_WEB
+            var bytes = new byte[length];
+            Buffer.BlockCopy(prefix.data, 0, bytes, 0, prefix.length);
+            int at = prefix.length;
+            foreach (var rows in heights)
+            {
+                int rowBytes = rows.Length * sizeof(float);
+                Buffer.BlockCopy(rows, 0, bytes, at, rowBytes);
+                at += rowBytes;
+            }
+            if (holeBytes != 0)
+                Buffer.BlockCopy(holes, 0, bytes, prefix.length + heightBytes, holeBytes);
+            Enqueue(RecordKind.Terrain, bytes, true);
+#else
+            // The writer reads Unity's height snapshot directly. Only the small shared prefix needs a copy.
+            Interlocked.Add(ref _rawBytes, length);
+            var record = new PendingRecord
+            {
+                kind = RecordKind.Terrain, payload = prefix.ToArray(), compress = true,
+                terrainHeights = heights, terrainHoles = holes, nativeLength = heightBytes
+            };
+            Interlocked.Add(ref _pendingTerrainBytes, heightBytes);
+            Add(record);
+#endif
+        }
+
 #if !PURRREC_WEB
-        unsafe void WriteNative(in PendingRecord record, RecordingBuffer header)
+        unsafe void WriteNative(RecordKind recordKind, ReadOnlySpan<byte> payload, bool compress, RecordingBuffer header,
+            List<float[,]> heights = null, int heightBytes = 0, ReadOnlySpan<byte> holes = default)
         {
             long started = System.Diagnostics.Stopwatch.GetTimestamp();
-            byte* payload = (byte*)record.native;
-            int length = record.nativeLength;
-            byte kind = (byte)record.kind;
-            if (record.compress)
+            int length = payload.Length + heightBytes + holes.Length;
+            byte kind = (byte)recordKind;
+            if (compress)
             {
                 using var _ = CompressMarker.Auto();
-                _nativeSink.Begin(length / 2 + 1024);
-                if (NativeDeflate.TryCompress(record.native, length, GCHandle.ToIntPtr(_nativeSinkHandle)) && !_nativeSink.failed)
+                // Terrain grids can compress to a tiny fraction of their input, especially flat tiles.
+                int reserve = length / 2 + 1024;
+                bool terrain = recordKind == RecordKind.Terrain;
+                if (terrain)
+                    reserve = Math.Min(reserve, 64 * 1024);
+                _nativeSink.Begin(reserve);
+                bool compressed = NativeDeflate.TryCompress(payload, GCHandle.ToIntPtr(_nativeSinkHandle), heights, holes) && !_nativeSink.failed;
+                if (!compressed && terrain)
                 {
-                    payload = _nativeSink.data;
+                    // The native Mono compressor is not present in all players. Stream from the same input
+                    // through the reusable file slice if we have to use managed DEFLATE.
+                    nativeDeflate = false;
+                    _nativeSink.Begin(reserve);
+                    using (var deflate = new DeflateStream(_nativeSink, System.IO.Compression.CompressionLevel.Fastest, true))
+                    {
+                        WriteSlices(deflate, payload);
+                        WriteTerrainRows(deflate, heights);
+                        WriteSlices(deflate, holes);
+                    }
+                    compressed = !_nativeSink.failed;
+                }
+                if (compressed && (!terrain || _nativeSink.length < length))
+                {
                     length = _nativeSink.length;
+                    payload = new ReadOnlySpan<byte>(_nativeSink.data, length);
+                    heights = null;
+                    holes = default;
                     kind |= 0x80;
                 }
             }
-            long compressed = System.Diagnostics.Stopwatch.GetTimestamp();
-            Interlocked.Add(ref _compressTicks, compressed - started);
-            if (compressed - started > Interlocked.Read(ref _maxRecordTicks))
-                Interlocked.Exchange(ref _maxRecordTicks, compressed - started);
+            long compressedAt = System.Diagnostics.Stopwatch.GetTimestamp();
+            Interlocked.Add(ref _compressTicks, compressedAt - started);
+            if (compressedAt - started > Interlocked.Read(ref _maxRecordTicks))
+                Interlocked.Exchange(ref _maxRecordTicks, compressedAt - started);
 
             using var write = WriteMarker.Auto();
             header.Clear();
             header.WriteByte(kind);
             header.WriteVarUInt((ulong)length);
             _stream.Write(header.data, 0, header.length);
-            for (int at = 0; at < length;)
-            {
-                int n = Math.Min(_slice.Length, length - at);
-                Marshal.Copy((IntPtr)(payload + at), _slice, 0, n);
-                _stream.Write(_slice, 0, n);
-                at += n;
-            }
+            WriteSlices(_stream, payload);
+            WriteTerrainRows(_stream, heights);
+            WriteSlices(_stream, holes);
             Interlocked.Add(ref _bytesWritten, header.length + length);
-            _nativeSink.Free();
+        }
+
+        unsafe void WriteTerrainRows(Stream stream, List<float[,]> heights)
+        {
+            if (heights == null)
+                return;
+            foreach (var rows in heights)
+                fixed (float* samples = &rows[0, 0])
+                    WriteSlices(stream, new ReadOnlySpan<byte>(samples, rows.Length * sizeof(float)));
+        }
+
+        void WriteSlices(Stream stream, ReadOnlySpan<byte> source)
+        {
+            while (!source.IsEmpty)
+            {
+                int n = Math.Min(_slice.Length, source.Length);
+                source.Slice(0, n).CopyTo(_slice);
+                stream.Write(_slice, 0, n);
+                source = source.Slice(n);
+            }
         }
 #endif
 
@@ -397,12 +478,12 @@ namespace PurrNet.Recording
             }
         }
 
-        void WriteRecord(in PendingRecord record, RecordingBuffer header)
+        unsafe void WriteRecord(in PendingRecord record, RecordingBuffer header)
         {
             if (_error != null)
             {
                 record.producer?.Release();
-                FreeNative(record);
+                ReleasePayload(record);
                 return;
             }
             _busy = true;
@@ -411,7 +492,12 @@ namespace PurrNet.Recording
 #if !PURRREC_WEB
                 if (record.native != IntPtr.Zero)
                 {
-                    WriteNative(record, header);
+                    WriteNative(record.kind, new ReadOnlySpan<byte>((void*)record.native, record.nativeLength), record.compress, header);
+                    return;
+                }
+                if (record.terrainHeights != null)
+                {
+                    WriteNative(record.kind, record.payload, true, header, record.terrainHeights, record.nativeLength, record.terrainHoles);
                     return;
                 }
 #endif
@@ -437,7 +523,7 @@ namespace PurrNet.Recording
                 {
                     using var _ = CompressMarker.Auto();
                     _compressed.buffer.Clear();
-                    if (!NativeDeflate.TryCompress(payload, length, GCHandle.ToIntPtr(_compressedHandle)))
+                    if (!NativeDeflate.TryCompress(payload.AsSpan(0, length), GCHandle.ToIntPtr(_compressedHandle)))
                     {
                         nativeDeflate = false;
                         _compressed.buffer.Clear();
@@ -468,14 +554,22 @@ namespace PurrNet.Recording
             }
             finally
             {
+#if !PURRREC_WEB
+                if (record.native != IntPtr.Zero || record.terrainHeights != null)
+                    _nativeSink.Free();
+#endif
                 record.producer?.Release();
-                FreeNative(record);
+                ReleasePayload(record);
                 _busy = false;
             }
         }
 
-        static unsafe void FreeNative(in PendingRecord record)
+        unsafe void ReleasePayload(in PendingRecord record)
         {
+#if !PURRREC_WEB
+            if (record.terrainHeights != null)
+                Interlocked.Add(ref _pendingTerrainBytes, -record.nativeLength);
+#endif
             if (record.native != IntPtr.Zero)
                 Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Free((void*)record.native, Unity.Collections.Allocator.Persistent);
         }
@@ -542,11 +636,27 @@ namespace PurrNet.Recording
 
 #if !PURRREC_WEB
     /// <summary>Compressed output that grows in native memory, for records too large to pass through the managed heap.</summary>
-    sealed unsafe class NativeSink
+    sealed unsafe class NativeSink : Stream
     {
         public byte* data;
         public int length, capacity;
         public bool failed;
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => length;
+        public override long Position { get => length; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            fixed (byte* source = buffer.AsSpan(offset, count))
+                Write(source, count);
+        }
 
         public void Begin(int reserve)
         {
@@ -625,13 +735,8 @@ namespace PurrNet.Recording
             }
         }
 
-        public static unsafe bool TryCompress(byte[] payload, int length, IntPtr output)
-        {
-            fixed (byte* p = payload)
-                return TryCompress((IntPtr)p, length, output);
-        }
-
-        public static unsafe bool TryCompress(IntPtr payload, int length, IntPtr output)
+        public static unsafe bool TryCompress(ReadOnlySpan<byte> payload, IntPtr output,
+            List<float[,]> heights = null, ReadOnlySpan<byte> holes = default)
         {
             if (_state < 0)
                 return false;
@@ -645,11 +750,20 @@ namespace PurrNet.Recording
                     _state = -1;
                     return false;
                 }
-                int written = 0;
-                if (length > 0)
-                    written = WriteZStream(stream, payload, length);
+                bool wrote = WriteInput(stream, payload);
+                if (wrote && heights != null)
+                {
+                    foreach (var rows in heights)
+                    {
+                        fixed (float* samples = &rows[0, 0])
+                            wrote = WriteInput(stream, new ReadOnlySpan<byte>(samples, rows.Length * sizeof(float)));
+                        if (!wrote)
+                            break;
+                    }
+                }
+                wrote = wrote && WriteInput(stream, holes);
                 int closed = CloseZStream(stream);
-                if (written < 0 || closed < 0)
+                if (!wrote || closed < 0)
                     return false;
                 _state = 1;
                 return true;
@@ -659,6 +773,14 @@ namespace PurrNet.Recording
                 _state = -1;
                 return false;
             }
+        }
+
+        static unsafe bool WriteInput(IntPtr stream, ReadOnlySpan<byte> input)
+        {
+            if (input.IsEmpty)
+                return true;
+            fixed (byte* bytes = input)
+                return WriteZStream(stream, (IntPtr)bytes, input.Length) >= 0;
         }
     }
 #endif

@@ -98,7 +98,6 @@ namespace PurrNet.Recording
         public float chunkSeconds = 10f;
         public int maxLocalMegabytes = 1024;
         public float colliderCheckBudgetMs = 0.1f;
-        public int terrainSamples = 33;
         public int chunkBufferKilobytes = 2048;
         public ulong localTick => _context.isReady ? _context.localTick : 0;
 
@@ -173,6 +172,7 @@ namespace PurrNet.Recording
 
 #if UNITY_PHYSICS_3D && PURRNET_TERRAIN
             TerrainCallbacks.heightmapChanged += OnTerrainChanged;
+            TerrainCallbacks.textureChanged += OnTerrainTextureChanged;
 #endif
             _stats = new RecorderStats(logName);
             _statTick = _stats.Add("tick");
@@ -202,6 +202,7 @@ namespace PurrNet.Recording
             UnsubscribeNetwork();
 #if UNITY_PHYSICS_3D && PURRNET_TERRAIN
             TerrainCallbacks.heightmapChanged -= OnTerrainChanged;
+            TerrainCallbacks.textureChanged -= OnTerrainTextureChanged;
 #endif
             if (active == this)
                 active = null;
@@ -237,6 +238,9 @@ namespace PurrNet.Recording
         {
             UpdatePart(isServer);
 
+#if UNITY_PHYSICS_3D && PURRNET_TERRAIN
+            PumpTerrainCapture();
+#endif
             _file?.Pump();
             if (_closing.Count > 0)
                 FinishClosed();
@@ -350,6 +354,11 @@ namespace PurrNet.Recording
 
             var file = _file;
             _file = null;
+#if UNITY_PHYSICS_3D && PURRNET_TERRAIN
+            _terrainCaptures.Clear();
+            _terrainRequests.Clear();
+            _terrainRefresh = false;
+#endif
             try
             {
                 Release(file, wait);
@@ -1630,8 +1639,17 @@ namespace PurrNet.Recording
             _stats.Begin(_statChecks);
             CheckStaticShift(tick);
             CheckEntityColliders(tick);
-            if (_staticCheck == StaticCheck.Idle && tick % StaticColliderCheckTicks == 0)
+            bool scanStatic = tick % StaticColliderCheckTicks == 0;
+#if PURRNET_TERRAIN
+            scanStatic |= _terrainRefresh;
+#endif
+            if (_staticCheck == StaticCheck.Idle && scanStatic)
+            {
+#if PURRNET_TERRAIN
+                _terrainRefresh = false;
+#endif
                 BeginStaticCheck();
+            }
             if (_staticCheck != StaticCheck.Idle)
                 ContinueStaticCheck(tick);
             _stats.End(_statChecks);
@@ -2270,10 +2288,22 @@ namespace PurrNet.Recording
                     break;
                 }
 #if PURRNET_TERRAIN
-                case TerrainCollider terrain when terrain.terrainData && WriteTerrain(terrain.terrainData) > 0:
+                case TerrainCollider terrain when terrain.terrainData:
+                {
+                    int terrainId = WriteTerrain(terrain.terrainData);
+                    if (terrainId <= 0)
+                        goto default;
                     BeginCollider(json, "mesh", collider, worldToSpace * Matrix4x4.Translate(collider.transform.position));
-                    json.Prop("mesh", WriteTerrain(terrain.terrainData)).Prop("convex", false);
+                    json.Prop("mesh", terrainId).Prop("convex", false);
+                    if (_terrainRequests.ContainsKey(RecordingObjectId.Of(terrain.terrainData)))
+                    {
+                        // A recording can stop while the corresponding grid is still being read.
+                        var bounds = terrain.terrainData.bounds;
+                        json.Floats("center", bounds.center.x, bounds.center.y, bounds.center.z)
+                            .Floats("size", bounds.size.x, bounds.size.y, bounds.size.z);
+                    }
                     break;
+                }
 #endif
                 default:
                 {
