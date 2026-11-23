@@ -420,6 +420,7 @@ namespace PurrNet.Recording
         {
             TakeLaterTransforms();
 #if UNITY_PHYSICS_3D
+            FinishSlicedCheck();
             foreach (var entity in _entities)
                 if (entity.shapeSince != 0 && entity.gameObject)
                     RefreshEntityColliders(entity, _lastTick);
@@ -748,6 +749,11 @@ namespace PurrNet.Recording
 
         void ReleaseEntity(RecordedEntity entity)
         {
+#if UNITY_PHYSICS_3D
+            if (ReferenceEquals(_slice.entity, entity))
+                AbortSlice(false);
+            entity.sliceQueued = false;
+#endif
             RemoveJobTransform(entity);
             EndChanges(entity);
             entity.transform?.Retire();
@@ -1481,17 +1487,30 @@ namespace PurrNet.Recording
             entity.rendererObjects.Clear();
             root.GetComponentsInChildren(true, _foundRenderers);
             foreach (var renderer in _foundRenderers)
-            {
-                if (!IsBodyRenderer(renderer))
-                    continue;
-                if (!nested || OwnedBy(renderer, root))
-                {
-                    entity.renderers.Add(renderer);
-                    entity.rendererObjects.Add(renderer.gameObject);
-                }
-            }
+                AddEntityRenderer(entity.renderers, entity.rendererObjects, renderer, root, nested);
             _foundRenderers.Clear();
 
+            AddDetachedGraphics(entity);
+            RecordRenderers(entity, entity.shapeSince != 0 ? entity.shapeSince : tick);
+            RefreshEntityEffects(entity, nested, tick);
+            return nested;
+        }
+
+        void AddEntityRenderer(List<Renderer> renderers, List<GameObject> objects, Renderer renderer, GameObject root, bool nested)
+        {
+            if (!IsBodyRenderer(renderer))
+                return;
+            if (!nested || OwnedBy(renderer, root))
+            {
+                renderers.Add(renderer);
+                objects.Add(renderer.gameObject);
+            }
+        }
+
+        /// <summary>The renderers of the entity's graphics that are not inside it are added to its renderers.</summary>
+        void AddDetachedGraphics(RecordedEntity entity)
+        {
+            var root = entity.gameObject;
             entity.detachedGraphics.Clear();
             for (int i = 0, parts = entity.partCount; i < parts; i++)
                 entity.SourceAt(i).GetDetachedGraphics(entity, entity.detachedGraphics);
@@ -1523,9 +1542,6 @@ namespace PurrNet.Recording
             }
             _rendererList.Clear();
             LookAgain(entity);
-            RecordRenderers(entity, entity.shapeSince != 0 ? entity.shapeSince : tick);
-            RefreshEntityEffects(entity, nested, tick);
-            return nested;
         }
 
         static float RoundPose(float value) => (float)Math.Round(value, 4) + 0f;
@@ -1537,59 +1553,73 @@ namespace PurrNet.Recording
         /// </summary>
         void RecordRenderers(RecordedEntity entity, ulong tick)
         {
+            if (!RenderersChanged(entity))
+                return;
+            var renderers = entity.renderers;
+            var worldToEntity = entity.root.worldToLocalMatrix;
+            var json = BeginRenderersRecord(_json, entity, tick);
+            for (int i = 0; i < renderers.Count; i++)
+                WriteRenderer(json, renderers[i], worldToEntity);
+            EndRenderersRecord(json);
+        }
+
+        bool RenderersChanged(RecordedEntity entity)
+        {
             var renderers = entity.renderers;
             long key = 1469598103934665603L;
             for (int i = 0; i < renderers.Count; i++)
                 key = unchecked((key ^ RecordingObjectId.Of(renderers[i])) * 1099511628211L);
-            if (entity.hasRendererKey ? key == entity.rendererKey : renderers.Count == 0)
-            {
-                entity.rendererKey = key;
-                entity.hasRendererKey = true;
-                return;
-            }
+            bool changed = entity.hasRendererKey ? key != entity.rendererKey : renderers.Count != 0;
             entity.rendererKey = key;
             entity.hasRendererKey = true;
+            return changed;
+        }
 
-            var worldToEntity = entity.root.worldToLocalMatrix;
-            BeginNames(_rendererNames, entity.template, renderers.Count);
-            var json = _json.Clear().BeginObject().Prop("entity", entity.id).Prop("tick", tick).Key("renderers").BeginArray();
-            for (int i = 0; i < renderers.Count; i++)
-            {
-                var renderer = renderers[i];
-                UnityEngine.Object shape;
-                string kind;
-                switch (renderer)
-                {
-                    case SkinnedMeshRenderer skinned: kind = "skinned"; shape = skinned.sharedMesh; break;
-                    case SpriteRenderer sprite: kind = "sprite"; shape = sprite.sprite; break;
-                    default:
-                        kind = "mesh";
-                        shape = renderer.TryGetComponent<MeshFilter>(out var filter) ? filter.sharedMesh : null;
-                        break;
-                }
+        JsonBuilder BeginRenderersRecord(JsonBuilder json, RecordedEntity entity, ulong tick)
+        {
+            BeginNames(_rendererNames, entity.template, entity.renderers.Count);
+            return json.Clear().BeginObject().Prop("entity", entity.id).Prop("tick", tick).Key("renderers").BeginArray();
+        }
 
-                var material = renderer.sharedMaterial;
-                var bounds = renderer.localBounds;
-                var local = worldToEntity * renderer.transform.localToWorldMatrix;
-                Vector3 p = local.GetColumn(3);
-                var r = local.ValidTRS() ? local.rotation : Quaternion.identity;
-                var s = local.lossyScale;
-                json.BeginObject().Prop("kind", kind).Prop("id", RecordingObjectId.Of(renderer))
-                    .Prop("name", TemplateName(renderer.gameObject)).Key("mesh");
-                if (shape) json.Value(Name(shape)); else json.Null();
-                json.Key("material");
-                if (material) json.Value(Name(material)); else json.Null();
-                json.Key("pose").BeginObject()
-                    .Floats("p", RoundPose(p.x), RoundPose(p.y), RoundPose(p.z))
-                    .Floats("r", RoundPose(r.x), RoundPose(r.y), RoundPose(r.z), RoundPose(r.w))
-                    .Floats("s", RoundPose(s.x), RoundPose(s.y), RoundPose(s.z))
-                    .EndObject()
-                    .Floats("center", bounds.center.x, bounds.center.y, bounds.center.z)
-                    .Floats("size", bounds.size.x, bounds.size.y, bounds.size.z)
-                    .EndObject();
-            }
+        void EndRenderersRecord(JsonBuilder json)
+        {
             _nameTemplate = null;
             WriteMeta(RecordKind.Renderers, json.EndArray().EndObject());
+        }
+
+        void WriteRenderer(JsonBuilder json, Renderer renderer, Matrix4x4 worldToEntity)
+        {
+            UnityEngine.Object shape;
+            string kind;
+            switch (renderer)
+            {
+                case SkinnedMeshRenderer skinned: kind = "skinned"; shape = skinned.sharedMesh; break;
+                case SpriteRenderer sprite: kind = "sprite"; shape = sprite.sprite; break;
+                default:
+                    kind = "mesh";
+                    shape = renderer.TryGetComponent<MeshFilter>(out var filter) ? filter.sharedMesh : null;
+                    break;
+            }
+
+            var material = renderer.sharedMaterial;
+            var bounds = renderer.localBounds;
+            var local = worldToEntity * renderer.transform.localToWorldMatrix;
+            Vector3 p = local.GetColumn(3);
+            var r = local.ValidTRS() ? local.rotation : Quaternion.identity;
+            var s = local.lossyScale;
+            json.BeginObject().Prop("kind", kind).Prop("id", RecordingObjectId.Of(renderer))
+                .Prop("name", TemplateName(renderer.gameObject)).Key("mesh");
+            if (shape) json.Value(Name(shape)); else json.Null();
+            json.Key("material");
+            if (material) json.Value(Name(material)); else json.Null();
+            json.Key("pose").BeginObject()
+                .Floats("p", RoundPose(p.x), RoundPose(p.y), RoundPose(p.z))
+                .Floats("r", RoundPose(r.x), RoundPose(r.y), RoundPose(r.z), RoundPose(r.w))
+                .Floats("s", RoundPose(s.x), RoundPose(s.y), RoundPose(s.z))
+                .EndObject()
+                .Floats("center", bounds.center.x, bounds.center.y, bounds.center.z)
+                .Floats("size", bounds.size.x, bounds.size.y, bounds.size.z)
+                .EndObject();
         }
 
 #if UNITY_PHYSICS_3D
@@ -1652,6 +1682,7 @@ namespace PurrNet.Recording
             }
             if (_staticCheck != StaticCheck.Idle)
                 ContinueStaticCheck(tick);
+            ContinueSlicedChecks(tick);
             _stats.End(_statChecks);
 
             foreach (var entity in _entities)
@@ -1692,7 +1723,7 @@ namespace PurrNet.Recording
                     _entityCheckCursor = 0;
                 var entity = _entities[_entityCheckCursor++];
                 _entityChecksOwed -= 1f;
-                if (entity.spawnTick == tick)
+                if (entity.spawnTick == tick || entity.sliceQueued)
                     continue;
                 LookAgain(entity);
                 var root = entity.root;
@@ -2025,63 +2056,96 @@ namespace PurrNet.Recording
             key.Clear();
             foreach (var collider in colliders)
                 ShapeKey(key, collider);
-            bool changed = !hasKey ? key.length != 0 : !key.SameBytes(lastKey);
 
+            if (!ColliderKeyChanged(key, lastKey, ref hasKey))
+            {
+                CheckColliderPoses(tracked, 0, tracked.Count, worldToSpace, ref moving, entity);
+                return;
+            }
+
+            BeginTracking(tracked, _trackedById, _trackedScratch);
+            foreach (var collider in colliders)
+                Track(_trackedById, _trackedScratch, collider, space, worldToSpace);
+            EndTracking(tracked, _trackedById, _trackedScratch, ref moving);
+
+            var json = BeginCollidersRecord(_json, entity, template, colliders.Count, tick);
+            foreach (var collider in colliders)
+                WriteCollider(json, collider, worldToSpace);
+            EndCollidersRecord(json);
+        }
+
+        static bool ColliderKeyChanged(RecordingBuffer key, RecordingBuffer lastKey, ref bool hasKey)
+        {
+            bool changed = !hasKey ? key.length != 0 : !key.SameBytes(lastKey);
             if (changed)
             {
                 lastKey.CopyFrom(key);
                 hasKey = true;
-
-                _trackedScratch.Clear();
-                _trackedById.Clear();
-                foreach (var t in tracked)
-                    _trackedById[t.id] = t;
-                foreach (var collider in colliders)
-                {
-                    long id = RecordingObjectId.Of(collider);
-                    if (_trackedById.TryGetValue(id, out var t) && ReferenceEquals(t.collider, collider))
-                        _trackedById.Remove(id);
-                    else
-                        t = null;
-                    if (t == null)
-                    {
-                        t = _trackedPool.Count > 0 ? _trackedPool.Pop() : new TrackedCollider();
-                        t.collider = collider;
-                        t.id = RecordingObjectId.Of(collider);
-                        t.stream = null;
-                        t.moving = false;
-                        t.stillChecks = 0;
-                    }
-                    t.epoch = _staticEpoch;
-                    t.streamable = HasShapePose(collider) && !ReferenceEquals(collider.transform, space);
-                    RoundedPose(collider, worldToSpace, out t.position, out t.rotation, out t.scale);
-                    _trackedScratch.Add(t);
-                }
-                tracked.Clear();
-                foreach (var pair in _trackedById)
-                    tracked.Add(pair.Value);
-                _trackedById.Clear();
-                ReleaseColliders(tracked);
-                tracked.AddRange(_trackedScratch);
-                _trackedScratch.Clear();
-                moving = 0;
-                foreach (var t in tracked)
-                    if (t.moving)
-                        moving++;
-
-                var json = _json.Clear().BeginObject().Key("entity");
-                if (entity >= 0) json.Value(entity); else json.Null();
-                json.Prop("tick", tick).Key("colliders").BeginArray();
-                BeginNames(_colliderNames, template, colliders.Count);
-                foreach (var collider in colliders)
-                    WriteCollider(json, collider, worldToSpace);
-                _nameTemplate = null;
-                json.EndArray().EndObject();
-                WriteMeta(RecordKind.Colliders, json);
-                return;
             }
+            return changed;
+        }
 
-            CheckColliderPoses(tracked, 0, tracked.Count, worldToSpace, ref moving, entity);
+        static void BeginTracking(List<TrackedCollider> tracked, Dictionary<long, TrackedCollider> byId, List<TrackedCollider> found)
+        {
+            found.Clear();
+            byId.Clear();
+            foreach (var t in tracked)
+                byId[t.id] = t;
+        }
+
+        void Track(Dictionary<long, TrackedCollider> byId, List<TrackedCollider> found, Collider collider, Transform space,
+            Matrix4x4 worldToSpace)
+        {
+            long id = RecordingObjectId.Of(collider);
+            if (byId.TryGetValue(id, out var t) && ReferenceEquals(t.collider, collider))
+                byId.Remove(id);
+            else
+                t = null;
+            if (t == null)
+            {
+                t = _trackedPool.Count > 0 ? _trackedPool.Pop() : new TrackedCollider();
+                t.collider = collider;
+                t.id = RecordingObjectId.Of(collider);
+                t.stream = null;
+                t.moving = false;
+                t.stillChecks = 0;
+            }
+            t.epoch = _staticEpoch;
+            t.streamable = HasShapePose(collider) && !ReferenceEquals(collider.transform, space);
+            RoundedPose(collider, worldToSpace, out t.position, out t.rotation, out t.scale);
+            found.Add(t);
+        }
+
+        void EndTracking(List<TrackedCollider> tracked, Dictionary<long, TrackedCollider> byId, List<TrackedCollider> found,
+            ref int moving)
+        {
+            tracked.Clear();
+            foreach (var pair in byId)
+                tracked.Add(pair.Value);
+            byId.Clear();
+            ReleaseColliders(tracked);
+            tracked.AddRange(found);
+            found.Clear();
+            moving = 0;
+            foreach (var t in tracked)
+                if (t.moving)
+                    moving++;
+        }
+
+        JsonBuilder BeginCollidersRecord(JsonBuilder json, int entity, long template, int count, ulong tick)
+        {
+            json.Clear().BeginObject().Key("entity");
+            if (entity >= 0) json.Value(entity); else json.Null();
+            json.Prop("tick", tick).Key("colliders").BeginArray();
+            BeginNames(_colliderNames, template, count);
+            return json;
+        }
+
+        void EndCollidersRecord(JsonBuilder json)
+        {
+            _nameTemplate = null;
+            json.EndArray().EndObject();
+            WriteMeta(RecordKind.Colliders, json);
         }
 
         void CheckColliderPoses(List<TrackedCollider> tracked, int from, int to, Matrix4x4 worldToSpace, ref int moving,

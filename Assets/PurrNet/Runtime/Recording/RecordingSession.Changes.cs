@@ -50,6 +50,13 @@ namespace PurrNet.Recording
         /// </summary>
         void CheckEntity(RecordedEntity entity, ulong tick)
         {
+#if UNITY_PHYSICS_3D
+            if (entity.root && entity.root.hierarchyCount >= SlicedCheckFrom)
+            {
+                QueueSlicedCheck(entity);
+                return;
+            }
+#endif
             int records = _metaRecords, moving = entity.movingColliders;
             int hierarchy = entity.root ? entity.root.hierarchyCount : -1;
             bool changed = hierarchy != entity.checkHierarchy;
@@ -156,7 +163,362 @@ namespace PurrNet.Recording
             _checkSoon.Clear();
             _visibleEpoch = 1;
             _alwaysLook = false;
+#if UNITY_PHYSICS_3D
+            ResetSlice();
+            foreach (var entity in _sliceQueue)
+                entity.sliceQueued = false;
+            _sliceQueue.Clear();
+#endif
         }
+
+#if UNITY_PHYSICS_3D
+        /// <summary>
+        /// An entity with this many objects in its hierarchy (a whole building, say) is checked a part at a time:
+        /// looking at all of it at once, and writing its records, can take several milliseconds.
+        /// </summary>
+        internal static int SlicedCheckFrom = 256;
+        /// <summary>A big entity's check moves on by at least this many steps a tick, over budget or not.</summary>
+        const int SlicedCheckMinimumWork = 16;
+
+        enum SliceStep { Walk, Renderers, Effects, ColliderKey, Track, Colliders }
+
+        /// <summary>
+        /// The check of one big entity, spread over ticks: its hierarchy is walked, then its RENDERERS record is
+        /// written, its effects looked at, its colliders compared and, if they changed, their record written. The
+        /// records are the ones a check done at once writes, and carry the tick the check began on.
+        /// </summary>
+        sealed class SlicedCheck
+        {
+            public RecordedEntity entity;
+            public GameObject root;
+            public ulong tick, since;
+            public int moving;
+            public bool nested, again, changed, wrote;
+            public bool rendererKeyTaken, colliderKeyTaken;
+            public SliceStep step;
+            public int at;
+            public readonly List<(Transform transform, bool active)> stack = new List<(Transform, bool)>(64);
+            public readonly List<Renderer> renderers = new List<Renderer>();
+            public readonly List<GameObject> rendererObjects = new List<GameObject>();
+            public readonly List<Collider> colliders = new List<Collider>();
+            public readonly JsonBuilder json = new JsonBuilder();
+            public readonly RecordingBuffer key = new RecordingBuffer(256);
+            public readonly Dictionary<long, TrackedCollider> byId = new Dictionary<long, TrackedCollider>();
+            public readonly List<TrackedCollider> found = new List<TrackedCollider>();
+            public Dictionary<long, List<string>> names;
+            public List<string> nameTemplate;
+            public int nameIndex;
+            public bool nameFill;
+        }
+
+        readonly SlicedCheck _slice = new SlicedCheck();
+        readonly List<RecordedEntity> _sliceQueue = new List<RecordedEntity>();
+        readonly List<Renderer> _sliceRenderers = new List<Renderer>();
+        readonly List<Collider> _sliceColliders = new List<Collider>();
+
+        void QueueSlicedCheck(RecordedEntity entity)
+        {
+            if (ReferenceEquals(_slice.entity, entity))
+            {
+                _slice.again = true;
+                return;
+            }
+            if (entity.sliceQueued)
+                return;
+            entity.sliceQueued = true;
+            _sliceQueue.Add(entity);
+        }
+
+        void ContinueSlicedChecks(ulong tick)
+        {
+            for (int work = 0; work < SlicedCheckMinimumWork || !OverBudget; work++)
+            {
+                if (_slice.entity == null && !StartSlice(tick))
+                    return;
+                SliceStepOnce();
+            }
+        }
+
+        /// <summary>The recording ends: the check under way is done at once.</summary>
+        void FinishSlicedCheck()
+        {
+            while (_slice.entity != null)
+                SliceStepOnce();
+            foreach (var entity in _sliceQueue)
+                entity.sliceQueued = false;
+            _sliceQueue.Clear();
+        }
+
+        bool StartSlice(ulong tick)
+        {
+            while (_sliceQueue.Count > 0)
+            {
+                var entity = _sliceQueue[0];
+                _sliceQueue.RemoveAt(0);
+                if (!entity.sliceQueued)
+                    continue;
+                var root = entity.gameObject;
+                if (!root || !entity.root)
+                {
+                    entity.sliceQueued = false;
+                    continue;
+                }
+
+                var s = _slice;
+                ResetSlice();
+                s.entity = entity;
+                s.root = root;
+                s.tick = tick;
+                s.since = entity.shapeSince != 0 ? entity.shapeSince : tick;
+                s.moving = entity.movingColliders;
+                int hierarchy = entity.root.hierarchyCount;
+                s.changed = hierarchy != entity.checkHierarchy;
+                entity.checkHierarchy = hierarchy;
+                s.nested = HasNestedEntities(entity);
+                s.step = SliceStep.Walk;
+                s.stack.Add((entity.root, root.activeInHierarchy));
+                return true;
+            }
+            return false;
+        }
+
+        void ResetSlice()
+        {
+            var s = _slice;
+            s.entity = null;
+            s.root = null;
+            s.again = s.changed = s.wrote = s.rendererKeyTaken = s.colliderKeyTaken = false;
+            s.at = 0;
+            s.stack.Clear();
+            s.renderers.Clear();
+            s.rendererObjects.Clear();
+            s.colliders.Clear();
+            s.byId.Clear();
+            s.found.Clear();
+            s.names = null;
+            s.nameTemplate = null;
+        }
+
+        void SaveNames(SlicedCheck s)
+        {
+            s.nameTemplate = _nameTemplate;
+            s.nameIndex = _nameIndex;
+            s.nameFill = _nameFill;
+            _nameTemplate = null;
+        }
+
+        void RestoreNames(SlicedCheck s)
+        {
+            _nameTemplate = s.nameTemplate;
+            _nameIndex = s.nameIndex;
+            _nameFill = s.nameFill;
+        }
+
+        /// <summary>One step of the big entity's check: one object of its hierarchy, or one part of a record.</summary>
+        void SliceStepOnce()
+        {
+            var s = _slice;
+            var entity = s.entity;
+            if (!s.root || !entity.root)
+            {
+                AbortSlice(false);
+                return;
+            }
+
+            switch (s.step)
+            {
+                case SliceStep.Walk:
+                {
+                    if (s.stack.Count > 0)
+                    {
+                        var (t, active) = s.stack[s.stack.Count - 1];
+                        s.stack.RemoveAt(s.stack.Count - 1);
+                        if (!t)
+                            return;
+                        t.GetComponents(_sliceRenderers);
+                        foreach (var renderer in _sliceRenderers)
+                            AddEntityRenderer(s.renderers, s.rendererObjects, renderer, s.root, s.nested);
+                        _sliceRenderers.Clear();
+                        if (active)
+                        {
+                            t.GetComponents(_sliceColliders);
+                            foreach (var collider in _sliceColliders)
+                                if (collider.enabled && !IsLocalPhysics(collider) && (!s.nested || OwnedBy(collider, s.root)))
+                                    s.colliders.Add(collider);
+                            _sliceColliders.Clear();
+                        }
+                        for (int c = t.childCount - 1; c >= 0; c--)
+                        {
+                            var child = t.GetChild(c);
+                            s.stack.Add((child, active && child.gameObject.activeSelf));
+                        }
+                        return;
+                    }
+
+                    entity.renderers.Clear();
+                    entity.rendererObjects.Clear();
+                    entity.renderers.AddRange(s.renderers);
+                    entity.rendererObjects.AddRange(s.rendererObjects);
+                    AddDetachedGraphics(entity);
+                    if (RenderersChanged(entity))
+                    {
+                        s.rendererKeyTaken = true;
+                        BeginRenderersRecord(s.json, entity, s.since);
+                        s.names = _rendererNames;
+                        SaveNames(s);
+                        s.at = 0;
+                        s.step = SliceStep.Renderers;
+                    }
+                    else
+                        s.step = SliceStep.Effects;
+                    return;
+                }
+                case SliceStep.Renderers:
+                {
+                    if (s.at < entity.renderers.Count)
+                    {
+                        var renderer = entity.renderers[s.at++];
+                        if (!renderer)
+                        {
+                            AbortSlice(true);
+                            return;
+                        }
+                        RestoreNames(s);
+                        WriteRenderer(s.json, renderer, entity.root.worldToLocalMatrix);
+                        SaveNames(s);
+                        return;
+                    }
+                    RestoreNames(s);
+                    EndRenderersRecord(s.json);
+                    s.rendererKeyTaken = false;
+                    s.names = null;
+                    s.wrote = true;
+                    s.step = SliceStep.Effects;
+                    return;
+                }
+                case SliceStep.Effects:
+                    RefreshEntityEffects(entity, s.nested, s.tick);
+                    s.key.Clear();
+                    s.at = 0;
+                    s.step = SliceStep.ColliderKey;
+                    return;
+                case SliceStep.ColliderKey:
+                {
+                    if (s.at < s.colliders.Count)
+                    {
+                        var collider = s.colliders[s.at++];
+                        if (!collider)
+                        {
+                            AbortSlice(true);
+                            return;
+                        }
+                        ShapeKey(s.key, collider);
+                        return;
+                    }
+                    if (!ColliderKeyChanged(s.key, entity.colliderKey, ref entity.hasColliderKey))
+                    {
+                        CheckColliderPoses(entity.colliders, 0, entity.colliders.Count, entity.root.worldToLocalMatrix,
+                            ref entity.movingColliders, entity.id);
+                        FinishSlice();
+                        return;
+                    }
+                    s.colliderKeyTaken = true;
+                    BeginTracking(entity.colliders, s.byId, s.found);
+                    s.at = 0;
+                    s.step = SliceStep.Track;
+                    return;
+                }
+                case SliceStep.Track:
+                {
+                    if (s.at < s.colliders.Count)
+                    {
+                        var collider = s.colliders[s.at++];
+                        if (!collider)
+                        {
+                            AbortSlice(true);
+                            return;
+                        }
+                        Track(s.byId, s.found, collider, entity.root, entity.root.worldToLocalMatrix);
+                        return;
+                    }
+                    EndTracking(entity.colliders, s.byId, s.found, ref entity.movingColliders);
+                    BeginCollidersRecord(s.json, entity.id, entity.template, s.colliders.Count, s.since);
+                    s.names = _colliderNames;
+                    SaveNames(s);
+                    s.at = 0;
+                    s.step = SliceStep.Colliders;
+                    return;
+                }
+                case SliceStep.Colliders:
+                {
+                    if (s.at < s.colliders.Count)
+                    {
+                        var collider = s.colliders[s.at++];
+                        if (!collider)
+                        {
+                            AbortSlice(true);
+                            return;
+                        }
+                        RestoreNames(s);
+                        WriteCollider(s.json, collider, entity.root.worldToLocalMatrix);
+                        SaveNames(s);
+                        return;
+                    }
+                    RestoreNames(s);
+                    EndCollidersRecord(s.json);
+                    s.colliderKeyTaken = false;
+                    s.names = null;
+                    s.wrote = true;
+                    FinishSlice();
+                    return;
+                }
+            }
+        }
+
+        void FinishSlice()
+        {
+            var s = _slice;
+            var entity = s.entity;
+            entity.shapeSince = 0;
+            bool changed = s.changed || s.wrote || entity.movingColliders != s.moving;
+            entity.checkRounds = changed || entity.movingColliders > 0 ? 1 : Math.Min(entity.checkRounds * 2, MostCheckRounds);
+            entity.checkWait = entity.checkRounds - 1;
+            entity.sliceQueued = false;
+            bool again = s.again;
+            ResetSlice();
+            if (again)
+                CheckSoon(entity);
+        }
+
+        /// <summary>
+        /// The check cannot go on: the entity is gone, or a part of it was destroyed while its record was being
+        /// written. What was taken as recorded is undone, so that the next check writes it.
+        /// </summary>
+        void AbortSlice(bool checkAgain)
+        {
+            var s = _slice;
+            var entity = s.entity;
+            if (entity == null)
+                return;
+            if (s.step == SliceStep.Track)
+                EndTracking(entity.colliders, s.byId, s.found, ref entity.movingColliders);
+            if (s.rendererKeyTaken)
+                entity.rendererKey ^= 1;
+            if (s.colliderKeyTaken)
+            {
+                entity.colliderKey.Clear();
+                entity.colliderKey.WriteByte(0xEE);
+                entity.hasColliderKey = true;
+            }
+            if (s.names != null && s.nameFill && s.nameTemplate != null)
+                s.names.Remove(entity.template);
+            _nameTemplate = null;
+            entity.sliceQueued = false;
+            ResetSlice();
+            if (checkAgain && entity.gameObject)
+                CheckSoon(entity);
+        }
+#endif
 
         /// <summary>The entity <paramref name="t"/> belongs to: the nearest one on or above it, or the one whose graphics it is part of.</summary>
         RecordedEntity EntityOf(Transform t)

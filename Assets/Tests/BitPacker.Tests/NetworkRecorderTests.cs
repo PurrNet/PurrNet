@@ -1362,6 +1362,148 @@ public class NetworkRecorderTests
     }
 
     /// <summary>
+    /// A networked object as big as a building: 313 objects, 300 renderers (one disabled), a branch that is inactive
+    /// (its renderers count, its colliders do not), boxes, spheres and a mesh collider on each branch.
+    /// </summary>
+    GameObject BigPrefab(string name)
+    {
+        var root = new GameObject(name);
+        root.SetActive(false);
+        root.AddComponent<RecordedPlumbingFree>();
+        var mesh = Grid(name + "Mesh", 3, false);
+        for (int b = 0; b < 12; b++)
+        {
+            var branch = new GameObject("Branch" + b);
+            branch.transform.SetParent(root.transform, false);
+            branch.transform.localPosition = new Vector3(b, 0, 0);
+            if (b == 3)
+                branch.SetActive(false);
+            for (int i = 0; i < 25; i++)
+            {
+                var part = new GameObject($"Part{b}_{i}");
+                part.transform.SetParent(branch.transform, false);
+                part.transform.localPosition = new Vector3(0, i * 0.5f, i * 0.1f);
+                part.transform.localRotation = Quaternion.Euler(i * 7, b * 11, 0);
+                part.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var renderer = part.AddComponent<MeshRenderer>();
+                if (i == 9)
+                    renderer.enabled = false;
+                if (i % 3 == 0)
+                    part.AddComponent<BoxCollider>().size = new Vector3(1, 0.5f + i * 0.01f, 2);
+                else if (i % 3 == 1)
+                    part.AddComponent<SphereCollider>().radius = 0.2f + i * 0.01f;
+                if (i == 7)
+                    part.AddComponent<MeshCollider>().sharedMesh = mesh;
+            }
+        }
+        _created.Add(root);
+        _provider.AddRuntimePrefab(name, root);
+        return root;
+    }
+
+    GameObject SpawnAt(GameObject prefab, Vector3 position)
+    {
+        var instance = UnityProxy.Instantiate(prefab, position, Quaternion.identity, _manager.gameObject.scene);
+        instance.SetActive(true);
+        _manager.Spawn(instance);
+        return instance;
+    }
+
+    static string WithoutEntityAndTick(string json) =>
+        System.Text.RegularExpressions.Regex.Replace(json, "^\\{\"entity\":\\d+,\"tick\":\\d+,", "{");
+
+    [UnityTest]
+    public IEnumerator ABigObjectIsCheckedOverSeveralTicksAndWritesTheSameRecords()
+    {
+        yield return StartHost(false);
+        var prefab = BigPrefab("Building");
+        var first = SpawnAt(prefab, Vector3.zero);
+        var second = SpawnAt(prefab, new Vector3(40, 0, 0));
+        int from = RecordingSession.SlicedCheckFrom;
+        var written = new List<List<string>>();
+        try
+        {
+            foreach (bool sliced in new[] { false, true })
+            {
+                RecordingSession.SlicedCheckFrom = sliced ? 256 : int.MaxValue;
+                _recorder.StartRecording(sliced ? "network-recorder-big-sliced.purrrec" : "network-recorder-big-whole.purrrec");
+                Assert.That(_recorder.isRecording, Is.True, "recording started");
+                RecordedEntity a = null, b = null;
+                yield return WaitUntil(() => _recorder.session.TryGetEntity(first, out a) && _recorder.session.TryGetEntity(second, out b));
+                Assert.That(a != null && b != null, Is.True, "both buildings are in the recording");
+                if (sliced)
+                {
+                    yield return Ticks(_manager, 2);
+                    Assert.That(a.sliceQueued || b.sliceQueued, Is.True, "a building is still being checked a few ticks in");
+                }
+                yield return WaitUntil(() => a.shapeSince == 0 && !a.sliceQueued && b.shapeSince == 0 && !b.sliceQueued, 30f);
+                Assert.That(a.shapeSince == 0 && b.shapeSince == 0, Is.True, "both buildings were checked");
+                yield return Ticks(_manager, 60);
+
+                string path = _recorder.currentPath;
+                _recorder.StopRecording();
+                yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+                var meta = ReadMeta(path);
+                Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+                var records = new List<string>();
+                foreach (var entity in new[] { a, b })
+                {
+                    foreach (var kind in new[] { RecordKind.Renderers, RecordKind.Colliders })
+                    {
+                        var found = meta.FindAll(m => m.kind == kind && m.json.StartsWith("{\"entity\":" + entity.id + ","));
+                        Assert.That(found.Count, Is.EqualTo(1), $"{kind} of entity {entity.id} written once (sliced: {sliced}):\n" + Dump(meta));
+                        records.Add(WithoutEntityAndTick(found[0].json));
+                    }
+                }
+                Assert.That(records[0], Does.Contain("\"name\":\"Part0_0\""), "renderers are named");
+                written.Add(records);
+            }
+        }
+        finally
+        {
+            RecordingSession.SlicedCheckFrom = from;
+        }
+
+        for (int i = 0; i < written[0].Count; i++)
+            Assert.That(written[1][i], Is.EqualTo(written[0][i]), $"record {i} is the same when the check is spread over ticks");
+    }
+
+    [UnityTest]
+    public IEnumerator APartDestroyedWhileABigObjectIsCheckedIsNotRecorded()
+    {
+        yield return StartHost(false);
+        var prefab = BigPrefab("Shop");
+        _recorder.StartRecording("network-recorder-big-destroyed.purrrec");
+        Assert.That(_recorder.isRecording, Is.True, "recording started");
+        var instance = SpawnAt(prefab, Vector3.zero);
+        RecordedEntity entity = null;
+        yield return WaitUntil(() => _recorder.session.TryGetEntity(instance, out entity) && entity.sliceQueued);
+        Assert.That(entity != null && entity.sliceQueued, Is.True, "the shop is being checked");
+        yield return Ticks(_manager, 4);
+        Assert.That(entity.sliceQueued, Is.True, "still being checked");
+
+        var part = instance.transform.Find("Branch11/Part11_24").gameObject;
+        string partId = "\"id\":" + RecordingObjectId.Of(part.GetComponent<MeshRenderer>()) + ",";
+        Object.DestroyImmediate(part);
+        yield return WaitUntil(() => entity.shapeSince == 0 && !entity.sliceQueued, 30f);
+        Assert.That(entity.shapeSince, Is.EqualTo(0UL), "the shop was checked");
+        yield return Ticks(_manager, 3);
+
+        string path = _recorder.currentPath;
+        _recorder.StopRecording();
+        yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
+        var meta = ReadMeta(path);
+        Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
+        var renderers = meta.FindAll(m => m.kind == RecordKind.Renderers && m.json.StartsWith("{\"entity\":" + entity.id + ","));
+        Assert.That(renderers.Count, Is.GreaterThanOrEqualTo(1), "its renderers are recorded:\n" + Dump(meta));
+        var last = renderers[renderers.Count - 1].json;
+        Assert.That(last, Does.Not.Contain(partId), "without the destroyed part");
+        Assert.That(System.Text.RegularExpressions.Regex.Matches(last, "\"kind\":\"mesh\"").Count, Is.EqualTo(299), "and with all the others");
+        var colliders = meta.FindAll(m => m.kind == RecordKind.Colliders && m.json.StartsWith("{\"entity\":" + entity.id + ","));
+        Assert.That(colliders.Count, Is.GreaterThanOrEqualTo(1), "its colliders are recorded:\n" + Dump(meta));
+    }
+
+    /// <summary>
     /// What the recorder allocates for an object it has not seen before, by what the object is made of. Run it by
     /// name; the numbers go to test-local/recorder-cost/alloc-probe.txt.
     /// </summary>

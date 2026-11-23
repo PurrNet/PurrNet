@@ -77,8 +77,15 @@ namespace PurrNet.Recording
         bool _typing;
         ulong _tick = ulong.MaxValue;
 
+#if PURRREC_INPUT_SYSTEM
+        void OnEnable() => InputSystem.onActionChange += OnActionChange;
+#endif
+
         void OnDisable()
         {
+#if PURRREC_INPUT_SYSTEM
+            InputSystem.onActionChange -= OnActionChange;
+#endif
             _row = default;
             _typing = false;
         }
@@ -99,6 +106,9 @@ namespace PurrNet.Recording
             if (tick == _tick)
                 return;
             _tick = tick;
+#if PURRREC_INPUT_SYSTEM
+            PollActions();
+#endif
 
             if (_typing)
             {
@@ -198,7 +208,7 @@ namespace PurrNet.Recording
                 }
             }
 
-            PollActions();
+            AccumulateActions();
         }
 
         void Button(UnityEngine.InputSystem.Controls.ButtonControl button, int bit)
@@ -212,6 +222,7 @@ namespace PurrNet.Recording
         sealed class ActionState
         {
             public int id;
+            public InputAction action;
             public string name, type;
             public byte kind;
             public bool unreadable;
@@ -219,6 +230,8 @@ namespace PurrNet.Recording
             public int frame;
             public Vector3 value, sum, written;
             public bool accumulates;
+            public bool summed;
+            public int summedFrame = -1;
             public byte phase, writtenPhase;
             public bool performed;
             public bool disabled;
@@ -227,6 +240,71 @@ namespace PurrNet.Recording
         readonly Dictionary<InputAction, ActionState> _actions = new Dictionary<InputAction, ActionState>();
         readonly List<ActionState> _actionList = new List<ActionState>();
         readonly List<InputAction> _enabledActions = new List<InputAction>();
+        readonly List<ActionState> _summedActions = new List<ActionState>();
+
+        ActionState StateOf(InputAction action)
+        {
+            if (_actions.TryGetValue(action, out var state))
+                return state;
+            var map = action.actionMap;
+            state = new ActionState
+            {
+                id = _actionList.Count + 1,
+                name = map != null && !string.IsNullOrEmpty(map.name) ? map.name + "/" + action.name : action.name,
+                type = action.expectedControlType ?? "",
+                kind = ValueKind(action.expectedControlType)
+            };
+            _actions[action] = state;
+            _actionList.Add(state);
+            return state;
+        }
+
+        void OnActionChange(object changed, InputActionChange change)
+        {
+            if (change == InputActionChange.ActionPerformed && changed is InputAction action &&
+                RecordingSession.active != null && RecordingSession.active.wantsSamples)
+                StateOf(action).performed = true;
+        }
+
+        bool ReadAction(InputAction action, ActionState state, out Vector3 value)
+        {
+            value = default;
+            if (state.unreadable || state.kind == 0)
+                return false;
+            try
+            {
+                switch (state.kind)
+                {
+                    case 1: value.x = action.ReadValue<float>(); break;
+                    case 2: value = action.ReadValue<Vector2>(); break;
+                    default: value = action.ReadValue<Vector3>(); break;
+                }
+                return true;
+            }
+            catch (System.Exception)
+            {
+                state.unreadable = true;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Actions bound to a delta (mouse movement) are summed every frame, so a tick's row holds all the movement
+        /// since the last one; every other action is read once per tick.
+        /// </summary>
+        void AccumulateActions()
+        {
+            if (_typing)
+                return;
+            int frame = Time.frameCount;
+            for (int i = 0; i < _summedActions.Count; i++)
+            {
+                var state = _summedActions[i];
+                if (ReadAction(state.action, state, out var value))
+                    state.sum += value;
+                state.summedFrame = frame;
+            }
+        }
 
         static byte ValueKind(string controlType)
         {
@@ -257,19 +335,7 @@ namespace PurrNet.Recording
             for (int i = 0; i < _enabledActions.Count; i++)
             {
                 var action = _enabledActions[i];
-                if (!_actions.TryGetValue(action, out var state))
-                {
-                    var map = action.actionMap;
-                    state = new ActionState
-                    {
-                        id = _actionList.Count + 1,
-                        name = map != null && !string.IsNullOrEmpty(map.name) ? map.name + "/" + action.name : action.name,
-                        type = action.expectedControlType ?? "",
-                        kind = ValueKind(action.expectedControlType)
-                    };
-                    _actions[action] = state;
-                    _actionList.Add(state);
-                }
+                var state = StateOf(action);
 
                 state.frame = frame;
                 if (_typing)
@@ -279,28 +345,18 @@ namespace PurrNet.Recording
                     continue;
                 }
 
-                var value = default(Vector3);
-                if (!state.unreadable && state.kind != 0)
-                {
-                    try
-                    {
-                        switch (state.kind)
-                        {
-                            case 1: value.x = action.ReadValue<float>(); break;
-                            case 2: value = action.ReadValue<Vector2>(); break;
-                            default: value = action.ReadValue<Vector3>(); break;
-                        }
-                    }
-                    catch (System.Exception)
-                    {
-                        state.unreadable = true;
-                    }
-                }
-
+                ReadAction(action, state, out var value);
                 var control = action.activeControl;
                 state.accumulates = control != null && control.name == "delta";
+                if (state.accumulates && !state.summed)
+                {
+                    state.summed = true;
+                    state.action = action;
+                    _summedActions.Add(state);
+                }
                 state.value = value;
-                state.sum += value;
+                if (state.summedFrame != frame)
+                    state.sum += value;
                 state.phase = (byte)action.phase;
                 state.performed |= action.triggered;
             }

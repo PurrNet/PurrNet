@@ -96,6 +96,7 @@ namespace PurrNet.Recording
         internal int visibleEpoch;
         internal int checkRounds = 1, checkWait, checkHierarchy;
         internal bool checkSoon;
+        internal bool sliceQueued;
         internal readonly List<long> ancestors = new List<long>();
         internal readonly List<long> graphicsRoots = new List<long>();
         internal int effectsHierarchy;
