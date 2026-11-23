@@ -1456,6 +1456,20 @@ public class NetworkRecorderTests
         }
         const int terrainSide = 513;
         var data = new TerrainData { heightmapResolution = terrainSide, size = new Vector3(64f, 10f, 64f) };
+        var grass = new TerrainLayer { name = "Grass" };
+        var rock = new TerrainLayer { name = "Rock" };
+        _created.AddRange(new Object[] { grass, rock, data });
+        data.terrainLayers = new[] { grass, rock };
+        data.alphamapResolution = 64;
+        var weights = new float[64, 64, 2];
+        for (int z = 0; z < 64; z++)
+        for (int x = 0; x < 64; x++)
+        {
+            int dominant = x >= 32 && z < 16 ? 1 : 0;
+            weights[z, x, dominant] = 0.75f;
+            weights[z, x, 1 - dominant] = 0.25f;
+        }
+        data.SetAlphamaps(0, 0, weights);
         var terrain = Terrain.CreateTerrainGameObject(data);
         terrain.name = "StaticTerrain";
         terrain.transform.position = new Vector3(0f, -5f, 40f);
@@ -1492,7 +1506,8 @@ public class NetworkRecorderTests
         _recorder.StopRecording();
         yield return WaitUntil(() => File.Exists(path) && new FileInfo(path).Length > 0);
         var terrainRecords = new List<byte[]>();
-        var meta = ReadMeta(File.ReadAllBytes(path), terrainRecords);
+        var materialRecords = new List<byte[]>();
+        var meta = ReadMeta(File.ReadAllBytes(path), terrainRecords, materialRecords);
         var statics = meta.FindAll(m => m.kind == RecordKind.Colliders && m.json.StartsWith("{\"entity\":null,"));
         var text = new StringBuilder();
         foreach (var record in statics)
@@ -1517,7 +1532,8 @@ public class NetworkRecorderTests
         Assert.That(terrainRecords.Count, Is.GreaterThanOrEqualTo(3));
         var payload = terrainRecords[terrainRecords.Count - 1];
         int at = 0;
-        Assert.That(surfaces, Does.Contain(VarUInt(payload, ref at).ToString()));
+        ulong terrainId = VarUInt(payload, ref at);
+        Assert.That(surfaces, Does.Contain(terrainId.ToString()));
         int nameLength = (int)VarUInt(payload, ref at);
         at += nameLength;
         Assert.That(VarUInt(payload, ref at), Is.EqualTo(terrainSide));
@@ -1530,6 +1546,28 @@ public class NetworkRecorderTests
         int quad = sampleZ * (terrainSide - 1) + sampleX;
         Assert.That(payload.Length - at, Is.EqualTo((terrainSide - 1) * (terrainSide - 1) / 8));
         Assert.That(payload[at + (quad >> 3)], Is.EqualTo(1 << (quad & 7)));
+
+        var materials = materialRecords.Find(record =>
+        {
+            int position = 0;
+            return VarUInt(record, ref position) == terrainId;
+        });
+        Assert.That(materials, Is.Not.Null, "the material grid belongs to the completed terrain snapshot");
+        at = 0;
+        VarUInt(materials, ref at);
+        int materialSide = (int)VarUInt(materials, ref at);
+        Assert.That(materialSide, Is.EqualTo(32));
+        Assert.That(VarUInt(materials, ref at), Is.EqualTo(2));
+        foreach (var layer in new[] { grass, rock })
+        {
+            int length = (int)VarUInt(materials, ref at);
+            Assert.That(Encoding.UTF8.GetString(materials, at, length), Is.EqualTo(layer.name));
+            at += length;
+        }
+        for (int z = 0; z < materialSide; z++)
+        for (int x = 0; x < materialSide; x++)
+            Assert.That(VarUInt(materials, ref at), Is.EqualTo(x >= 16 && z < 8 ? 1 : 0));
+        Assert.That(at, Is.EqualTo(materials.Length));
         Assert.That(meta.Find(m => m.kind == RecordKind.Footer).json, Does.Not.Contain("\"errors\""), "no recorder errors");
     }
 
@@ -1701,14 +1739,16 @@ public class NetworkRecorderTests
     /// <summary>The JSON metadata records of a recording, in file order (batches expanded).</summary>
     internal static List<(RecordKind kind, string json)> ReadMeta(string path) => ReadMeta(File.ReadAllBytes(path));
 
-    internal static List<(RecordKind kind, string json)> ReadMeta(byte[] data, List<byte[]> terrainRecords = null)
+    internal static List<(RecordKind kind, string json)> ReadMeta(byte[] data, List<byte[]> terrainRecords = null,
+        List<byte[]> materialRecords = null)
     {
         var result = new List<(RecordKind, string)>();
-        Read(data, 10, data.Length, result, terrainRecords);
+        Read(data, 10, data.Length, result, terrainRecords, materialRecords);
         return result;
     }
 
-    static void Read(byte[] data, int pos, int end, List<(RecordKind, string)> into, List<byte[]> terrainRecords)
+    static void Read(byte[] data, int pos, int end, List<(RecordKind, string)> into, List<byte[]> terrainRecords,
+        List<byte[]> materialRecords)
     {
         while (pos < end)
         {
@@ -1736,9 +1776,11 @@ public class NetworkRecorderTests
             }
             var k = (RecordKind)(kind & 0x7F);
             if (k == RecordKind.Batch)
-                Read(payload, 0, payload.Length, into, terrainRecords);
+                Read(payload, 0, payload.Length, into, terrainRecords, materialRecords);
             else if (k == RecordKind.Terrain)
                 terrainRecords?.Add(payload);
+            else if (k == RecordKind.TerrainMaterials)
+                materialRecords?.Add(payload);
             else if (k != RecordKind.Chunk && k != RecordKind.Mesh)
                 into.Add((k, Encoding.UTF8.GetString(payload)));
         }

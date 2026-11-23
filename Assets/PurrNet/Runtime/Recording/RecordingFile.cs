@@ -33,7 +33,8 @@ namespace PurrNet.Recording
         Observers = 16,
         Renderers = 17,
         Effects = 18,
-        Terrain = 19
+        Terrain = 19,
+        TerrainMaterials = 20
     }
 
     interface IStepwiseRecordProducer : IRecordProducer

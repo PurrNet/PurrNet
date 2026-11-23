@@ -437,6 +437,7 @@ namespace PurrNet.Recording
 #if PURRNET_TERRAIN
         const int TerrainHeightReadBytes = 256 * 1024;
         const int TerrainHoleReadBytes = 64 * 1024;
+        const int TerrainMaterialSamples = 32;
 
         sealed class TerrainCapture
         {
@@ -445,6 +446,8 @@ namespace PurrNet.Recording
             public int id, print, side, nextHeight;
             public List<float[,]> heights;
             public byte[] holes;
+            public int materialWidth, materialHeight, materialLayers, nextMaterialRow;
+            public int[] materials;
         }
 
         readonly Queue<TerrainCapture> _terrainCaptures = new Queue<TerrainCapture>();
@@ -486,6 +489,13 @@ namespace PurrNet.Recording
                         ReadTerrainHoles(data, holeSide, z, Math.Min(rowsPerRead, holeSide - z), ref holes);
                     _terrainSampled = true;
                     EnqueueTerrain(data, side, id, heights, holes);
+                    if (data.alphamapLayers > 1)
+                    {
+                        var capture = new TerrainCapture
+                            { data = data, key = key, id = id, print = print, side = side, nextHeight = side };
+                        _terrainCaptures.Enqueue(capture);
+                        _terrainRequests.Add(key, capture);
+                    }
                 }
                 return _meshIds[key] = id;
             }
@@ -506,7 +516,7 @@ namespace PurrNet.Recording
                 _terrainCaptures.Dequeue();
                 return;
             }
-            if (capture.heights == null && (_file.pendingTerrainBytes > TerrainHeightReadBytes || lastClosing != null))
+            if (capture.nextHeight == 0 && (_file.pendingTerrainBytes > TerrainHeightReadBytes || lastClosing != null))
                 return;
             var data = capture.data;
             if (!data || TerrainPrint(data) != capture.print)
@@ -518,20 +528,14 @@ namespace PurrNet.Recording
 
             try
             {
-                int side = capture.side;
-                int z = capture.nextHeight;
-                int rows = Math.Min(TerrainHeightReadBytes / (side * sizeof(float)), side - z);
-                capture.heights ??= new List<float[,]>();
-                capture.heights.Add(data.GetHeights(0, z, side, rows));
-                int holeSide = side - 1;
-                int holeRows = Math.Min(rows, holeSide - z);
-                if (holeRows > 0)
-                    ReadTerrainHoles(data, holeSide, z, holeRows, ref capture.holes);
-                capture.nextHeight += rows;
-                if (capture.nextHeight < side)
+                if (capture.nextHeight < capture.side)
+                {
+                    ReadTerrainHeightSlice(capture);
+                    if (capture.nextHeight < capture.side || data.alphamapLayers > 1)
+                        return;
+                }
+                else if (!ReadTerrainMaterialRow(capture))
                     return;
-
-                EnqueueTerrain(data, side, capture.id, capture.heights, capture.holes);
             }
             catch (Exception)
             {
@@ -539,6 +543,78 @@ namespace PurrNet.Recording
             }
             _terrainCaptures.Dequeue();
             CancelTerrainCapture(capture.key);
+        }
+
+        void ReadTerrainHeightSlice(TerrainCapture capture)
+        {
+            var data = capture.data;
+            int side = capture.side;
+            int z = capture.nextHeight;
+            int rows = Math.Min(TerrainHeightReadBytes / (side * sizeof(float)), side - z);
+            capture.heights ??= new List<float[,]>();
+            capture.heights.Add(data.GetHeights(0, z, side, rows));
+            int holeSide = side - 1;
+            int holeRows = Math.Min(rows, holeSide - z);
+            if (holeRows > 0)
+                ReadTerrainHoles(data, holeSide, z, holeRows, ref capture.holes);
+            capture.nextHeight += rows;
+            if (capture.nextHeight == side)
+            {
+                EnqueueTerrain(data, side, capture.id, capture.heights, capture.holes);
+                capture.heights = null;
+                capture.holes = null;
+            }
+        }
+
+        // Sample one row of cell centers per frame. Point reads keep allocations independent of alphamap size.
+        bool ReadTerrainMaterialRow(TerrainCapture capture)
+        {
+            var data = capture.data;
+            int layers = data.alphamapLayers;
+            int width = data.alphamapWidth, height = data.alphamapHeight;
+            int side = Math.Min(TerrainMaterialSamples, Math.Min(width, height));
+            if (layers < 2 || side == 0)
+                return true;
+
+            if (capture.materials == null || capture.materialWidth != width ||
+                capture.materialHeight != height || capture.materialLayers != layers)
+            {
+                capture.materialWidth = width;
+                capture.materialHeight = height;
+                capture.materialLayers = layers;
+                capture.materials = new int[side * side];
+                capture.nextMaterialRow = 0;
+            }
+
+            int row = capture.nextMaterialRow++;
+            int z = (2 * row + 1) * height / (2 * side);
+            for (int col = 0; col < side; col++)
+            {
+                int x = (2 * col + 1) * width / (2 * side);
+                var weights = data.GetAlphamaps(x, z, 1, 1);
+                int dominant = 0;
+                for (int layer = 1; layer < layers; layer++)
+                    if (weights[0, 0, layer] > weights[0, 0, dominant])
+                        dominant = layer;
+                capture.materials[row * side + col] = dominant;
+            }
+            if (capture.nextMaterialRow < side)
+                return false;
+
+            var terrainLayers = data.terrainLayers;
+            if (terrainLayers.Length != layers)
+                return true;
+            var buffer = _meshBuffer;
+            buffer.Clear();
+            buffer.WriteVarUInt((ulong)capture.id);
+            buffer.WriteVarUInt((ulong)side);
+            buffer.WriteVarUInt((ulong)layers);
+            foreach (var layer in terrainLayers)
+                buffer.WriteString(layer ? Name(layer) : string.Empty);
+            foreach (int material in capture.materials)
+                buffer.WriteVarUInt((ulong)material);
+            WriteMeta(RecordKind.TerrainMaterials, buffer.data, buffer.length);
+            return true;
         }
 
         void EnqueueTerrain(TerrainData data, int side, int id, List<float[,]> heights, byte[] holes)
@@ -563,6 +639,7 @@ namespace PurrNet.Recording
             {
                 capture.heights = null;
                 capture.holes = null;
+                capture.materials = null;
             }
         }
 
@@ -623,6 +700,9 @@ namespace PurrNet.Recording
         {
             if (textureName == TerrainData.HolesTextureName)
                 OnTerrainChanged(terrain, region, synched);
+            else if (textureName == TerrainData.AlphamapTextureName && _file != null && terrain && terrain.terrainData &&
+                     _terrainRequests.TryGetValue(RecordingObjectId.Of(terrain.terrainData), out var capture))
+                capture.nextMaterialRow = 0;
         }
 #endif
     }

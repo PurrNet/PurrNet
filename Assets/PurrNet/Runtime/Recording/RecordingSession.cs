@@ -2295,7 +2295,8 @@ namespace PurrNet.Recording
                         goto default;
                     BeginCollider(json, "mesh", collider, worldToSpace * Matrix4x4.Translate(collider.transform.position));
                     json.Prop("mesh", terrainId).Prop("convex", false);
-                    if (_terrainRequests.ContainsKey(RecordingObjectId.Of(terrain.terrainData)))
+                    if (_terrainRequests.TryGetValue(RecordingObjectId.Of(terrain.terrainData), out var pending) &&
+                        pending.nextHeight < pending.side)
                     {
                         // A recording can stop while the corresponding grid is still being read.
                         var bounds = terrain.terrainData.bounds;
