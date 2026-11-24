@@ -1,3 +1,10 @@
+# [1.26.0-beta.40](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.39...v1.26.0-beta.40) (2026-11-24)
+
+
+### Bug Fixes
+
+* listen host no longer logs a HierarchyPool error on shutdown after despawning a scene object ([c6a6125](https://github.com/PurrNet/PurrNet/commit/c6a6125813308b6d16e78cd2be15cbe6f4e075ba))
+
 # [1.26.0-beta.39](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.38...v1.26.0-beta.39) (2026-11-22)
 
 
