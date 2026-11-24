@@ -343,6 +343,8 @@ var hierarchy =
       [ "PurrNet.Modules.FinishSpawnPacket", "structPurrNet_1_1Modules_1_1FinishSpawnPacket.html", null ],
       [ "PurrNet.Modules.NetworkTransformDelta", "structPurrNet_1_1Modules_1_1NetworkTransformDelta.html", null ],
       [ "PurrNet.Modules.PlayerJoinedEvent", "structPurrNet_1_1Modules_1_1PlayerJoinedEvent.html", null ],
+      [ "PurrNet.Modules.PlayerKickedAck", "structPurrNet_1_1Modules_1_1PlayerKickedAck.html", null ],
+      [ "PurrNet.Modules.PlayerKickedPacket", "structPurrNet_1_1Modules_1_1PlayerKickedPacket.html", null ],
       [ "PurrNet.Modules.PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
       [ "PurrNet.Modules.PlayerSnapshotEvent", "structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html", null ],
       [ "PurrNet.Modules.SceneSpawnReconcilePacket", "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html", null ],

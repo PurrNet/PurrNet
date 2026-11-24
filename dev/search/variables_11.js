@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['webrtcurl_0',['webRtcUrl',['../structPurrNet_1_1Transports_1_1HostJoinInfo.html#a485a7fe71fa23b6a00a9d5e50c6bfcf3',1,'PurrNet.Transports.HostJoinInfo.webRtcUrl()'],['../structPurrNet_1_1Transports_1_1ClientJoinInfo.html#a587e02cafb3cdc18477b9de9825ab899',1,'PurrNet.Transports.ClientJoinInfo.webRtcUrl()']]]
+  ['unfragmented_5foverhead_0',['UNFRAGMENTED_OVERHEAD',['../classPurrNet_1_1Transports_1_1FragmentationLayer.html#ae9a82772968d3bf5fd32dada806f042f',1,'PurrNet::Transports::FragmentationLayer']]],
+  ['ussclass_1',['UssClass',['../classPurrNet_1_1Recording_1_1DontRecordUI.html#adde53649eb1f5b110bdae6cbb43253fc',1,'PurrNet::Recording::DontRecordUI']]]
 ];

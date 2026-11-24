@@ -106,6 +106,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:aa6e66c25a98c1c435460fad44b8d26b2"><td class="memItemLeft" align="right" valign="top"><a id="aa6e66c25a98c1c435460fad44b8d26b2" name="aa6e66c25a98c1c435460fad44b8d26b2"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>ClientDisconnectInfo</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#af64deec1a565e11ae20ec1239434fd70">connection</a>, DisconnectReason <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#a6d0675e21ec8a742bc3c589173bb076b">reason</a>, bool <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#a3dcc36b1dec762f8b669a27f13959760">wasLocalRequest</a>)</td></tr>
 <tr class="separator:aa6e66c25a98c1c435460fad44b8d26b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85b0c2a6b8b2bd1f51fe88d9900e3584"><td class="memItemLeft" align="right" valign="top"><a id="a85b0c2a6b8b2bd1f51fe88d9900e3584" name="a85b0c2a6b8b2bd1f51fe88d9900e3584"></a>
+&#160;</td><td class="memItemRight" valign="bottom"><b>ClientDisconnectInfo</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#af64deec1a565e11ae20ec1239434fd70">connection</a>, DisconnectReason <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#a6d0675e21ec8a742bc3c589173bb076b">reason</a>, bool <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#a3dcc36b1dec762f8b669a27f13959760">wasLocalRequest</a>, bool <a class="el" href="structPurrNet_1_1ClientDisconnectInfo.html#ab8fd726ea850ad5270506e76dd235e34">wasKicked</a>)</td></tr>
+<tr class="separator:a85b0c2a6b8b2bd1f51fe88d9900e3584"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="properties" name="properties"></a>
 Properties</h2></td></tr>
@@ -121,6 +124,10 @@ DisconnectReason&#160;</td><td class="memItemRight" valign="bottom"><b>reason</b
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>wasLocalRequest</b><code> [get]</code></td></tr>
 <tr class="memdesc:a3dcc36b1dec762f8b669a27f13959760"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when this process asked for the disconnect (StopClient, or a promotion or transfer that restarted the client). False when the server or the network ended the connection.  <br /></td></tr>
 <tr class="separator:a3dcc36b1dec762f8b669a27f13959760"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8fd726ea850ad5270506e76dd235e34"><td class="memItemLeft" align="right" valign="top"><a id="ab8fd726ea850ad5270506e76dd235e34" name="ab8fd726ea850ad5270506e76dd235e34"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>wasKicked</b><code> [get]</code></td></tr>
+<tr class="memdesc:ab8fd726ea850ad5270506e76dd235e34"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when the server kicked this client (<a class="el" href="classPurrNet_1_1Modules_1_1PlayersManager.html#a8849dbd4d4c9c2468a7601c33bd83289" title="Kick a player from the server. The player leaves at once. If the user has a connection,...">PurrNet.Modules.PlayersManager.KickPlayer</a>): the host is still there, so this is not a host loss.  <br /></td></tr>
+<tr class="separator:ab8fd726ea850ad5270506e76dd235e34"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p >How the client connection ended.  </p>
