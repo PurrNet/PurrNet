@@ -1,3 +1,10 @@
+# [1.26.0-beta.41](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.40...v1.26.0-beta.41) (2026-11-24)
+
+
+### Features
+
+* tell a kicked client it was kicked (ClientDisconnectInfo.wasKicked) ([#350](https://github.com/PurrNet/PurrNet/issues/350)) ([891e80e](https://github.com/PurrNet/PurrNet/commit/891e80e9acdd73cc85a1923f55fc1e413cdb5d75))
+
 # [1.26.0-beta.40](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.39...v1.26.0-beta.40) (2026-11-24)
 
 
