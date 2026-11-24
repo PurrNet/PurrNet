@@ -1,3 +1,10 @@
+# [1.26.0-beta.42](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.41...v1.26.0-beta.42) (2026-11-24)
+
+
+### Bug Fixes
+
+* kicked clients can no longer re-authenticate before their connection closes ([f46fcae](https://github.com/PurrNet/PurrNet/commit/f46fcae4655b0f9bac61435c6da8d15a899bd948))
+
 # [1.26.0-beta.41](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.40...v1.26.0-beta.41) (2026-11-24)
 
 
