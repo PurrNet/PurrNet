@@ -2623,6 +2623,7 @@ namespace PurrNet
             
             _lastSendTime = 0d;
             _clientStopRequested = false;
+            _clientKicked = false;
             _transport.StartClient(this);
         }
 
