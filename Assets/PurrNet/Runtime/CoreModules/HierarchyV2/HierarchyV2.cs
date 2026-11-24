@@ -426,7 +426,7 @@ namespace PurrNet.Modules
             _playersManager.Unsubscribe<SceneSpawnReconcilePacket>(OnSceneSpawnReconcilePacket);
             _playersManager.Unsubscribe<ChangeParentPacket>(OnParentChangedPacket);
 
-            if (!_manager.isTranferingToNewServer)
+            if (!_manager.isTranferingToNewServer && (_asServer || !_manager.TryGetModule<HierarchyFactory>(true, out var factory) || !factory.TryGetHierarchy(_sceneId, out _)))
                 NetworkPoolManager.RemovePool(_sceneId);
         }
 
