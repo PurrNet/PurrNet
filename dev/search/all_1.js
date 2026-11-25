@@ -16,9 +16,7 @@ var searchData=
   ['broadcastmodule_13',['broadcastModule',['../classPurrNet_1_1RawNetManager.html#af3b4d846154aad1a0a53bc54d9ced439',1,'PurrNet.RawNetManager.broadcastModule()'],['../classPurrNet_1_1NetworkManager.html#a8d129afa999c0098236701eef111185c',1,'PurrNet.NetworkManager.broadcastModule()']]],
   ['broadcastmodule_14',['BroadcastModule',['../classPurrNet_1_1Modules_1_1BroadcastModule.html',1,'PurrNet::Modules']]],
   ['broadcastsample_15',['BroadcastSample',['../structPurrNet_1_1Profiler_1_1BroadcastSample.html',1,'PurrNet::Profiler']]],
-  ['bufferstream_16',['BufferStream',['../classPurrNet_1_1Recording_1_1BufferStream.html',1,'PurrNet::Recording']]],
-  ['buildrepresentatives_17',['BuildRepresentatives',['../classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html#a91e5ad72323a0467ef3a10a6c61a0970',1,'PurrNet::Modules::DeltaFanoutGrouper']]],
-  ['bypassloggingexception_18',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
-  ['bytedata_19',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]],
-  ['byteshelf_20',['ByteShelf',['../classPurrNet_1_1Recording_1_1ByteShelf.html',1,'PurrNet::Recording']]]
+  ['buildrepresentatives_16',['BuildRepresentatives',['../classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html#a91e5ad72323a0467ef3a10a6c61a0970',1,'PurrNet::Modules::DeltaFanoutGrouper']]],
+  ['bypassloggingexception_17',['BypassLoggingException',['../classPurrNet_1_1BypassLoggingException.html',1,'PurrNet']]],
+  ['bytedata_18',['ByteData',['../structPurrNet_1_1Transports_1_1ByteData.html',1,'PurrNet::Transports']]]
 ];

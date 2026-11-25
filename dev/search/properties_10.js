@@ -9,6 +9,5 @@ var searchData=
   ['trackedfields_6',['trackedFields',['../classPurrNet_1_1NetworkReflection.html#a660330810b5aa4f51f0d76375e8ef96f',1,'PurrNet::NetworkReflection']]],
   ['trackedmethods_7',['trackedMethods',['../classPurrNet_1_1NetworkReflection.html#a89989ca079b6833f142882f4b364ea15',1,'PurrNet::NetworkReflection']]],
   ['trackedtype_8',['trackedType',['../classPurrNet_1_1NetworkReflection.html#a7439d1f16446aa4bd85b64328ea25323',1,'PurrNet::NetworkReflection']]],
-  ['transformsreadbyjob_9',['transformsReadByJob',['../classPurrNet_1_1Recording_1_1RecordingSession.html#a879d3d028c4f02d21afb891bd646e6dc',1,'PurrNet::Recording::RecordingSession']]],
-  ['transport_10',['transport',['../classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908',1,'PurrNet.NetworkManager.transport()'],['../classPurrNet_1_1Transports_1_1GenericTransport.html#aaab002062b833cde82d0eed05d1633a2',1,'PurrNet.Transports.GenericTransport.transport()']]]
+  ['transport_9',['transport',['../classPurrNet_1_1NetworkManager.html#a60c2991ee334fb4b434c4b49f5cc7908',1,'PurrNet.NetworkManager.transport()'],['../classPurrNet_1_1Transports_1_1GenericTransport.html#aaab002062b833cde82d0eed05d1633a2',1,'PurrNet.Transports.GenericTransport.transport()']]]
 ];
