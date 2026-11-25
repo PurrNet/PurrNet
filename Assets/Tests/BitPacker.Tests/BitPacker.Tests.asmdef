@@ -45,7 +45,7 @@
         },
         {
             "name": "dev.purrnet.services",
-            "expression": "1.3.0-beta.5",
+            "expression": "1.3.0-beta.6",
             "define": "PURRSERVICES_RECORDER"
         }
     ],
