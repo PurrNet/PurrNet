@@ -8,25 +8,13 @@ using PurrNet.Logging;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncQueue<T> : NetworkModule, IReadOnlyCollection<T>
+    public partial class SyncQueue<T> : NetworkModule, IReadOnlyCollection<T>
     {
         [SerializeField] private bool _ownerAuth;
 
         [SerializeField] private bool _ownerOnly;
         [SerializeField] private SerializableQueue<T> _serializedQueue = new SerializableQueue<T>();
         private Queue<T> _queue = new Queue<T>();
-
-        internal override Type recordedType => typeof(Recording.RecordedValue<Queue<T>>);
-
-        static readonly bool _recordedOnChange = RecordedPlain(typeof(T));
-
-        internal override bool recordedOnChange => _recordedOnChange;
-
-        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
-        {
-            var row = new Recording.RecordedValue<Queue<T>> { value = _queue };
-            session.AppendRow(rows, tick, ref row);
-        }
 
         public delegate void SyncQueueChanged<TYPE>(SyncQueueChange<TYPE> change);
 

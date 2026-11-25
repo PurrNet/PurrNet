@@ -11,27 +11,13 @@ using PurrNet.Utils;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver, ITickListener
+    public partial class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver, ITickListener
     {
         private TickManager _tickManager;
 
         [SerializeField, PurrLock] private T _value;
 
         private bool _isDirty;
-
-        internal override Type recordedType => typeof(Recording.RecordedValue<T>);
-
-        // A string or plain data only changes when the value is set; anything else can change from the inside.
-        static readonly bool _recordedOnChange = typeof(T) == typeof(string) ||
-                                                 Unity.Collections.LowLevel.Unsafe.UnsafeUtility.IsUnmanaged(typeof(T));
-
-        internal override bool recordedOnChange => _recordedOnChange;
-
-        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
-        {
-            var row = new Recording.RecordedValue<T> { value = _value };
-            session.AppendRow(rows, tick, ref row);
-        }
 
         [SerializeField, Space(-5), Header("Sync Settings"), PurrLock]
         private bool _ownerAuth;

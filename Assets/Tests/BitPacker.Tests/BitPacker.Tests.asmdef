@@ -9,7 +9,8 @@
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "Unity.Addressables",
-        "Unity.ResourceManager"
+        "Unity.ResourceManager",
+        "PurrServices.Recording"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -41,6 +42,11 @@
             "name": "com.unity.addressables",
             "expression": "",
             "define": "ADDRESSABLES_PURRNET_SUPPORT"
+        },
+        {
+            "name": "dev.purrnet.services",
+            "expression": "1.3.0-beta.5",
+            "define": "PURRSERVICES_RECORDER"
         }
     ],
     "noEngineReferences": false

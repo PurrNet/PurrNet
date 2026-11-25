@@ -12,31 +12,13 @@ namespace PurrNet
 {
     [Serializable]
     [PackerDependencies(typeof(NetworkIdentity), typeof(byte))]
-    public class NetworkModule
+    public partial class NetworkModule
     {
         public NetworkIdentity parent { get; private set; }
 
-        /// <summary>Row type of this module's recorded state, or null when it is not recorded.</summary>
-        internal virtual Type recordedType => null;
+        partial void OnRecordedChanged();
 
-        /// <summary>Writes this module's state for <paramref name="tick"/> as one <see cref="recordedType"/> row.</summary>
-        internal virtual void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick) { }
-
-        /// <summary>Whether this module says when its recorded state changes; otherwise a recorder asks every tick.</summary>
-        internal virtual bool recordedOnChange => false;
-
-        /// <summary>Set by the recorder that records this module.</summary>
-        internal Recording.RecordedLife recordedLife;
-
-        /// <summary>Whether a value of this type only changes when it is set (plain data or a string).</summary>
-        internal static bool RecordedPlain(Type type) =>
-            type == typeof(string) || Unity.Collections.LowLevel.Unsafe.UnsafeUtility.IsUnmanaged(type);
-
-        internal void RecordedChanged()
-        {
-            if (recordedLife != null)
-                recordedLife.changed = true;
-        }
+        internal void RecordedChanged() => OnRecordedChanged();
 
         [UsedImplicitly] public string name { get; private set; }
 

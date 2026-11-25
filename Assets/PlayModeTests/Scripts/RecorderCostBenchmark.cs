@@ -1,3 +1,4 @@
+#if PURRSERVICES_RECORDER
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -365,3 +366,4 @@ public sealed class RecorderCostBenchmark : MonoBehaviour
                 DestroyImmediate(created[i]);
     }
 }
+#endif

@@ -30,6 +30,11 @@
     "defineConstraints": [],
     "versionDefines": [
         {
+            "name": "dev.purrnet.services",
+            "expression": "",
+            "define": "PURRNET_RECORDING_HOST"
+        },
+        {
             "name": "com.cysharp.unitask",
             "expression": "",
             "define": "UNITASK_PURRNET_SUPPORT"

@@ -16,7 +16,7 @@ namespace PurrNet
         void TriggerCallback(PlayerID playerId, BitPacker data, bool asServer);
     }
 
-    internal readonly struct PlayerBroadcastCallback<T> : IPlayerBroadcastCallback
+    internal readonly partial struct PlayerBroadcastCallback<T> : IPlayerBroadcastCallback
     {
         readonly PlayerBroadcastDelegate<T> callback;
 
@@ -34,10 +34,11 @@ namespace PurrNet
         {
             var result = default(T);
             Packer<T>.Read(data, ref result);
-            if (Recording.RecordedCalls.receiving != null)
-                Recording.RecordedCalls.BroadcastReceived(playerId, result);
+            RecordReceived(playerId, in result);
             callback?.Invoke(playerId, result, asServer);
         }
+
+        partial void RecordReceived(PlayerID playerId, in T data);
     }
 
     [PackerDependencies]

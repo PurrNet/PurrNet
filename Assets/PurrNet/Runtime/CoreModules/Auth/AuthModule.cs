@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using PurrNet.Authentication;
 using PurrNet.Logging;
 using PurrNet.Transports;
@@ -33,6 +34,8 @@ namespace PurrNet.Modules
         private AuthenticationLayer _authenticator;
         private readonly List<WaitingConnectionAuth> _waitingConnections = new List<WaitingConnectionAuth>();
         private readonly List<PendingDenialAck> _pendingDenialAcks = new List<PendingDenialAck>();
+        private readonly Dictionary<Connection, Dictionary<string, string>> _connectionData = new Dictionary<Connection, Dictionary<string, string>>();
+        private static readonly Dictionary<string, Func<string>> connectionDataSources = new Dictionary<string, Func<string>>();
 
         public event Action<Connection, AuthenticationResponse> onConnection;
 
@@ -47,6 +50,50 @@ namespace PurrNet.Modules
         public event Action<Connection, DenialKind, ByteData?> onAuthenticationDenied;
 
         public string clientConnectionCookie => _cookiesModule.Get(CONNECTION_COOKIE_KEY);
+
+        /// <summary>
+        /// Adds a value clients send to the server with their authentication request, under <paramref name="key"/>.
+        /// It is read each time a client connects; null leaves it out. The server reads it with
+        /// <see cref="TryGetConnectionData"/>.
+        /// </summary>
+        [PublicAPI]
+        public static void SetConnectionData(string key, Func<string> value)
+        {
+            if (value == null)
+                connectionDataSources.Remove(key);
+            else
+                connectionDataSources[key] = value;
+        }
+
+        internal static Dictionary<string, string> CollectConnectionData()
+        {
+            if (connectionDataSources.Count == 0)
+                return null;
+
+            var data = new Dictionary<string, string>(connectionDataSources.Count);
+            foreach (var pair in connectionDataSources)
+            {
+                try
+                {
+                    var value = pair.Value();
+                    if (value != null)
+                        data[pair.Key] = value;
+                }
+                catch (Exception e)
+                {
+                    PurrLogger.LogException(e);
+                }
+            }
+            return data;
+        }
+
+        /// <summary>Server only. The value the client on <paramref name="conn"/> sent under <paramref name="key"/> (<see cref="SetConnectionData"/>).</summary>
+        [PublicAPI]
+        public bool TryGetConnectionData(Connection conn, string key, out string value)
+        {
+            value = null;
+            return _connectionData.TryGetValue(conn, out var data) && data.TryGetValue(key, out value);
+        }
 
         internal void SetClientConnectionCookie(string cookie)
         {
@@ -90,6 +137,7 @@ namespace PurrNet.Modules
             if (!_authenticator)
                 return;
 
+            _broadcastModule.Subscribe<AuthenticationRequestData>(OnAuthRequestData);
             _authenticator.onAuthenticationComplete += OnAuthenticationComplete;
             _authenticator.onAuthenticationDeniedWithReason += OnAuthenticatorDeniedWithReason;
             _authenticator.Subscribe(_manager, _broadcastModule, _playersManager);
@@ -105,10 +153,12 @@ namespace PurrNet.Modules
 
             _broadcastModule.Unsubscribe<AuthenticationRequest>(OnNonAuthRequest);
             _broadcastModule.Unsubscribe<AuthenticationDenialAck>(OnDenialAck);
+            _connectionData.Clear();
 
             if (!_authenticator)
                 return;
 
+            _broadcastModule.Unsubscribe<AuthenticationRequestData>(OnAuthRequestData);
             _authenticator.onAuthenticationComplete -= OnAuthenticationComplete;
             _authenticator.onAuthenticationDeniedWithReason -= OnAuthenticatorDeniedWithReason;
             _authenticator.Unsubscribe(_manager, _broadcastModule, _playersManager);
@@ -128,7 +178,8 @@ namespace PurrNet.Modules
                     _broadcastModule.SendToServer(new AuthenticationRequest
                     {
                         cookie = cookie,
-                        version = NetworkManager.version
+                        version = NetworkManager.version,
+                        connectionData = CollectConnectionData()
                     });
                 }
 
@@ -148,6 +199,7 @@ namespace PurrNet.Modules
                 return;
 
             RemoveFromWaitingList(conn);
+            _connectionData.Remove(conn);
 
             for (int i = _pendingDenialAcks.Count - 1; i >= 0; i--)
             {
@@ -156,12 +208,28 @@ namespace PurrNet.Modules
             }
         }
 
+        private void OnAuthRequestData(Connection conn, AuthenticationRequestData data, bool asserver)
+        {
+            if (!asserver)
+                return;
+            SetConnectionData(conn, data.connectionData);
+        }
+
+        private void SetConnectionData(Connection conn, Dictionary<string, string> data)
+        {
+            if (data == null || data.Count == 0)
+                _connectionData.Remove(conn);
+            else
+                _connectionData[conn] = data;
+        }
+
         private void OnNonAuthRequest(Connection conn, AuthenticationRequest data, bool asserver)
         {
             if (!asserver)
                 return;
 
             RemoveFromWaitingList(conn);
+            SetConnectionData(conn, data.connectionData);
 
             if (_authenticator)
             {

@@ -57,7 +57,7 @@ namespace PurrNet
     }
 
     [Serializable]
-    public class SyncArray<T> : NetworkModule, IList<T>, ISerializationCallbackReceiver, ITick
+    public partial class SyncArray<T> : NetworkModule, IList<T>, ISerializationCallbackReceiver, ITick
     {
         [SerializeField] private bool _ownerAuth;
 
@@ -67,18 +67,6 @@ namespace PurrNet
         [SerializeField, Min(0)] private float _sendIntervalInSeconds;
 
         private T[] _array;
-
-        internal override Type recordedType => typeof(Recording.RecordedValue<T[]>);
-
-        static readonly bool _recordedOnChange = RecordedPlain(typeof(T));
-
-        internal override bool recordedOnChange => _recordedOnChange;
-
-        internal override void Record(Recording.RecordingSession session, Recording.StreamRows rows, ulong tick)
-        {
-            var row = new Recording.RecordedValue<T[]> { value = _array };
-            session.AppendRow(rows, tick, ref row);
-        }
 
         public delegate void SyncArrayChanged<TYPE>(SyncArrayChange<TYPE> change);
 

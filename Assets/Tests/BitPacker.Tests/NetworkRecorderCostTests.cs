@@ -1,3 +1,4 @@
+#if PURRSERVICES_RECORDER
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -173,5 +174,4 @@ public class RecorderPollingCostTests
         }
     }
 }
-
-public class RecordedPlumbingFree : NetworkBehaviour { }
+#endif

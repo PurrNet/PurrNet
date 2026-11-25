@@ -412,6 +412,27 @@ namespace PurrNet.Codegen
             return name;
         }
 
+        /// <summary>PurrServices' recorder, compiled into PurrNet.Runtime when it is installed; null without it.</summary>
+        static TypeDefinition FindRecordedCalls(ModuleDefinition module)
+        {
+            foreach (var reference in module.AssemblyReferences)
+            {
+                if (reference.Name != "PurrNet.Runtime")
+                    continue;
+
+                try
+                {
+                    return module.AssemblyResolver.Resolve(reference)?.MainModule.GetType("PurrNet.Recording.RecordedCalls");
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Hands the call to the recorder: RecordedCalls.BeginReceived/BeginSent, one Arg per parameter, End.
         /// Skipped at run time unless a server recording is running.
@@ -422,7 +443,10 @@ namespace PurrNet.Codegen
             if (rpc.recordName == null)
                 return;
 
-            var calls = module.GetTypeDefinition(typeof(PurrNet.Recording.RecordedCalls));
+            var calls = FindRecordedCalls(module);
+            if (calls == null)
+                return;
+
             var enabled = calls.GetField("enabled").Import(module);
             var begin = calls.GetMethod(info != null ? "BeginReceived" : "BeginSent").Import(module);
             var arg = calls.GetMethod("Arg", true).Import(module);

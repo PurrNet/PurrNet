@@ -1,3 +1,4 @@
+#if PURRSERVICES_RECORDER
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -695,3 +696,4 @@ public class RecorderClientPartScenario : Scenario
         }
     }
 }
+#endif
