@@ -1,3 +1,10 @@
+# [1.26.0-beta.43](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.42...v1.26.0-beta.43) (2026-11-25)
+
+
+### Bug Fixes
+
+* migrate match service ([5f5fc68](https://github.com/PurrNet/PurrNet/commit/5f5fc6824a70a1d5bb951a57b6c6ad0419aed7d6))
+
 # [1.26.0-beta.42](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.41...v1.26.0-beta.42) (2026-11-24)
 
 
