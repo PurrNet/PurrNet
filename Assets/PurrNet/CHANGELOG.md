@@ -1,3 +1,10 @@
+# [1.26.0-beta.44](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.43...v1.26.0-beta.44) (2026-11-25)
+
+
+### Bug Fixes
+
+* assign proper version in the assembly definitions ([b90d204](https://github.com/PurrNet/PurrNet/commit/b90d204bc71230428e33499d3e9d1ac3ed15b1df))
+
 # [1.26.0-beta.43](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.42...v1.26.0-beta.43) (2026-11-25)
 
 
