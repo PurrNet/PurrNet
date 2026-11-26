@@ -1,3 +1,10 @@
+# [1.26.0-beta.45](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.44...v1.26.0-beta.45) (2026-11-26)
+
+
+### Bug Fixes
+
+* StatisticsManager picks up an existing connection when created after connecting ([5813ecc](https://github.com/PurrNet/PurrNet/commit/5813ecc26b3370420810c89608ed35f06868834a))
+
 # [1.26.0-beta.44](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.43...v1.26.0-beta.44) (2026-11-25)
 
 
