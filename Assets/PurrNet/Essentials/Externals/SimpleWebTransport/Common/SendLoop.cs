@@ -58,6 +58,9 @@ namespace JamesFrowen.SimpleWeb
                 {
                     // wait for message
                     conn.sendPending.Wait();
+                    // Dispose wakes this loop to end it.
+                    if (conn.IsDisposed)
+                        break;
                     // wait for 1ms for mirror to send other messages
                     if (SendLoopConfig.sleepBeforeSend)
                     {

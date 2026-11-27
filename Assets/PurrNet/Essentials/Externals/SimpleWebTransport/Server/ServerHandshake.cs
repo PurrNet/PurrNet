@@ -21,18 +21,12 @@ namespace JamesFrowen.SimpleWeb
         // this isn't an official max, just a reasonable size for a websocket handshake
         readonly int maxHttpHeaderSize = 3000;
 
-        readonly SHA1 sha1 = SHA1.Create();
         readonly BufferPool bufferPool;
 
         public ServerHandshake(BufferPool bufferPool, int handshakeMaxSize)
         {
             this.bufferPool = bufferPool;
             maxHttpHeaderSize = handshakeMaxSize;
-        }
-
-        ~ServerHandshake()
-        {
-            sha1.Dispose();
         }
 
         public bool TryHandshake(Connection conn)
@@ -130,10 +124,14 @@ namespace JamesFrowen.SimpleWeb
             Buffer.BlockCopy(Constants.HandshakeGUIDBytes, 0, keyBuffer, KeyLength, Constants.HandshakeGUIDLength);
         }
 
-        byte[] CreateHash(byte[] keyBuffer)
+        // One ServerHandshake serves every connection, each handshaken on its own receive thread, so the hash
+        // instance must not be shared: SHA1 is not thread-safe, and clients connecting at the same moment got a
+        // wrong Sec-WebSocket-Accept and refused the server (WebSocketServerHandshakeTests).
+        static byte[] CreateHash(byte[] keyBuffer)
         {
             Log.Verbose($"Handshake Hashing {Encoding.ASCII.GetString(keyBuffer, 0, MergedKeyLength)}");
-            return sha1.ComputeHash(keyBuffer, 0, MergedKeyLength);
+            using (SHA1 sha1 = SHA1.Create())
+                return sha1.ComputeHash(keyBuffer, 0, MergedKeyLength);
         }
 
         static void CreateResponse(byte[] keyHash, byte[] responseBuffer)
