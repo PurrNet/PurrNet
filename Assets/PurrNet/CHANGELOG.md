@@ -1,3 +1,10 @@
+# [1.26.0-beta.47](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.46...v1.26.0-beta.47) (2026-11-27)
+
+
+### Bug Fixes
+
+* update PurrTransport inspector ([4c1533d](https://github.com/PurrNet/PurrNet/commit/4c1533d354b9993000cde46805c499f7fbc8af1c))
+
 # [1.26.0-beta.46](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.45...v1.26.0-beta.46) (2026-11-27)
 
 
