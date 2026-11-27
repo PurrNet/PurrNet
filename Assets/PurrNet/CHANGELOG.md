@@ -1,3 +1,10 @@
+# [1.26.0-beta.46](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.45...v1.26.0-beta.46) (2026-11-27)
+
+
+### Bug Fixes
+
+* compatibility with unity 7 ([616cfb6](https://github.com/PurrNet/PurrNet/commit/616cfb60c1ef63d24329f174383b508c46223d50))
+
 # [1.26.0-beta.45](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.44...v1.26.0-beta.45) (2026-11-26)
 
 
