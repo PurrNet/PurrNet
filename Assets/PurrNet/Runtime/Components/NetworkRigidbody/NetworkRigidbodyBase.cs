@@ -5,6 +5,7 @@ using PurrNet.Packing;
 using PurrNet.Transports;
 using Unity.Mathematics;
 using UnityEngine;
+using Half = PurrNet.Packing.Half;
 
 namespace PurrNet
 {
