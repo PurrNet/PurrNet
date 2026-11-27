@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['nan_0',['NaN',['../structPurrNet_1_1Packing_1_1Half.html#a60df7beccdba3eb451c165731929233d',1,'PurrNet::Packing::Half']]],
-  ['negativeinfinity_1',['NegativeInfinity',['../structPurrNet_1_1Packing_1_1Half.html#a4036e61b09986902c3232b001cae7113',1,'PurrNet::Packing::Half']]]
+  ['link_0',['link',['../structPurrNet_1_1Transports_1_1PingResult.html#a2d2a2d0684c42485fef33f2449da11af',1,'PurrNet::Transports::PingResult']]]
 ];

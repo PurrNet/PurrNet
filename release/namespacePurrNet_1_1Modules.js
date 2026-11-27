@@ -39,6 +39,8 @@ var namespacePurrNet_1_1Modules =
     [ "ObserverFilter", "structPurrNet_1_1Modules_1_1ObserverFilter.html", null ],
     [ "PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
     [ "PlayerJoinedEvent", "structPurrNet_1_1Modules_1_1PlayerJoinedEvent.html", null ],
+    [ "PlayerKickedAck", "structPurrNet_1_1Modules_1_1PlayerKickedAck.html", null ],
+    [ "PlayerKickedPacket", "structPurrNet_1_1Modules_1_1PlayerKickedPacket.html", null ],
     [ "PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
     [ "PlayersManager", "classPurrNet_1_1Modules_1_1PlayersManager.html", "classPurrNet_1_1Modules_1_1PlayersManager" ],
     [ "PlayerSnapshotEvent", "structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html", null ],

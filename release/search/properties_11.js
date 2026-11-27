@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['value_0',['value',['../classPurrNet_1_1SyncInput.html#a151f2cdd82eebb5bdbd58b3bf72211df',1,'PurrNet::SyncInput']]],
-  ['visibilityrules_1',['visibilityRules',['../classPurrNet_1_1NetworkManager.html#a3d02f1808663d7c208d2300f8955d8de',1,'PurrNet::NetworkManager']]],
-  ['volume_2',['volume',['../classPurrNet_1_1NetworkAudioSource.html#a790a6d1dc8594221ba982f315501ddf2',1,'PurrNet::NetworkAudioSource']]]
+  ['usenat_0',['useNat',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a14892dc32e17023db8badbb49b5fda3f',1,'PurrNet::Transports::PurrTransport']]],
+  ['useparentframepositionerror_1',['useParentFramePositionError',['../classPurrNet_1_1NetworkRigidbodyBase.html#ab1388bd34211e4b66bd11430fa88875c',1,'PurrNet::NetworkRigidbodyBase']]],
+  ['usewebrtcp2p_2',['useWebRtcP2P',['../classPurrNet_1_1Transports_1_1PurrTransport.html#a9fd61698e2d5ff7268b2b544464282d1',1,'PurrNet::Transports::PurrTransport']]]
 ];

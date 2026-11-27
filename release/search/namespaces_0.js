@@ -9,7 +9,8 @@ var searchData=
   ['pooling_6',['Pooling',['../namespacePurrNet_1_1Pooling.html',1,'PurrNet']]],
   ['profiler_7',['Profiler',['../namespacePurrNet_1_1Profiler.html',1,'PurrNet']]],
   ['purrnet_8',['PurrNet',['../namespacePurrNet.html',1,'']]],
-  ['statemachine_9',['StateMachine',['../namespacePurrNet_1_1StateMachine.html',1,'PurrNet']]],
-  ['transports_10',['Transports',['../namespacePurrNet_1_1Transports.html',1,'PurrNet']]],
-  ['utils_11',['Utils',['../namespacePurrNet_1_1Utils.html',1,'PurrNet']]]
+  ['recording_9',['Recording',['../namespacePurrNet_1_1Recording.html',1,'PurrNet']]],
+  ['statemachine_10',['StateMachine',['../namespacePurrNet_1_1StateMachine.html',1,'PurrNet']]],
+  ['transports_11',['Transports',['../namespacePurrNet_1_1Transports.html',1,'PurrNet']]],
+  ['utils_12',['Utils',['../namespacePurrNet_1_1Utils.html',1,'PurrNet']]]
 ];

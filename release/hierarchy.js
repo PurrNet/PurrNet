@@ -11,7 +11,9 @@ var hierarchy =
       [ "PurrNet.LocalModeAttribute", "classPurrNet_1_1LocalModeAttribute.html", null ],
       [ "PurrNet.PackerDependenciesAttribute", "classPurrNet_1_1PackerDependenciesAttribute.html", null ],
       [ "PurrNet.PurrContextButtonAttribute", "classPurrNet_1_1PurrContextButtonAttribute.html", null ],
-      [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ]
+      [ "PurrNet.Recording.DontRecordAttribute", "classPurrNet_1_1Recording_1_1DontRecordAttribute.html", null ],
+      [ "PurrNet.ReflectionRPCTargetAttribute", "classPurrNet_1_1ReflectionRPCTargetAttribute.html", null ],
+      [ "PurrNet.StripInClientOnlyBuildAttribute", "classPurrNet_1_1StripInClientOnlyBuildAttribute.html", null ]
     ] ],
     [ "PurrNet.AudioSourceState", "structPurrNet_1_1AudioSourceState.html", null ],
     [ "PurrNet.Authentication.AuthenticationBehaviour< string >", "classPurrNet_1_1Authentication_1_1AuthenticationBehaviour.html", [
@@ -20,6 +22,7 @@ var hierarchy =
     [ "PurrNet.Transports.AutomaticCloudSetups", "classPurrNet_1_1Transports_1_1AutomaticCloudSetups.html", null ],
     [ "PurrNet.Profiler.BandwidthEntry", "structPurrNet_1_1Profiler_1_1BandwidthEntry.html", null ],
     [ "PurrNet.BoneInfo", "structPurrNet_1_1BoneInfo.html", null ],
+    [ "PurrNet.ClientDisconnectInfo", "structPurrNet_1_1ClientDisconnectInfo.html", null ],
     [ "PurrNet.Transports.ClientJoinInfo", "structPurrNet_1_1Transports_1_1ClientJoinInfo.html", null ],
     [ "PurrNet.Modules.DeltaCache", "classPurrNet_1_1Modules_1_1DeltaCache.html", null ],
     [ "PurrNet.Modules.DeltaFanoutGrouper", "classPurrNet_1_1Modules_1_1DeltaFanoutGrouper.html", null ],
@@ -37,6 +40,7 @@ var hierarchy =
     [ "PurrNet.Pooling.DisposableList< PurrNet.NetworkID >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< TKey >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "PurrNet.Pooling.DisposableList< Transform >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
+    [ "PurrNet.Pooling.DisposableList< ushort >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
     [ "Exception", null, [
       [ "PurrNet.BypassLoggingException", "classPurrNet_1_1BypassLoggingException.html", null ],
       [ "PurrNet.RpcException", "classPurrNet_1_1RpcException.html", [
@@ -44,6 +48,7 @@ var hierarchy =
         [ "PurrNet.RpcRejectedException", "classPurrNet_1_1RpcRejectedException.html", null ],
         [ "PurrNet.RpcTargetDisconnectedException", "classPurrNet_1_1RpcTargetDisconnectedException.html", null ]
       ] ],
+      [ "PurrNet.Transports.RelayMigrationRejectedException", "classPurrNet_1_1Transports_1_1RelayMigrationRejectedException.html", null ],
       [ "PurrNet.Transports.RelayRefusedException", "classPurrNet_1_1Transports_1_1RelayRefusedException.html", null ]
     ] ],
     [ "PurrNet.Transports.FragmentDropInfo", "structPurrNet_1_1Transports_1_1FragmentDropInfo.html", null ],
@@ -214,6 +219,9 @@ var hierarchy =
     [ "IFormattable", null, [
       [ "PurrNet.Packing.Half", "structPurrNet_1_1Packing_1_1Half.html", null ]
     ] ],
+    [ "PurrNet.Transports.IHostMigrationPeerEndpointTransport", "interfacePurrNet_1_1Transports_1_1IHostMigrationPeerEndpointTransport.html", [
+      [ "PurrNet.Transports.UDPTransport", "classPurrNet_1_1Transports_1_1UDPTransport.html", null ]
+    ] ],
     [ "IList", null, [
       [ "PurrNet.Pooling.DisposableArray< T >", "structPurrNet_1_1Pooling_1_1DisposableArray.html", null ],
       [ "PurrNet.Pooling.DisposableList< T >", "structPurrNet_1_1Pooling_1_1DisposableList.html", null ],
@@ -301,6 +309,8 @@ var hierarchy =
       [ "PurrNet.Modules.FinishSpawnPacket", "structPurrNet_1_1Modules_1_1FinishSpawnPacket.html", null ],
       [ "PurrNet.Modules.NetworkTransformDelta", "structPurrNet_1_1Modules_1_1NetworkTransformDelta.html", null ],
       [ "PurrNet.Modules.PlayerJoinedEvent", "structPurrNet_1_1Modules_1_1PlayerJoinedEvent.html", null ],
+      [ "PurrNet.Modules.PlayerKickedAck", "structPurrNet_1_1Modules_1_1PlayerKickedAck.html", null ],
+      [ "PurrNet.Modules.PlayerKickedPacket", "structPurrNet_1_1Modules_1_1PlayerKickedPacket.html", null ],
       [ "PurrNet.Modules.PlayerLeftEvent", "structPurrNet_1_1Modules_1_1PlayerLeftEvent.html", null ],
       [ "PurrNet.Modules.PlayerSnapshotEvent", "structPurrNet_1_1Modules_1_1PlayerSnapshotEvent.html", null ],
       [ "PurrNet.Modules.SceneSpawnReconcilePacket", "structPurrNet_1_1Modules_1_1SceneSpawnReconcilePacket.html", null ],
@@ -428,6 +438,7 @@ var hierarchy =
       [ "PurrNet.SyncTimer", "classPurrNet_1_1SyncTimer.html", null ]
     ] ],
     [ "PurrNet.Logging.LogStyle", "structPurrNet_1_1Logging_1_1LogStyle.html", null ],
+    [ "PurrNet.Transports.MigrationJoinInfo", "structPurrNet_1_1Transports_1_1MigrationJoinInfo.html", null ],
     [ "PurrNet.MiscRules", "structPurrNet_1_1MiscRules.html", null ],
     [ "PurrNet.ModulesCollection", "structPurrNet_1_1ModulesCollection.html", null ],
     [ "MonoBehaviour", null, [
@@ -507,6 +518,7 @@ var hierarchy =
     [ "PurrNet.OwnershipRules", "structPurrNet_1_1OwnershipRules.html", null ],
     [ "PurrNet.Packing.PackerRegistrationEntry", "structPurrNet_1_1Packing_1_1PackerRegistrationEntry.html", null ],
     [ "PurrNet.Transports.PeerInfo", "classPurrNet_1_1Transports_1_1PeerInfo.html", null ],
+    [ "PurrNet.Transports.PeerMigrationEndpoint", "structPurrNet_1_1Transports_1_1PeerMigrationEndpoint.html", null ],
     [ "PurrNet.Modules.PendingSceneOperation", "structPurrNet_1_1Modules_1_1PendingSceneOperation.html", null ],
     [ "PurrNet.Transports.PingResult", "structPurrNet_1_1Transports_1_1PingResult.html", null ],
     [ "PurrNet.Transports.RelayUsage.Players", "classPurrNet_1_1Transports_1_1RelayUsage_1_1Players.html", null ],

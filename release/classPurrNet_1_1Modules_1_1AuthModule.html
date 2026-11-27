@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('classPurrNet_1_1Modules_1_1AuthModule.
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="#properties">Properties</a> &#124;
 <a href="#events">Events</a> &#124;
@@ -111,6 +112,10 @@ Inheritance diagram for PurrNet.Modules.AuthModule:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a2da3c27563961cf8fe059b6f7ba181d0"><td class="memItemLeft" align="right" valign="top"><a id="a2da3c27563961cf8fe059b6f7ba181d0" name="a2da3c27563961cf8fe059b6f7ba181d0"></a>
+bool&#160;</td><td class="memItemRight" valign="bottom"><b>TryGetConnectionData</b> (<a class="el" href="structPurrNet_1_1Transports_1_1Connection.html">Connection</a> conn, string key, out string value)</td></tr>
+<tr class="memdesc:a2da3c27563961cf8fe059b6f7ba181d0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Server only. The value the client on <em>conn</em>  sent under <em>key</em>  (<a class="el" href="classPurrNet_1_1Modules_1_1AuthModule.html#a22ade5f671d988d632c28113fc825289" title="Adds a value clients send to the server with their authentication request, under key ....">SetConnectionData</a>). <br /></td></tr>
+<tr class="separator:a2da3c27563961cf8fe059b6f7ba181d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4caa24893b562aab8896c132e62a4718"><td class="memItemLeft" align="right" valign="top"><a id="a4caa24893b562aab8896c132e62a4718" name="a4caa24893b562aab8896c132e62a4718"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>AuthModule</b> (<a class="el" href="classPurrNet_1_1NetworkManager.html">NetworkManager</a> manager, <a class="el" href="classPurrNet_1_1Modules_1_1BroadcastModule.html">BroadcastModule</a> broadcastModule, <a class="el" href="classPurrNet_1_1Modules_1_1CookiesModule.html">CookiesModule</a> cookiesModule)</td></tr>
 <tr class="separator:a4caa24893b562aab8896c132e62a4718"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -142,6 +147,13 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Enable</b> (bool asSe
 <tr class="memitem:ae614efb89b9166e27139455fb9856320"><td class="memItemLeft" align="right" valign="top"><a id="ae614efb89b9166e27139455fb9856320" name="ae614efb89b9166e27139455fb9856320"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>Disable</b> (bool asServer)</td></tr>
 <tr class="separator:ae614efb89b9166e27139455fb9856320"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a22ade5f671d988d632c28113fc825289"><td class="memItemLeft" align="right" valign="top"><a id="a22ade5f671d988d632c28113fc825289" name="a22ade5f671d988d632c28113fc825289"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>SetConnectionData</b> (string key, Func&lt; string &gt; value)</td></tr>
+<tr class="memdesc:a22ade5f671d988d632c28113fc825289"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a value clients send to the server with their authentication request, under <em>key</em> . It is read each time a client connects; null leaves it out. The server reads it with <a class="el" href="classPurrNet_1_1Modules_1_1AuthModule.html#a2da3c27563961cf8fe059b6f7ba181d0" title="Server only. The value the client on conn  sent under key  (SetConnectionData).">TryGetConnectionData</a>.  <br /></td></tr>
+<tr class="separator:a22ade5f671d988d632c28113fc825289"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
