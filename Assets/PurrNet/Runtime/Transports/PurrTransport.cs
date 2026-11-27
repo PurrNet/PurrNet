@@ -45,7 +45,25 @@ namespace PurrNet.Transports
             public string clientSecret;
             public bool nat;
             public bool webRtcP2P;
+            public string build;
+            public string tag;
         }
+
+        /// <summary>
+        /// Which build of the game this process is, as it tells the relay when it signs in to a room. Tools that read
+        /// relay data (PurrServices) set it; PurrNet only passes it on. Empty tells the relay nothing.
+        /// </summary>
+        public static string relaySignInBuild { get; set; }
+
+        /// <summary>
+        /// A name for this process's relay connections, sent with every sign-in next to
+        /// <see cref="relaySignInBuild"/>, so a tool can tell which connection of a room was this process.
+        /// Empty tells the relay nothing.
+        /// </summary>
+        public static string relaySignInTag { get; set; }
+
+        static string SignInValue(string value) =>
+            string.IsNullOrWhiteSpace(value) ? null : value.Length > 64 ? value.Substring(0, 64) : value;
 
         [Header("Remote Settings")]
         [SerializeField, HideInInspector] private string _masterServer = "https://purrtransport.purrservers.com/";
@@ -1163,7 +1181,9 @@ namespace PurrNet.Transports
             {
                 roomName = relayRoomName,
                 clientSecret = _hostJoinInfo.secret,
-                webRtcP2P = webRtcP2PAvailable && hostUsesWebRtc
+                webRtcP2P = webRtcP2PAvailable && hostUsesWebRtc,
+                build = SignInValue(relaySignInBuild),
+                tag = SignInValue(relaySignInTag)
             };
 
             string json = JsonUtility.ToJson(authenticate);
@@ -1192,7 +1212,9 @@ namespace PurrNet.Transports
                 roomName = relayRoomName,
                 clientSecret = _hostJoinInfo.secret,
                 nat = serverNatEnabled,
-                webRtcP2P = webRtcP2PAvailable
+                webRtcP2P = webRtcP2PAvailable,
+                build = SignInValue(relaySignInBuild),
+                tag = SignInValue(relaySignInTag)
             };
 
             string json = JsonUtility.ToJson(authenticate);
@@ -1207,7 +1229,9 @@ namespace PurrNet.Transports
             {
                 roomName = relayRoomName,
                 clientSecret = _clientJoinInfo.secret,
-                webRtcP2P = webRtcP2PAvailable && clientUsesWebRtc
+                webRtcP2P = webRtcP2PAvailable && clientUsesWebRtc,
+                build = SignInValue(relaySignInBuild),
+                tag = SignInValue(relaySignInTag)
             };
 
             string json = JsonUtility.ToJson(authenticate);
@@ -1223,7 +1247,9 @@ namespace PurrNet.Transports
                 roomName = relayRoomName,
                 clientSecret = _clientJoinInfo.secret,
                 nat = clientNatEnabled,
-                webRtcP2P = webRtcP2PAvailable
+                webRtcP2P = webRtcP2PAvailable,
+                build = SignInValue(relaySignInBuild),
+                tag = SignInValue(relaySignInTag)
             };
 
             string json = JsonUtility.ToJson(authenticate);
