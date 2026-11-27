@@ -38,6 +38,7 @@ namespace JamesFrowen.SimpleWeb
 
         public Action<Connection> onDispose;
         private volatile bool hasDisposed;
+        public bool IsDisposed => hasDisposed;
 
         public Connection(TcpClient client, Action<Connection> onDispose)
         {
@@ -64,9 +65,13 @@ namespace JamesFrowen.SimpleWeb
 
                 hasDisposed = true;
 
-                // stop threads first so they don't try to use disposed objects
-                receiveThread.Interrupt();
-                sendThread?.Interrupt();
+                // Wake the threads, never Interrupt them. An interrupt lands in whatever lock or wait the thread
+                // reaches next (logging the IOException of a client that just vanished, this Dispose, the
+                // disconnect event); escaping its handlers it is an unhandled exception, and caught in the wrong
+                // place it lost the disconnect event (WebSocketServerDisconnectTests). The send loop waits on
+                // sendPending and sees IsDisposed; the receive loop's blocking read ends when the stream is
+                // disposed below.
+                sendPending.Set();
 
                 try
                 {
@@ -81,7 +86,8 @@ namespace JamesFrowen.SimpleWeb
                     Log.Exception(e);
                 }
 
-                sendPending.Dispose();
+                // sendPending is not disposed: the send loop and WebSocketServer.Send may still set or wait on it
+                // after this, and a disposed one throws there.
 
                 // release all buffers in send queue
                 while (sendQueue.TryDequeue(out ArrayBuffer buffer))

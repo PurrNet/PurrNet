@@ -1,0 +1,25 @@
+{
+    "name": "SimpleWebTransport.Tests.Editor",
+    "rootNamespace": "PurrNet.Tests",
+    "references": [
+        "GUID:3b5390adca4e2bb4791cb930316d6f3e"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
