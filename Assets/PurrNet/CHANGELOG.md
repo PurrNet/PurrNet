@@ -1,3 +1,10 @@
+# [1.26.0-beta.49](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.48...v1.26.0-beta.49) (2026-11-27)
+
+
+### Bug Fixes
+
+* **webtransport:** closing a connection no longer throws on its threads; simultaneous handshakes no longer fail ([#351](https://github.com/PurrNet/PurrNet/issues/351)) ([6d535b3](https://github.com/PurrNet/PurrNet/commit/6d535b3134bfc00abf59bd04ebe7afd038beb7bc))
+
 # [1.26.0-beta.48](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.47...v1.26.0-beta.48) (2026-11-27)
 
 
