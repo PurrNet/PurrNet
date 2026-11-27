@@ -1,3 +1,10 @@
+# [1.26.0-beta.48](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.47...v1.26.0-beta.48) (2026-11-27)
+
+
+### Bug Fixes
+
+* relay sign-in carries a build id and a tag when a tool sets them ([3e73ff9](https://github.com/PurrNet/PurrNet/commit/3e73ff96fa6fc5aceaa5c7c4a415e4893f497248))
+
 # [1.26.0-beta.47](https://github.com/PurrNet/PurrNet/compare/v1.26.0-beta.46...v1.26.0-beta.47) (2026-11-27)
 
 
