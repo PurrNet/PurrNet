@@ -50,7 +50,7 @@ namespace PurrNet.Transports
         [Header("Remote Settings")]
         [SerializeField, HideInInspector] private string _masterServer = "https://purrtransport.purrservers.com/";
         [SerializeField, HideInInspector] private string _roomName;
-        [SerializeField, HideInInspector] private string _region = "eu-central";
+        [SerializeField, HideInInspector] private string _region;
         [SerializeField, HideInInspector] private string _host;
         private string _relayRoomName;
         [NonSerialized] private string _projectKeyOverride;

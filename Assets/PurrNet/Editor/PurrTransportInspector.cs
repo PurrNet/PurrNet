@@ -128,6 +128,7 @@ namespace PurrNet.Editor
         }
 
         float _lastMasterServerUpdate;
+        static GUIStyle _iconButton;
 
         public override void OnInspectorGUI()
         {
@@ -136,7 +137,14 @@ namespace PurrNet.Editor
             var transport = (PurrTransport)target;
 
             var oldMasterServer = _masterServer.stringValue;
-            EditorGUILayout.PropertyField(_masterServer);
+            var masterRect = EditorGUILayout.GetControlRect(true, EditorGUI.GetPropertyHeight(_masterServer, true));
+            var refreshRect = new Rect(masterRect.xMax - 28, masterRect.yMax - EditorGUIUtility.singleLineHeight, 28, EditorGUIUtility.singleLineHeight);
+            masterRect.xMax -= 30;
+            EditorGUI.PropertyField(masterRect, _masterServer, true);
+            var refresh = EditorGUIUtility.IconContent("Refresh");
+            refresh.tooltip = "Reload the region list from the master server.";
+            if (GUI.Button(refreshRect, refresh, _iconButton ??= new GUIStyle(GUI.skin.button) { padding = new RectOffset(2, 2, 1, 1) }))
+                LoadRegions();
 
             if (oldMasterServer != _masterServer.stringValue)
                 _lastMasterServerUpdate = Time.realtimeSinceStartup;
@@ -164,20 +172,31 @@ namespace PurrNet.Editor
             }
             else
             {
-                int region = RegionId(transport.region);
-                var newRegion = EditorGUILayout.Popup("Region", region, _regions);
+                // No host means the relay picks the best region when hosting starts.
+                var auto = string.IsNullOrEmpty(_host.stringValue);
+                int region = auto ? -1 : RegionId(transport.region);
+                var choices = new string[_regions.Length + 1];
+                choices[0] = "Auto (best region)";
+                Array.Copy(_regions, 0, choices, 1, _regions.Length);
+                var shown = auto ? 0 : region < 0 ? -1 : region + 1;
+                var picked = EditorGUILayout.Popup("Region", shown, choices);
 
                 // A known region whose stored host drifted (older serialization, or a
                 // relay that moved) gets its host refreshed without changing region.
-                if (region >= 0 && newRegion == region && _host.stringValue != _hosts[region])
+                if (region >= 0 && picked == shown && _host.stringValue != _hosts[region])
                     _host.stringValue = _hosts[region];
 
                 // Only an explicit pick changes the region; an unknown current value
                 // shows as an empty popup instead of being replaced by the first entry.
-                if (newRegion != region && newRegion >= 0 && newRegion < _regions.Length)
+                if (picked != shown && picked == 0)
                 {
-                    _region.stringValue = _regions[newRegion];
-                    _host.stringValue = _hosts[newRegion];
+                    _region.stringValue = string.Empty;
+                    _host.stringValue = string.Empty;
+                }
+                else if (picked != shown && picked > 0 && picked <= _regions.Length)
+                {
+                    _region.stringValue = _regions[picked - 1];
+                    _host.stringValue = _hosts[picked - 1];
                 }
             }
 
@@ -188,12 +207,15 @@ namespace PurrNet.Editor
 
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            GUI.color = new Color(0.8f, 0.8f, 0.8f);
-            GUILayout.Label(_host.stringValue);
-            GUI.color = Color.white;
-            EditorGUILayout.EndHorizontal();
+            if (!string.IsNullOrEmpty(_host.stringValue))
+            {
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.FlexibleSpace();
+                GUI.color = new Color(0.8f, 0.8f, 0.8f);
+                GUILayout.Label(_host.stringValue);
+                GUI.color = Color.white;
+                EditorGUILayout.EndHorizontal();
+            }
 
             // Which PurrNet project this relay traffic belongs to. Only meaningful on
             // PurrNet's own fleet; a self-hosted balancer has no project concept.
@@ -228,9 +250,6 @@ namespace PurrNet.Editor
 
             EditorGUILayout.Space(4);
             EditorGUILayout.PropertyField(_networkSimulation, new GUIContent("Network Simulation (UDP)"));
-
-            if (GUILayout.Button("Refresh"))
-                LoadRegions();
 
             TransportInspector.DrawTransportStatus(transport);
 

@@ -62,8 +62,7 @@ namespace PurrNet
         private NetworkPrefabs _networkPrefabs;
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-        //[PurrDocs("systems-and-modules/addressables/addressable-spawning-and-despawning")] //TODO: Add this in the future
-        [SerializeField]
+        [PurrDocs("systems-and-modules/addressables/addressable-spawning-and-despawning")] [SerializeField]
         private AddressableNetworkPrefabs _addressableNetworkPrefabs;
 #endif
 
@@ -886,7 +885,7 @@ namespace PurrNet
         {
             if (TryGetComponent(out GenericTransport _) || transport)
                 return;
-            transport = gameObject.AddComponent<UDPTransport>();
+            transport = gameObject.AddComponent<PurrTransport>();
         }
 #endif
 

@@ -222,6 +222,11 @@ namespace PurrNet.Editor
         public PackageInfo Package { get; private set; }
     }
 
+    internal class FreeOfferResponse
+    {
+        [JsonProperty("free")] public Dictionary<string, bool> free;
+    }
+
     public class ApiError
     {
         [JsonProperty("error")]

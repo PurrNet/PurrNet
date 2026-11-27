@@ -37,6 +37,9 @@ namespace PurrNet.Editor
                 $"{BaseUrl}/admin/packages", UnityWebRequest.kHttpVerbPOST, apiKey, registration);
         }
 
+        internal static Task<Result<FreeOfferResponse>> GetFreeOffer() =>
+            SendRequest<FreeOfferResponse>($"{BaseUrl}/services/free-offer", null, 10);
+
         public static async Task<Result<DownloadResponse>> GetDownloadUrl(string apiKey, string packageId, string versionId)
         {
             var url = $"{BaseUrl}/packages/{packageId}/download?versionId={versionId}";
