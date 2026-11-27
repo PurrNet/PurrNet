@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using PurrNet.Pooling;
 using Unity.Profiling;
@@ -87,6 +87,41 @@ namespace PurrNet.Modules
                 frame = traversal[last];
                 traversal.RemoveAt(last);
             }
+        }
+
+        // A just spawned identity without child identities, evaluated for every player at once:
+        // the players that start seeing it are returned instead of notified one by one, so the
+        // caller can build their spawns together. False when the identity has children.
+        internal bool TryRefreshSpawnForAll(IReadOnlyList<PlayerID> players, NetworkIdentity identity,
+            List<PlayerID> visible)
+        {
+            if (!identity || identity.isManualSpawn)
+                return true;
+
+            var identities = identity.siblingIdentities;
+            if (identities.Length == 0)
+                return true;
+
+            var children = identities[0].directChildren;
+            if (children != null && children.Count > 0)
+                return false;
+
+            var parent = identity.parent;
+            for (var i = 0; i < players.Count; i++)
+            {
+                var player = players[i];
+                bool isParentVisible = !parent || !parent.isSpawned || HasObserver(parent, player);
+                var frame = EvaluateNode(player, identity, _defaultRuleSet, isParentVisible, false);
+                if (!frame.shouldTrigger)
+                    continue;
+
+                if (frame.isVisible)
+                    visible.Add(player);
+                else
+                    Notify(player, frame.scope, false);
+            }
+
+            return true;
         }
 
         private struct VisibilityFrame
@@ -324,9 +359,14 @@ namespace PurrNet.Modules
 
                 if (identity.whitelist.Contains(player))
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
@@ -344,17 +384,27 @@ namespace PurrNet.Modules
 
                 if (!r)
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
                 if (identity.owner == player)
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                     continue;
                 }
 
@@ -365,9 +415,14 @@ namespace PurrNet.Modules
                 }
                 else
                 {
-                    isAnyVisible = true;
-                    if (ShouldAddObserver(player, identity) && identity.TryAddObserver(player))
-                        changes[i] = 1;
+                    // A player that still has to load this identity's prefab does not see it yet,
+                    // and so not its children either: a child sent ahead would have no parent there.
+                    if (ShouldAddObserver(player, identity))
+                    {
+                        isAnyVisible = true;
+                        if (identity.TryAddObserver(player))
+                            changes[i] = 1;
+                    }
                 }
             }
 
@@ -433,8 +488,52 @@ namespace PurrNet.Modules
             if (sync.ClientHasLoaded(player, guid))
                 return true;
 
+            // Remembered so that only these are looked at again once the player reports the prefab.
+            var key = (player, guid);
+            if (!_waitingForLoad.TryGetValue(key, out var waiting))
+                _waitingForLoad[key] = waiting = new HashSet<NetworkIdentity>();
+            waiting.Add(identity);
+
             sync.RequestPlayerToLoad(player, guid);
             return false;
+        }
+
+        // Identities a player could not observe yet because it had not loaded their prefab.
+        private readonly Dictionary<(PlayerID player, string guid), HashSet<NetworkIdentity>> _waitingForLoad = new();
+
+        /// <summary>
+        /// Moves the identities that were waiting for <paramref name="player"/> to load the prefab
+        /// <paramref name="guid"/> into <paramref name="result"/>. Returns false when there were none.
+        /// </summary>
+        internal bool TakeWaitingForLoad(PlayerID player, string guid, List<NetworkIdentity> result)
+        {
+            if (!_waitingForLoad.Remove((player, guid), out var waiting))
+                return false;
+
+            foreach (var identity in waiting)
+            {
+                if (identity)
+                    result.Add(identity);
+            }
+
+            return result.Count > 0;
+        }
+
+        /// <summary>Forgets everything that was waiting for a player who is gone.</summary>
+        internal void ForgetWaitingForLoad(PlayerID player)
+        {
+            if (_waitingForLoad.Count == 0)
+                return;
+
+            var stale = new List<(PlayerID, string)>();
+            foreach (var key in _waitingForLoad.Keys)
+            {
+                if (key.player == player)
+                    stale.Add(key);
+            }
+
+            for (int i = 0; i < stale.Count; i++)
+                _waitingForLoad.Remove(stale[i]);
         }
 #endif
     }

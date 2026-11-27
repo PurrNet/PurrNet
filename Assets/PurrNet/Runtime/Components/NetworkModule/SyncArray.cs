@@ -57,7 +57,7 @@ namespace PurrNet
     }
 
     [Serializable]
-    public class SyncArray<T> : NetworkModule, IList<T>, ISerializationCallbackReceiver, ITick
+    public partial class SyncArray<T> : NetworkModule, IList<T>, ISerializationCallbackReceiver, ITick
     {
         [SerializeField] private bool _ownerAuth;
 
@@ -417,6 +417,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncArrayChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);
@@ -616,6 +617,7 @@ namespace PurrNet
         [ServerRpc(Channel.ReliableOrdered)]
         private void ForceSendReliable()
         {
+            if (!_ownerAuth) return;
             ForceSendReliable_Internal();
         }
 

@@ -300,5 +300,49 @@ namespace PurrNet.Transports
         Timeout,
         ClientRequest,
         ServerRequest,
+        /// <summary>The connection never got established (refused, unreachable or unknown host).</summary>
+        ConnectionFailed,
+    }
+
+    /// <summary>
+    /// Opaque route to one peer, captured while the current host is healthy. What the address means belongs to the
+    /// transport: an IP address, a SteamID, a lobby member. A zero port means the address alone identifies the route.
+    /// </summary>
+    [Serializable]
+    public struct PeerMigrationEndpoint
+    {
+        public string address;
+        public ushort port;
+
+        public bool isValid => !string.IsNullOrWhiteSpace(address);
+
+        public PeerMigrationEndpoint(string address, ushort port = 0)
+        {
+            this.address = address;
+            this.port = port;
+        }
+
+        public override string ToString() => port == 0 ? address : $"{address}:{port}";
+    }
+
+    /// <summary>
+    /// Optional transport support for peer-hosted host migration. The healthy host reads every client's route
+    /// with <see cref="TryGetPeerMigrationEndpoint"/> and shares it; when the host is lost, the elected client and
+    /// the others prepare their route with <see cref="TryPreparePeerMigrationEndpoint"/> before calling
+    /// NetworkManager.PromoteToServer or NetworkManager.TransferToNewServer.
+    /// </summary>
+    public interface IHostMigrationPeerEndpointTransport
+    {
+        /// <summary>False when the current configuration cannot address peers (a dedicated or relayed setup).</summary>
+        bool supportsPeerHostMigration { get; }
+
+        /// <summary>Server side: the route other peers would use to reach the peer behind <paramref name="connection"/> once it hosts.</summary>
+        bool TryGetPeerMigrationEndpoint(Connection connection, out PeerMigrationEndpoint endpoint);
+
+        /// <summary>
+        /// Points the transport at the new host. A promotion may pass an empty endpoint and listens on its own
+        /// route; a transfer passes the elected peer's endpoint.
+        /// </summary>
+        bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint, bool isPromotion, out string failure);
     }
 }

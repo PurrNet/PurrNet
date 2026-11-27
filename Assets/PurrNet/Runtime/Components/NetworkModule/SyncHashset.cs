@@ -39,7 +39,7 @@ namespace PurrNet
     }
 
     [Serializable]
-    public class SyncHashSet<T> : NetworkModule, ISet<T>
+    public partial class SyncHashSet<T> : NetworkModule, ISet<T>
     {
         [SerializeField] private bool _ownerAuth;
 
@@ -125,7 +125,7 @@ namespace PurrNet
         [ObserversRpc(Channel.ReliableOrdered, excludeOwner: true, runLocally: true)]
         private void SendInitialStateToOthers(HashSet<T> initialState)
         {
-            _set = initialState;
+            _set = initialState ?? new HashSet<T>();
 
             InvokeChange(new SyncHashSetChange<T>(SyncHashSetOperation.Cleared));
 
@@ -282,6 +282,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncHashSetChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

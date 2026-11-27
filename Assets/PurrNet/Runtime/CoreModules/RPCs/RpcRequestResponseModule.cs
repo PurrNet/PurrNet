@@ -221,7 +221,8 @@ namespace PurrNet.Modules
             for (int i = 0; i < _requests.Count; i++)
             {
                 var request = _requests[i];
-                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender || request.target.Value.isServer))
+                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender ||
+                                              !data.sender.HasValue && request.target.Value.isServer))
                 {
                     _requests.RemoveAt(i);
 
@@ -236,6 +237,7 @@ namespace PurrNet.Modules
                     catch (Exception e)
                     {
                         PurrLogger.LogError($"Error while processing RPC response: {e}");
+                        request.completer.Fail(e);
                     }
 
                     break;
@@ -273,7 +275,8 @@ namespace PurrNet.Modules
             for (int i = 0; i < _requests.Count; i++)
             {
                 var request = _requests[i];
-                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender || request.target.Value.isServer))
+                if (request.id == data.id && (!request.target.HasValue || request.target == actualSender ||
+                                              !data.sender.HasValue && request.target.Value.isServer))
                 {
                     _requests.RemoveAt(i);
 
@@ -363,7 +366,7 @@ namespace PurrNet.Modules
                     "RpcRequestResponseModule is not initialized.."));
             }
 
-            return rpcModule.GetNextId(target, timeout, out request);
+            return rpcModule.GetNextId(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         [UsedByIL]
@@ -393,7 +396,7 @@ namespace PurrNet.Modules
                     "RpcRequestResponseModule is not initialized.."));
             }
 
-            return rpcModule.GetNextId<T>(target, timeout, out request);
+            return rpcModule.GetNextId<T>(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         [UsedByIL]
@@ -423,7 +426,7 @@ namespace PurrNet.Modules
                     "RpcRequestResponseModule is not initialized.."));
             }
 
-            return rpcModule.GetNextIdUniTask(target, timeout, out request);
+            return rpcModule.GetNextIdUniTask(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         [UsedByIL]
@@ -458,7 +461,7 @@ namespace PurrNet.Modules
                     "RpcRequestResponseModule is not initialized.."));
             }
 
-            return rpcModule.GetNextIdUniTask<T>(target, timeout, out request);
+            return rpcModule.GetNextIdUniTask<T>(rpcType == RPCType.ServerRPC ? PlayerID.Server : target, timeout, out request);
         }
 
         public Task GetNextId(PlayerID? target, float timeout, out RpcRequest request)

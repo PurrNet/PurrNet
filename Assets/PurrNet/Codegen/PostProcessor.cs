@@ -39,6 +39,8 @@ namespace PurrNet.Codegen
         public RPCSignature Signature;
         public MethodDefinition originalMethod;
         public string ogName;
+        /// <summary>Name the recorder files this RPC's calls under, or null when they are not recorded.</summary>
+        public string recordName;
     }
 
     [UsedImplicitly]
@@ -374,6 +376,113 @@ namespace PurrNet.Codegen
 
             type = default;
             return false;
+        }
+
+        const string DontRecordAttributeName = "PurrNet.Recording.DontRecordAttribute";
+
+        // PurrNet's and PurrDiction's own RPCs are plumbing: what they carry is recorded as state.
+        static bool RecordsRpcs(AssemblyDefinition assembly) =>
+            assembly.Name.Name != "PurrNet.Runtime" && assembly.Name.Name != "PurrNet.Prediction" &&
+            !HasAttribute(assembly.CustomAttributes, DontRecordAttributeName);
+
+        static void AssignRecordNames(DisposableList<RPCMethod> rpcs)
+        {
+            for (var index = 0; index < rpcs.Count; index++)
+            {
+                var rpc = rpcs[index];
+                rpc.recordName = GetRecordName(rpc, rpcs);
+                rpcs[index] = rpc;
+            }
+        }
+
+        static string GetRecordName(RPCMethod rpc, DisposableList<RPCMethod> all)
+        {
+            var method = rpc.originalMethod;
+            if (method.DeclaringType == null || method.HasGenericParameters ||
+                HasAttribute(method.CustomAttributes, DontRecordAttributeName))
+                return null;
+
+            string name = method.DeclaringType.FullName + "." + rpc.ogName;
+            int sameName = 0;
+            for (var i = 0; i < all.Count; i++)
+                if (all[i].ogName == rpc.ogName)
+                    sameName++;
+            if (sameName > 1)
+                name += "(" + string.Join(",", method.Parameters.Select(p => p.ParameterType.Name)) + ")";
+            return name;
+        }
+
+        /// <summary>PurrServices' recorder, compiled into PurrNet.Runtime when it is installed; null without it.</summary>
+        static TypeDefinition FindRecordedCalls(ModuleDefinition module)
+        {
+            foreach (var reference in module.AssemblyReferences)
+            {
+                if (reference.Name != "PurrNet.Runtime")
+                    continue;
+
+                try
+                {
+                    return module.AssemblyResolver.Resolve(reference)?.MainModule.GetType("PurrNet.Recording.RecordedCalls");
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Hands the call to the recorder: RecordedCalls.BeginReceived/BeginSent, one Arg per parameter, End.
+        /// Skipped at run time unless a server recording is running.
+        /// </summary>
+        private static void EmitRecordCall(ModuleDefinition module, ILProcessor code, RPCMethod rpc, bool isStatic,
+            ParameterDefinition info, ParameterDefinition asServer, Func<int, Instruction> loadParameter)
+        {
+            if (rpc.recordName == null)
+                return;
+
+            var calls = FindRecordedCalls(module);
+            if (calls == null)
+                return;
+
+            var enabled = calls.GetField("enabled").Import(module);
+            var begin = calls.GetMethod(info != null ? "BeginReceived" : "BeginSent").Import(module);
+            var arg = calls.GetMethod("Arg", true).Import(module);
+            var end = calls.GetMethod("End").Import(module);
+            var skip = Instruction.Create(OpCodes.Nop);
+
+            code.Append(Instruction.Create(OpCodes.Ldsfld, enabled));
+            code.Append(Instruction.Create(OpCodes.Brfalse, skip));
+            code.Append(Instruction.Create(isStatic ? OpCodes.Ldnull : OpCodes.Ldarg_0));
+            code.Append(Instruction.Create(OpCodes.Ldstr, rpc.recordName));
+            code.Append(Instruction.Create(OpCodes.Ldc_I4, (int)rpc.Signature.type));
+            if (info != null)
+            {
+                code.Append(Instruction.Create(OpCodes.Ldarg, info));
+                code.Append(Instruction.Create(OpCodes.Ldarg, asServer));
+            }
+            code.Append(Instruction.Create(OpCodes.Call, begin));
+            code.Append(Instruction.Create(OpCodes.Brfalse, skip));
+
+            var parameters = rpc.originalMethod.Parameters;
+            for (var p = 0; p < parameters.Count; p++)
+            {
+                var type = parameters[p].ParameterType;
+                if (type.IsByReference || type.IsPointer ||
+                    (p == parameters.Count - 1 && type.FullName == typeof(RPCInfo).FullName))
+                    continue;
+
+                code.Append(Instruction.Create(OpCodes.Ldstr, parameters[p].Name));
+                code.Append(loadParameter(p));
+                var typedArg = new GenericInstanceMethod(arg);
+                typedArg.GenericArguments.Add(type);
+                code.Append(Instruction.Create(OpCodes.Call, typedArg));
+            }
+
+            code.Append(Instruction.Create(OpCodes.Call, end));
+            code.Append(skip);
         }
 
         private static void HandleRPCReceiver(ModuleDefinition module, TypeDefinition type,
@@ -801,12 +910,14 @@ namespace PurrNet.Codegen
             var mainManagerGetter = mainManagerProp.GetMethod.Import(module);
 
             bool useDeltaPacking = rpcPacker != null;
+            var parameterVariables = new VariableDefinition[originalMethod.Parameters.Count];
 
             for (var p = 0; p < originalMethod.Parameters.Count; p++)
             {
                 var param = originalMethod.Parameters[p];
                 var variable = new VariableDefinition(param.ParameterType);
                 newMethod.Body.Variables.Add(variable);
+                parameterVariables[p] = variable;
 
                 if (ShouldIgnore(rpcMethod.Signature.type, param, p, paramCount, out var specialType))
                 {
@@ -861,6 +972,9 @@ namespace PurrNet.Codegen
                     code.Append(Instruction.Create(OpCodes.Call, prepareAfterUnpack));
                 }
             }
+
+            EmitRecordCall(module, code, rpcMethod, newMethod.IsStatic, info, newMethod.Parameters[2],
+                p => Instruction.Create(OpCodes.Ldloc, parameterVariables[p]));
 
             if (!originalMethod.IsStatic)
                 code.Append(Instruction.Create(OpCodes.Ldarg_0));
@@ -2260,6 +2374,9 @@ namespace PurrNet.Codegen
 
             PushRPCSignature(module, code, methodRpc, false, isNetworkClass);
             code.Append(Instruction.Create(OpCodes.Stloc, rpcSignature));
+
+            EmitRecordCall(module, code, methodRpc, newMethod.IsStatic, null, null,
+                p => Instruction.Create(OpCodes.Ldarg, newMethod.Parameters[p]));
 
             var playerType = module.GetTypeDefinition<PlayerID>().Import(module);
             var disposableListType = module.GetTypeDefinition(typeof(DisposableList<>)).Import(module);
@@ -4045,6 +4162,7 @@ namespace PurrNet.Codegen
                     settings = PurrNetSettings.GetOrCreateSettings();
                 bool isEditor = false;
                 bool isServerBuild = false;
+                bool isClientOnlyBuild = false;
 
                 foreach (var define in compiledAssembly.Defines)
                 {
@@ -4056,11 +4174,17 @@ namespace PurrNet.Codegen
                         case "UNITY_SERVER":
                             isServerBuild = true;
                             break;
+                        case ClientOnlyBuildsDefine:
+                            isClientOnlyBuild = true;
+                            break;
                     }
                 }
 
                 if (isEditor)
                     isServerBuild = true;
+
+                if (isServerBuild)
+                    isClientOnlyBuild = false;
 
                 var visitedTypes = new HashSet<string>(128);
                 var typesToGenerateSerializer = new HashSet<TypeReference>(128, TypeReferenceEqualityComparer.Default);
@@ -4107,11 +4231,11 @@ namespace PurrNet.Codegen
                         methodReferences.Invalidate(types[t]);
                         using var discoveryScope = profile?.Measure(IlppProfile.Phase.TypeDiscovery);
                         profile?.AddCounter("methodsAtTypeVisit", types[t].Methods.Count);
-                        if (types[t].FullName == typeof(ApplicationConstants).FullName)
-                            BakeApplicationConstants.Process(types[t], isEditor, messages);
-
                         if (types[t].FullName == typeof(PurrMetadata).FullName)
                             BakePurrVersion.Process(types[t], isEditor, messages);
+
+                        if (isClientOnlyBuild)
+                            StripClientOnlyBuildMethods(types[t]);
 
                         if (types[t].HasInterfaces)
                         {
@@ -4147,7 +4271,8 @@ namespace PurrNet.Codegen
                         }
 
                         using (profile?.Measure(IlppProfile.Phase.ProxyScan))
-                            UnityProxyProcessor.Process(types[t], messages);
+                            UnityProxyProcessor.Process(types[t], messages, RecordsRpcs(assemblyDefinition),
+                                assemblyDefinition.Name.Name != "PurrNet.Runtime");
                         using (profile?.Measure(IlppProfile.Phase.SerializerRegistration))
                             RegisterSerializersProcessor.HandleType(types[t], module, types[t], typesToIgnoreForDelta,
                                 typesToIgnoreForSerialization);
@@ -4277,6 +4402,9 @@ namespace PurrNet.Codegen
 
                         if (inheritsFromNetworkIdentity || inheritsFromNetworkClass)
                             typesToGenerateSerializer.Add(type);
+
+                        if (RecordsRpcs(assemblyDefinition))
+                            AssignRecordNames(_rpcMethods);
 
                         profile?.AddCounter("rpcCount", _rpcMethods.Count);
                         for (var index = 0; index < _rpcMethods.Count; index++)
@@ -4621,6 +4749,43 @@ namespace PurrNet.Codegen
             }
 
             return hasPurrNetAsReference;
+        }
+
+        private const string ClientOnlyBuildsDefine = "PURRNET_CLIENT_ONLY_BUILDS";
+
+        private static void StripClientOnlyBuildMethods(TypeDefinition type)
+        {
+            foreach (var method in type.Methods)
+            {
+                if (!method.HasBody || !HasAttribute(method.CustomAttributes, typeof(StripInClientOnlyBuildAttribute).FullName))
+                    continue;
+
+                for (var i = method.CustomAttributes.Count - 1; i >= 0; i--)
+                {
+                    var name = method.CustomAttributes[i].AttributeType.FullName;
+                    if (name is "System.Runtime.CompilerServices.AsyncStateMachineAttribute" or
+                        "System.Runtime.CompilerServices.IteratorStateMachineAttribute" or
+                        "System.Diagnostics.DebuggerStepThroughAttribute")
+                        method.CustomAttributes.RemoveAt(i);
+                }
+
+                var il = method.Body.GetILProcessor();
+                method.Body.ExceptionHandlers.Clear();
+                method.Body.Variables.Clear();
+                il.Clear();
+                AppendStripAction(method, method.Name, StripCodeMode.ReplaceWithLogError, il, "stripped from client only builds");
+            }
+        }
+
+        private static bool HasAttribute(Mono.Collections.Generic.Collection<CustomAttribute> attributes, string fullName)
+        {
+            foreach (var attribute in attributes)
+            {
+                if (attribute.AttributeType.FullName == fullName)
+                    return true;
+            }
+
+            return false;
         }
 
         private static void ProcessServerOnlyMethods(MethodDefinition method, PurrNetSettings settings, bool serverBuild, bool isEditor)

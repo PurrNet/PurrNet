@@ -203,21 +203,21 @@ namespace PurrNet.Modules
             {
                 var key = new NetworkIdentityRpcHash<T, RPCPacket>(_rpcPacket.Value, _offset++);
                 if (_reliable)
-                    _deltaModule.ReadReliable(packer, key, ref value);
+                    _deltaModule.ReadReliable(packer, key, _target, ref value);
                 else _deltaModule.Read(packer, key, _target, ref value, ref _cache);
             }
             else if (_staticPacket.HasValue)
             {
                 var key = new NetworkIdentityRpcHash<T, StaticRPCPacket>(_staticPacket.Value, _offset++);
                 if (_reliable)
-                    _deltaModule.ReadReliable(packer, key, ref value);
+                    _deltaModule.ReadReliable(packer, key, _target, ref value);
                 else _deltaModule.Read(packer, key, _target, ref value, ref _cache);
             }
             else if (_childPacket.HasValue)
             {
                 var key = new NetworkIdentityRpcHash<T, ChildRPCPacket>(_childPacket.Value, _offset++);
                 if (_reliable)
-                    _deltaModule.ReadReliable(packer, key, ref value);
+                    _deltaModule.ReadReliable(packer, key, _target, ref value);
                 else _deltaModule.Read(packer, key, _target, ref value, ref _cache);
             }
 

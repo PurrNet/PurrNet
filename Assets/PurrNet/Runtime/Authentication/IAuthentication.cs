@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using PurrNet.Logging;
@@ -13,6 +14,9 @@ namespace PurrNet.Authentication
     {
         [CanBeNull] public string version;
         [CanBeNull] public string cookie;
+
+        /// <summary>Values other packages send with the request (<see cref="AuthModule.SetConnectionData"/>).</summary>
+        [CanBeNull] public Dictionary<string, string> connectionData;
     }
 
     public struct AuthenticationRequestData : IPackedAuto
@@ -26,6 +30,9 @@ namespace PurrNet.Authentication
         /// The payload to be validated.
         /// </summary>
         public ByteData payload;
+
+        /// <summary>Values other packages send with the request (<see cref="AuthModule.SetConnectionData"/>).</summary>
+        [CanBeNull] public Dictionary<string, string> connectionData;
     }
 
     public struct AuthenticationRequest<T> : IPackedAuto
@@ -225,7 +232,8 @@ namespace PurrNet.Authentication
                 var data = new AuthenticationRequestData
                 {
                     cookie = payload.cookie,
-                    payload = packer.ToByteData()
+                    payload = packer.ToByteData(),
+                    connectionData = AuthModule.CollectConnectionData()
                 };
                 broadcastModule.SendToServer(data);
             }
@@ -347,7 +355,8 @@ namespace PurrNet.Authentication
                 var data = new AuthenticationRequestData
                 {
                     cookie = payload.cookie,
-                    payload = packer.ToByteData()
+                    payload = packer.ToByteData(),
+                    connectionData = AuthModule.CollectConnectionData()
                 };
                 broadcastModule.SendToServer(data);
             }

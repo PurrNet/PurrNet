@@ -2,6 +2,7 @@
     "name": "PurrNet.Runtime",
     "rootNamespace": "PurrNet",
     "references": [
+        "GUID:5a0ba52ecc0962c45a5f7f93997506a5",
         "GUID:3b5390adca4e2bb4791cb930316d6f3e",
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:1beb10fd218482c4c919c79f867341a0",
@@ -10,7 +11,10 @@
         "GUID:e0cd26848372d4e5c891c569017e11f1",
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:9e24947de15b9834991c9d8411ea37cf",
-        "GUID:84651a3751eca9349aac36a66bba901b"
+        "GUID:84651a3751eca9349aac36a66bba901b",
+        "GUID:75469ad4d38634e559750d17036d5f7c",
+        "GUID:2bafac87e7f4b9b418d9448d219b01ab",
+        "GUID:6055be8ebefd69e48b49212b09b47b2f"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -51,6 +55,41 @@
             "define": "UNITY_ANIMATION"
         },
         {
+            "name": "com.unity.modules.particlesystem",
+            "expression": "",
+            "define": "PURRNET_PARTICLES"
+        },
+        {
+            "name": "com.unity.modules.terrainphysics",
+            "expression": "",
+            "define": "PURRNET_TERRAIN"
+        },
+        {
+            "name": "com.unity.modules.audio",
+            "expression": "",
+            "define": "PURRNET_AUDIO"
+        },
+        {
+            "name": "com.unity.ugui",
+            "expression": "",
+            "define": "PURRNET_UGUI"
+        },
+        {
+            "name": "com.unity.ugui",
+            "expression": "2.0.0",
+            "define": "PURRNET_TMP"
+        },
+        {
+            "name": "com.unity.textmeshpro",
+            "expression": "",
+            "define": "PURRNET_TMP"
+        },
+        {
+            "name": "com.unity.modules.uielements",
+            "expression": "",
+            "define": "PURRNET_UITK"
+        },
+        {
             "name": "com.edgegap.unity-servers-plugin",
             "expression": "",
             "define": "EDGEGAP_PURRNET_SUPPORT"
@@ -89,6 +128,36 @@
             "name": "Unity",
             "expression": "6000.0.33f1",
             "define": "PURRNET_UNITY_INSTANTIATE_PARAMETERS"
+        },
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "PURRNET_INPUT_SYSTEM"
+        },
+        {
+            "name": "com.unity.ugui",
+            "expression": "",
+            "define": "PURRNET_UGUI"
+        },
+        {
+            "name": "com.unity.ugui",
+            "expression": "2.0.0",
+            "define": "PURRNET_TMP"
+        },
+        {
+            "name": "com.unity.textmeshpro",
+            "expression": "",
+            "define": "PURRNET_TMP"
+        },
+        {
+            "name": "com.unity.modules.uielements",
+            "expression": "",
+            "define": "PURRNET_UITK"
+        },
+        {
+            "name": "com.unity.modules.imgui",
+            "expression": "",
+            "define": "PURRNET_IMGUI"
         }
     ],
     "noEngineReferences": false

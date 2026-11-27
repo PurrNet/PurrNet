@@ -21,6 +21,8 @@ namespace PurrNet.Modules
         private readonly List<SimpleHistory<Collider3DState>> _histories3D = new();
         private readonly List<TrackedBounds3D> _bounds3D = new();
         readonly Dictionary<Collider, SimpleHistory<Collider3DState>> _collider3DStates = new();
+        // Capture looks bounds up by collider: a list search made capturing every collider quadratic.
+        readonly Dictionary<Collider, TrackedBounds3D> _collider3DBounds = new();
 #endif
 
 #if UNITY_PHYSICS_2D
@@ -29,6 +31,8 @@ namespace PurrNet.Modules
         private readonly List<SimpleHistory<Collider2DState>> _histories2D = new();
         private readonly List<TrackedBounds2D> _bounds2D = new();
         readonly Dictionary<Collider2D, SimpleHistory<Collider2DState>> _collider2DStates = new();
+        // Capture looks bounds up by collider: a list search made capturing every collider quadratic.
+        readonly Dictionary<Collider2D, TrackedBounds2D> _collider2DBounds = new();
 #endif
 
         public RollbackModule(TickManager tick, Scene scene)
@@ -72,26 +76,26 @@ namespace PurrNet.Modules
             bool hasStateA = history.TryGet(tick, out var stateA);
             bool hasStateB = history.TryGet(tick + 1, out var stateB);
 
-            switch (hasStateA)
+            if (hasStateA && hasStateB)
             {
-                case true when hasStateB:
-                    stateA = stateA.Interpolate(stateB, tickFraction);
-                    break;
-                case false when hasStateB:
-                    stateA = stateB;
-                    break;
-                case false:
-                    return SampleClosest(history, preciseTick, out state);
-                case true:
-                    break;
+                state = stateA.Interpolate(stateB, tickFraction);
+                return true;
             }
 
-            state = stateA;
-            return true;
+            if (hasStateA && tickFraction == 0f)
+            {
+                state = stateA;
+                return true;
+            }
+
+            // One side of the bracket is missing: interpolate across the gap rather than snapping
+            // to whichever neighbour exists, which would shift the pose by up to a tick.
+            return SampleClosest(history, preciseTick, out state);
         }
 
-        // Ticks skipped during hitch catch-up have no snapshot; reach for the nearest entries
-        // within MaxSampleGapTicks instead of silently making the collider unhittable.
+        // Ticks skipped during hitch catch-up, or captured by hand only on some ticks, have no
+        // snapshot; reach for the nearest entries within MaxSampleGapTicks instead of silently
+        // making the collider unhittable.
         static bool SampleClosest(SimpleHistory<Collider2DState> history, double preciseTick, out Collider2DState state)
         {
             state = default;
@@ -99,13 +103,16 @@ namespace PurrNet.Modules
             if (history.Count == 0)
                 return false;
 
-            history.Find((ulong)preciseTick, out var index);
+            // An entry at the floor tick is the "before" side; otherwise the insertion index splits them.
+            bool found = history.Find((ulong)preciseTick, out var index);
+            int beforeIndex = found ? index : index - 1;
+            int afterIndex = found ? index + 1 : index;
 
-            bool hasBefore = index > 0;
-            bool hasAfter = index < history.Count;
+            bool hasBefore = beforeIndex >= 0;
+            bool hasAfter = afterIndex < history.Count;
 
-            ulong beforeTick = hasBefore ? history.GetEntryTick(index - 1) : 0;
-            ulong afterTick = hasAfter ? history.GetEntryTick(index) : 0;
+            ulong beforeTick = hasBefore ? history.GetEntryTick(beforeIndex) : 0;
+            ulong afterTick = hasAfter ? history.GetEntryTick(afterIndex) : 0;
 
             double beforeGap = hasBefore ? preciseTick - beforeTick : double.MaxValue;
             double afterGap = hasAfter ? afterTick - preciseTick : double.MaxValue;
@@ -113,19 +120,19 @@ namespace PurrNet.Modules
             if (beforeGap <= MaxSampleGapTicks && afterGap <= MaxSampleGapTicks)
             {
                 float fraction = (float)((preciseTick - beforeTick) / (afterTick - beforeTick));
-                state = history[index - 1].Interpolate(history[index], fraction);
+                state = history[beforeIndex].Interpolate(history[afterIndex], fraction);
                 return true;
             }
 
             if (beforeGap <= MaxSampleGapTicks && beforeGap <= afterGap)
             {
-                state = history[index - 1];
+                state = history[beforeIndex];
                 return true;
             }
 
             if (afterGap <= MaxSampleGapTicks)
             {
-                state = history[index];
+                state = history[afterIndex];
                 return true;
             }
 
@@ -155,26 +162,26 @@ namespace PurrNet.Modules
             bool hasStateA = history.TryGet(tick, out var stateA);
             bool hasStateB = history.TryGet(tick + 1, out var stateB);
 
-            switch (hasStateA)
+            if (hasStateA && hasStateB)
             {
-                case true when hasStateB:
-                    stateA = stateA.Interpolate(stateB, tickFraction);
-                    break;
-                case false when hasStateB:
-                    stateA = stateB;
-                    break;
-                case false:
-                    return SampleClosest(history, preciseTick, out state);
-                case true:
-                    break;
+                state = stateA.Interpolate(stateB, tickFraction);
+                return true;
             }
 
-            state = stateA;
-            return true;
+            if (hasStateA && tickFraction == 0f)
+            {
+                state = stateA;
+                return true;
+            }
+
+            // One side of the bracket is missing: interpolate across the gap rather than snapping
+            // to whichever neighbour exists, which would shift the pose by up to a tick.
+            return SampleClosest(history, preciseTick, out state);
         }
 
-        // Ticks skipped during hitch catch-up have no snapshot; reach for the nearest entries
-        // within MaxSampleGapTicks instead of silently making the collider unhittable.
+        // Ticks skipped during hitch catch-up, or captured by hand only on some ticks, have no
+        // snapshot; reach for the nearest entries within MaxSampleGapTicks instead of silently
+        // making the collider unhittable.
         static bool SampleClosest(SimpleHistory<Collider3DState> history, double preciseTick, out Collider3DState state)
         {
             state = default;
@@ -182,13 +189,16 @@ namespace PurrNet.Modules
             if (history.Count == 0)
                 return false;
 
-            history.Find((ulong)preciseTick, out var index);
+            // An entry at the floor tick is the "before" side; otherwise the insertion index splits them.
+            bool found = history.Find((ulong)preciseTick, out var index);
+            int beforeIndex = found ? index : index - 1;
+            int afterIndex = found ? index + 1 : index;
 
-            bool hasBefore = index > 0;
-            bool hasAfter = index < history.Count;
+            bool hasBefore = beforeIndex >= 0;
+            bool hasAfter = afterIndex < history.Count;
 
-            ulong beforeTick = hasBefore ? history.GetEntryTick(index - 1) : 0;
-            ulong afterTick = hasAfter ? history.GetEntryTick(index) : 0;
+            ulong beforeTick = hasBefore ? history.GetEntryTick(beforeIndex) : 0;
+            ulong afterTick = hasAfter ? history.GetEntryTick(afterIndex) : 0;
 
             double beforeGap = hasBefore ? preciseTick - beforeTick : double.MaxValue;
             double afterGap = hasAfter ? afterTick - preciseTick : double.MaxValue;
@@ -196,19 +206,19 @@ namespace PurrNet.Modules
             if (beforeGap <= MaxSampleGapTicks && afterGap <= MaxSampleGapTicks)
             {
                 float fraction = (float)((preciseTick - beforeTick) / (afterTick - beforeTick));
-                state = history[index - 1].Interpolate(history[index], fraction);
+                state = history[beforeIndex].Interpolate(history[afterIndex], fraction);
                 return true;
             }
 
             if (beforeGap <= MaxSampleGapTicks && beforeGap <= afterGap)
             {
-                state = history[index - 1];
+                state = history[beforeIndex];
                 return true;
             }
 
             if (afterGap <= MaxSampleGapTicks)
             {
-                state = history[index];
+                state = history[afterIndex];
                 return true;
             }
 
@@ -242,6 +252,7 @@ namespace PurrNet.Modules
                 if (!col)
                 {
                     _collider3DStates.Remove(col);
+                    _collider3DBounds.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders3D.RemoveAt(i);
                     _histories3D.RemoveAt(i);
@@ -263,6 +274,7 @@ namespace PurrNet.Modules
                 if (!col)
                 {
                     _collider2DStates.Remove(col);
+                    _collider2DBounds.Remove(col);
                     _trackedColliders.Remove(col);
                     _colliders2D.RemoveAt(i);
                     _histories2D.RemoveAt(i);
@@ -276,6 +288,48 @@ namespace PurrNet.Modules
             }
 #endif
         }
+
+#if UNITY_PHYSICS_3D
+        /// <summary>
+        /// Records the collider's current pose as its state at <paramref name="tick"/>, replacing
+        /// any state already recorded for that tick. Returns false when the collider is not tracked.
+        /// For a module the network manager does not tick, this is the only capture, so the caller
+        /// chooses both when a pose is recorded and the tick it is recorded under.
+        /// </summary>
+        public bool Capture(ulong tick, Collider collider)
+        {
+            if (!collider ||
+                !_collider3DStates.TryGetValue(collider, out var history) ||
+                !_collider3DBounds.TryGetValue(collider, out var bounds))
+                return false;
+
+            var state = new Collider3DState(collider);
+            history.Write(tick, state);
+            bounds.Record((uint)tick, collider, state);
+            return true;
+        }
+#endif
+
+#if UNITY_PHYSICS_2D
+        /// <summary>
+        /// Records the collider's current pose as its state at <paramref name="tick"/>, replacing
+        /// any state already recorded for that tick. Returns false when the collider is not tracked.
+        /// For a module the network manager does not tick, this is the only capture, so the caller
+        /// chooses both when a pose is recorded and the tick it is recorded under.
+        /// </summary>
+        public bool Capture(ulong tick, Collider2D collider)
+        {
+            if (!collider ||
+                !_collider2DStates.TryGetValue(collider, out var history) ||
+                !_collider2DBounds.TryGetValue(collider, out var bounds))
+                return false;
+
+            var state = new Collider2DState(collider);
+            history.Write(tick, state);
+            bounds.Record((uint)tick, collider, state);
+            return true;
+        }
+#endif
 
         public void Register(ColliderRollback component)
         {
@@ -309,10 +363,12 @@ namespace PurrNet.Modules
 
             int maxEntries = Mathf.CeilToInt(_tickManager.tickRate * storeHistoryInSeconds);
             var history = new SimpleHistory<Collider3DState>(maxEntries);
+            var bounds = new TrackedBounds3D(maxEntries);
             _collider3DStates.Add(collider, history);
+            _collider3DBounds.Add(collider, bounds);
             _colliders3D.Add(collider);
             _histories3D.Add(history);
-            _bounds3D.Add(new TrackedBounds3D(maxEntries));
+            _bounds3D.Add(bounds);
         }
 
         public void Unregister(Collider collider)
@@ -324,6 +380,7 @@ namespace PurrNet.Modules
                 return;
 
             _collider3DStates.Remove(collider);
+            _collider3DBounds.Remove(collider);
 
             int index = _colliders3D.IndexOf(collider);
             if (index >= 0)
@@ -346,10 +403,12 @@ namespace PurrNet.Modules
 
             int maxEntries = Mathf.CeilToInt(_tickManager.tickRate * storeHistoryInSeconds);
             var history = new SimpleHistory<Collider2DState>(maxEntries);
+            var bounds = new TrackedBounds2D(maxEntries);
             _collider2DStates.Add(collider, history);
+            _collider2DBounds.Add(collider, bounds);
             _colliders2D.Add(collider);
             _histories2D.Add(history);
-            _bounds2D.Add(new TrackedBounds2D(maxEntries));
+            _bounds2D.Add(bounds);
         }
 
         public void Unregister(Collider2D collider)
@@ -361,6 +420,7 @@ namespace PurrNet.Modules
                 return;
 
             _collider2DStates.Remove(collider);
+            _collider2DBounds.Remove(collider);
 
             int index = _colliders2D.IndexOf(collider);
             if (index >= 0)

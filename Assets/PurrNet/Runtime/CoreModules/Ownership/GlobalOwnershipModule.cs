@@ -425,13 +425,23 @@ namespace PurrNet.Modules
             var accepted = 0;
             using var rejected = asServer ? DisposableList<NetworkID>.Create() : default;
 
-            for (var j = 0; j < idCount; j++)
+            _inClientChange = asServer;
+            _clientChangeDenialLogged = false;
+
+            try
             {
-                var id = change.identities[j];
-                if (HandleOwnershipChange(player, change, id, true, asServer))
-                    change.identities[accepted++] = id;
-                else if (asServer)
-                    rejected.Add(id);
+                for (var j = 0; j < idCount; j++)
+                {
+                    var id = change.identities[j];
+                    if (HandleOwnershipChange(player, change, id, true, asServer))
+                        change.identities[accepted++] = id;
+                    else if (asServer)
+                        rejected.Add(id);
+                }
+            }
+            finally
+            {
+                _inClientChange = false;
             }
 
             change.identities.RemoveRange(accepted, idCount - accepted);
@@ -968,6 +978,21 @@ namespace PurrNet.Modules
             }, change.identity, addToPending, false);
         }
 
+        private bool _inClientChange;
+        private bool _clientChangeDenialLogged;
+
+        private bool ShouldLogDenial()
+        {
+            if (!_inClientChange)
+                return true;
+
+            if (_clientChangeDenialLogged)
+                return false;
+
+            _clientChangeDenialLogged = true;
+            return true;
+        }
+
         private bool HandleOwnershipChange(PlayerID actor, OwnershipChange change, NetworkID id, bool addToPending,
             bool fromClient)
         {
@@ -1009,7 +1034,8 @@ namespace PurrNet.Modules
             {
                 if (!identity.HasTransferOwnershipAuthority(actor, false))
                 {
-                    PurrLogger.LogError(
+                    if (ShouldLogDenial())
+                        PurrLogger.LogError(
                         $"Failed to {verb} (transfer) ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
                         identity);
                     return false;
@@ -1017,7 +1043,8 @@ namespace PurrNet.Modules
             }
             else if (fromClient && !identity.HasGiveOwnershipAuthority(false))
             {
-                PurrLogger.LogError(
+                if (ShouldLogDenial())
+                    PurrLogger.LogError(
                     $"Failed to {verb} ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
                     identity);
                 return false;
@@ -1025,7 +1052,8 @@ namespace PurrNet.Modules
 
             if (fromClient && !change.isAdding && !identity.HasRemoveOwnershipAuthority(actor, false))
             {
-                PurrLogger.LogError(
+                if (ShouldLogDenial())
+                    PurrLogger.LogError(
                     $"Failed to remove ownership of '{identity.gameObject.name}' to {change.player} because of missing authority.",
                     identity);
                 return false;

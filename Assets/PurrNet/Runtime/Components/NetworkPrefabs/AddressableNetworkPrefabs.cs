@@ -10,7 +10,7 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 namespace PurrNet
 {
     [CreateAssetMenu(fileName = "AddressableNetworkPrefabs", menuName = "PurrNet/Network Prefabs/Addressable Network Prefabs", order = -200)]
-    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAsyncPrefabProvider, IPersistentPrefabProvider
+    public class AddressableNetworkPrefabs : PrefabProviderScriptable, IAddressablePrefabProvider
     {
         [Serializable]
         public struct Entry
@@ -38,7 +38,9 @@ namespace PurrNet
         private readonly Dictionary<int, PrefabData> _prefabLookup = new();
         private readonly Dictionary<string, int> _guidToId = new();
         private readonly Dictionary<int, string> _idToGuid = new();
-        private readonly List<AsyncOperationHandle<GameObject>> _loadHandles = new();
+        private readonly Dictionary<string, AsyncOperationHandle<GameObject>> _handles = new();
+        private readonly Dictionary<string, Task<PrefabData>> _pendingLoads = new();
+        private int _generation;
         private readonly List<RuntimePrefabEntry> _runtimePrefabs = new();
         private readonly HashSet<string> _warnedNameFallbacks = new();
         private int _runtimePrefabStartId;
@@ -57,9 +59,21 @@ namespace PurrNet
         public IReadOnlyList<Entry> entries => _entries;
 
         /// <summary>
-        /// Number of registered entries.
+        /// Number of registered entries, including those from linked AddressableNetworkPrefabs.
         /// </summary>
-        public int count => _entries.Count;
+        public int count => CountEntries(this, new HashSet<AddressableNetworkPrefabs>());
+
+        private static int CountEntries(AddressableNetworkPrefabs provider, HashSet<AddressableNetworkPrefabs> visited)
+        {
+            if (!provider || !visited.Add(provider)) return 0;
+
+            int total = provider._entries.Count;
+            if (provider.linkedAddressablePrefabs == null) return total;
+
+            for (int i = 0; i < provider.linkedAddressablePrefabs.Count; i++)
+                total += CountEntries(provider.linkedAddressablePrefabs[i], visited);
+            return total;
+        }
 
         public bool preloadAtStartup
         {
@@ -135,6 +149,18 @@ namespace PurrNet
             return _idToGuid.TryGetValue(localPrefabId, out assetGuid);
         }
 
+        /// <summary>
+        /// Like <see cref="TryGetGuid"/>, but false for prefabs added at runtime: those are never loaded or released.
+        /// </summary>
+        public bool TryGetAddressableGuid(int prefabId, out string assetGuid)
+        {
+            if (prefabId < _runtimePrefabStartId)
+                return TryGetGuid(prefabId, out assetGuid);
+
+            assetGuid = null;
+            return false;
+        }
+
         public bool TryGetPersistentId(int prefabId, out string persistentId)
         {
             return TryGetGuid(prefabId, out persistentId);
@@ -161,10 +187,14 @@ namespace PurrNet
             return false;
         }
 
+        /// <summary>Raised for every AddressableNetworkPrefabs asset. Prefer <see cref="loadStateChanged"/>.</summary>
         public static event Action<string, bool> onLoadStateChanged;
 
-        internal static void NotifyLoadStateChanged(string guid, bool loaded)
+        public event Action<string, bool> loadStateChanged;
+
+        private void NotifyLoadStateChanged(string guid, bool loaded)
         {
+            loadStateChanged?.Invoke(guid, loaded);
             onLoadStateChanged?.Invoke(guid, loaded);
         }
 
@@ -172,7 +202,8 @@ namespace PurrNet
         {
             foreach (var kvp in _prefabLookup)
             {
-                if (kvp.Value.prefab != null && _idToGuid.TryGetValue(kvp.Key, out var g))
+                if (kvp.Key < _runtimePrefabStartId && kvp.Value.prefab != null &&
+                    _idToGuid.TryGetValue(kvp.Key, out var g))
                     yield return g;
             }
         }
@@ -189,9 +220,9 @@ namespace PurrNet
 
         /// <summary>
         /// Rebuilds the internal lookup tables from the entry list.
-        /// Assigns deterministic IDs sorted by asset GUID.
+        /// Assigns IDs in entry order, so every peer must use the same entry list.
         /// Includes entries from linked AddressableNetworkPrefabs (deduped by GUID).
-        /// Note: PrefabData.prefab will be null until LoadAllAsync is called.
+        /// Note: PrefabData.prefab is null for every prefab that isn't loaded.
         /// The IDs assigned here are local to this provider and will be
         /// offset by the CompositePrefabProvider when combined with other providers.
         /// </summary>
@@ -241,7 +272,7 @@ namespace PurrNet
                 _prefabLookup[i] = new PrefabData
                 {
                     prefabId = i,
-                    prefab = null,
+                    prefab = TryGetLoaded(guid, out var loaded) ? loaded : null,
                     pooled = false,
                     warmupCount = 0
                 };
@@ -278,45 +309,108 @@ namespace PurrNet
             return data.prefab == null;
         }
 
-        public async Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
+        private bool TryGetLoaded(string guid, out GameObject prefab)
         {
-            if (!_guidToId.TryGetValue(assetGuid, out int localId))
+            if (_handles.TryGetValue(guid, out var handle) && handle.IsValid() &&
+                handle.Status == AsyncOperationStatus.Succeeded && handle.Result)
             {
-                PurrLogger.LogError($"LoadPrefabByGuidAsync: GUID '{assetGuid}' not registered.");
-                return default;
+                prefab = handle.Result;
+                return true;
             }
-            return await LoadPrefabAsync(localId);
+
+            prefab = null;
+            return false;
         }
 
-        public async Task<PrefabData> LoadPrefabAsync(int prefabId)
+        public Task<PrefabData> LoadPrefabByGuidAsync(string assetGuid)
+        {
+            if (string.IsNullOrEmpty(assetGuid) || !_guidToId.TryGetValue(assetGuid, out int localId))
+            {
+                PurrLogger.LogError($"LoadPrefabByGuidAsync: GUID '{assetGuid}' not registered.");
+                return Task.FromResult(default(PrefabData));
+            }
+
+            return LoadPrefabAsync(localId);
+        }
+
+        /// <summary>
+        /// Loads one prefab. Calls made while the same prefab is still loading share that load.
+        /// </summary>
+        public Task<PrefabData> LoadPrefabAsync(int prefabId)
         {
             if (!_prefabLookup.TryGetValue(prefabId, out var data))
             {
                 PurrLogger.LogError($"LoadPrefabAsync: prefabId {prefabId} not found in AddressableNetworkPrefabs.");
-                return default;
+                return Task.FromResult(default(PrefabData));
             }
 
             if (data.prefab != null)
-                return data;
+                return Task.FromResult(data);
 
             if (!_idToGuid.TryGetValue(prefabId, out var guid))
             {
                 PurrLogger.LogError($"LoadPrefabAsync: no GUID mapping for prefabId {prefabId}.");
-                return default;
+                return Task.FromResult(default(PrefabData));
             }
+
+            if (_pendingLoads.TryGetValue(guid, out var pending))
+                return pending;
+
+            var task = LoadPrefabCoreAsync(guid);
+            if (!task.IsCompleted)
+                _pendingLoads[guid] = task;
+            return task;
+        }
+
+        private async Task<PrefabData> LoadPrefabCoreAsync(string guid)
+        {
+            int generation = _generation;
+            AsyncOperationHandle<GameObject> handle = default;
 
             try
             {
-                var handle = Addressables.LoadAssetAsync<GameObject>(guid);
-                _loadHandles.Add(handle);
+                handle = Addressables.LoadAssetAsync<GameObject>(guid);
                 await handle.Task;
 
-                if (handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
+                // ReleaseAll ran while this was loading: nobody is waiting for the prefab anymore.
+                if (generation != _generation)
                 {
-                    PurrLogger.LogError($"LoadPrefabAsync: failed to load Addressable prefab prefabId {prefabId} GUID '{guid}'.");
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
                     return default;
                 }
 
+                _pendingLoads.Remove(guid);
+
+                // A blocking load finished the same prefab while this one was waiting its turn.
+                if (_handles.ContainsKey(guid))
+                {
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
+
+                    return _guidToId.TryGetValue(guid, out int loadedId) &&
+                           _prefabLookup.TryGetValue(loadedId, out var loadedData)
+                        ? loadedData
+                        : default;
+                }
+
+                if (!handle.IsValid() || handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
+                {
+                    PurrLogger.LogError($"Failed to load Addressable prefab with GUID '{guid}'.");
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
+                    return default;
+                }
+
+                // The entry list may have been refreshed while loading, so resolve the id again.
+                if (!_guidToId.TryGetValue(guid, out int prefabId) ||
+                    !_prefabLookup.TryGetValue(prefabId, out var data))
+                {
+                    Addressables.Release(handle);
+                    return default;
+                }
+
+                _handles[guid] = handle;
                 data.prefab = handle.Result;
                 _prefabLookup[prefabId] = data;
                 NotifyLoadStateChanged(guid, true);
@@ -324,9 +418,59 @@ namespace PurrNet
             }
             catch (Exception e)
             {
-                PurrLogger.LogError($"LoadPrefabAsync: exception loading prefabId {prefabId} GUID '{guid}': {e.Message}\n{e.StackTrace}");
+                if (generation == _generation)
+                    _pendingLoads.Remove(guid);
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+                PurrLogger.LogError($"Exception loading Addressable prefab GUID '{guid}': {e.Message}\n{e.StackTrace}");
                 return default;
             }
+        }
+
+        /// <summary>
+        /// Loads one prefab and blocks until it is there. A load of the same prefab that is still
+        /// running is finished by this call and completes on its own afterwards.
+        /// </summary>
+        public PrefabData LoadPrefabByGuid(string assetGuid)
+        {
+            if (string.IsNullOrEmpty(assetGuid) || !_guidToId.TryGetValue(assetGuid, out int prefabId) ||
+                !_prefabLookup.TryGetValue(prefabId, out var data))
+            {
+                PurrLogger.LogError($"LoadPrefabByGuid: GUID '{assetGuid}' not registered.");
+                return default;
+            }
+
+            if (data.prefab != null)
+                return data;
+
+            AsyncOperationHandle<GameObject> handle = default;
+
+            try
+            {
+                handle = Addressables.LoadAssetAsync<GameObject>(assetGuid);
+                handle.WaitForCompletion();
+
+                if (!handle.IsValid() || handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
+                {
+                    PurrLogger.LogError($"Failed to load Addressable prefab with GUID '{assetGuid}'.");
+                    if (handle.IsValid())
+                        Addressables.Release(handle);
+                    return default;
+                }
+            }
+            catch (Exception e)
+            {
+                if (handle.IsValid())
+                    Addressables.Release(handle);
+                PurrLogger.LogError($"Exception loading Addressable prefab GUID '{assetGuid}': {e.Message}\n{e.StackTrace}");
+                return default;
+            }
+
+            _handles[assetGuid] = handle;
+            data.prefab = handle.Result;
+            _prefabLookup[prefabId] = data;
+            NotifyLoadStateChanged(assetGuid, true);
+            return data;
         }
 
         /// <summary>
@@ -336,48 +480,53 @@ namespace PurrNet
         /// </summary>
         public async Task LoadAllAsync()
         {
-            RebuildLookup();
             ReleaseAll();
+            RebuildLookup();
 
             var sortedGuids = new List<string>(_guidToId.Count);
             foreach (var kvp in _guidToId)
-                sortedGuids.Add(kvp.Key);
+            {
+                if (kvp.Value < _runtimePrefabStartId)
+                    sortedGuids.Add(kvp.Key);
+            }
+
             sortedGuids.Sort(StringComparer.Ordinal);
+
+            int generation = _generation;
 
             for (int i = 0; i < sortedGuids.Count; i++)
             {
-                var guid = sortedGuids[i];
-                var id = _guidToId[guid];
+                await LoadPrefabByGuidAsync(sortedGuids[i]);
 
-                try
-                {
-                    var handle = Addressables.LoadAssetAsync<GameObject>(guid);
-                    _loadHandles.Add(handle);
-
-                    await handle.Task;
-
-                    if (handle.Status != AsyncOperationStatus.Succeeded || !handle.Result)
-                    {
-                        PurrLogger.LogError($"Failed to load Addressable prefab with GUID '{guid}'.");
-                        continue;
-                    }
-
-                    var prefab = handle.Result;
-
-                    if (_prefabLookup.TryGetValue(id, out var data))
-                    {
-                        data.prefab = prefab;
-                        _prefabLookup[id] = data;
-                        NotifyLoadStateChanged(guid, true);
-                    }
-                }
-                catch (Exception e)
-                {
-                    PurrLogger.LogError($"Exception loading Addressable prefab GUID '{guid}': {e.Message}");
-                }
+                if (generation != _generation)
+                    return;
             }
 
             isLoaded = true;
+        }
+
+        /// <summary>
+        /// Releases one loaded prefab. Returns false when it wasn't loaded.
+        /// Instances that still exist lose the assets they share with the prefab, so despawn them first.
+        /// </summary>
+        public bool ReleasePrefabByGuid(string assetGuid)
+        {
+            if (string.IsNullOrEmpty(assetGuid) || !_handles.Remove(assetGuid, out var handle))
+                return false;
+
+            if (_guidToId.TryGetValue(assetGuid, out int prefabId) &&
+                _prefabLookup.TryGetValue(prefabId, out var data))
+            {
+                data.prefab = null;
+                _prefabLookup[prefabId] = data;
+            }
+
+            if (handle.IsValid())
+                Addressables.Release(handle);
+
+            isLoaded = false;
+            NotifyLoadStateChanged(assetGuid, false);
+            return true;
         }
 
         /// <summary>
@@ -386,30 +535,16 @@ namespace PurrNet
         /// </summary>
         public void ReleaseAll()
         {
-            for (int i = 0; i < _loadHandles.Count; i++)
-            {
-                if (_loadHandles[i].IsValid())
-                    Addressables.Release(_loadHandles[i]);
-            }
-
-            _loadHandles.Clear();
+            _generation++;
+            _pendingLoads.Clear();
             isLoaded = false;
 
-            foreach (var guid in _idToGuid.Values)
-                NotifyLoadStateChanged(guid, false);
+            if (_handles.Count == 0)
+                return;
 
-            var keys = new List<int>(_prefabLookup.Keys);
-            for (int i = 0; i < keys.Count; i++)
-            {
-                var key = keys[i];
-                if (key >= _runtimePrefabStartId)
-                    continue;
-                if (_prefabLookup.TryGetValue(key, out var data))
-                {
-                    data.prefab = null;
-                    _prefabLookup[key] = data;
-                }
-            }
+            var guids = new List<string>(_handles.Keys);
+            for (int i = 0; i < guids.Count; i++)
+                ReleasePrefabByGuid(guids[i]);
         }
 
         private void OnDisable()

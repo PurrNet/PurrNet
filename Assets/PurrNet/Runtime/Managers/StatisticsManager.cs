@@ -135,6 +135,8 @@ namespace PurrNet
         private void Awake()
         {
             _networkManager = NetworkManager.main;
+            if (!_networkManager)
+                return;
             _networkManager.onServerConnectionState += OnServerConnectionState;
             _networkManager.onClientConnectionState += OnClientConnectionState;
         }
@@ -157,6 +159,11 @@ namespace PurrNet
                 enabled = false;
                 return;
             }
+
+            if (_networkManager.isServer && !connectedServer)
+                OnServerConnectionState(ConnectionState.Connected);
+            if (_networkManager.isClient && !connectedClient)
+                OnClientConnectionState(ConnectionState.Connected);
 
             EnsureLabelStyle();
         }

@@ -12,24 +12,57 @@ namespace PurrNet.Editor
         private const string PackageName = "dev.purrnet.services";
         private const string SetupMenuPath = "Tools/PurrNet/PurrServices";
         private const string SetupWindowTypeName = "PurrNet.Services.Editor.PurrServicesSetupWindow, PurrServices.Editor";
+        private const string LinkAfterInstallKey = "PurrTransport.linkAfterInstall";
 
         private static bool _busy;
+        private static bool _linkAfterSignIn;
+        private static bool _linkAfterSignInEditorProfile;
+        private static bool _askedFreeOffer;
+        private static bool _relayFree;
+
+        /// <summary>Whether the website says the relay is free (asked once per editor session; false until it answers).</summary>
+        private static bool relayFree
+        {
+            get
+            {
+                if (!_askedFreeOffer)
+                {
+                    _askedFreeOffer = true;
+                    AskFreeOffer();
+                }
+                return _relayFree;
+            }
+        }
+
+        private static async void AskFreeOffer()
+        {
+            try
+            {
+                var offer = await PurrPackageManagerAPI.GetFreeOffer();
+                if (!offer.Success || offer.Value?.free == null || !offer.Value.free.TryGetValue("relay", out var free) || free == _relayFree)
+                    return;
+                _relayFree = free;
+                RepaintInspectors();
+            }
+            catch
+            {
+                // ignore
+            }
+        }
 
         public static void Draw()
         {
-            GUILayout.Space(8);
-            EditorGUILayout.LabelField("Production use", EditorStyles.boldLabel);
-
             var editorProfile = PurrServicesProjectLink.isEditorProfile;
-            var profileName = editorProfile ? "Unity Editor override" : "Player Builds";
 
             if (PurrServicesProjectLink.isLinked)
             {
                 var name = PurrServicesProjectLink.projectName ?? PurrServicesProjectLink.projectId;
                 var where = editorProfile ? "Editor" : "Editor & builds";
                 var buildName = PurrServicesProjectLink.buildProjectName ?? PurrServicesProjectLink.buildProjectId;
-                var tooltip = $"Relay rooms belong to this PurrNet project: isolated from every other project, " +
-                              "metered, and shown live on its dashboard.";
+                var tooltip = (relayFree
+                                  ? "Relay rooms belong to this PurrNet project: free with unlimited players (fair use), "
+                                  : "Relay rooms belong to this PurrNet project: metered, ") +
+                              "isolated from every other project, and shown live on its dashboard.";
                 if (editorProfile)
                     tooltip += PurrServicesProjectLink.isBuildLinked
                         ? $" Builds use \"{buildName}\"."
@@ -42,42 +75,49 @@ namespace PurrNet.Editor
             {
                 var buildName = PurrServicesProjectLink.buildProjectName ?? PurrServicesProjectLink.buildProjectId;
                 ProjectRow(new GUIContent("Project",
-                        "Play Mode uses the shared development relay (Unity Editor override without a project). " +
+                        "Play Mode uses the shared test relay (Unity Editor override without a project). " +
                         $"Builds use \"{buildName}\"."),
-                    $"Development relay (Editor)  ·  builds: {buildName}");
+                    $"Test relay (Editor)  ·  builds: {buildName}");
                 return;
             }
 
-            EditorGUILayout.HelpBox(
-                "NOT FOR PRODUCTION. No PurrNet project is linked, so this transport uses the shared " +
-                "development relay: rooms are anonymous, unmetered and may be dropped at any time. " +
-                "It works in builds, but shipping a game on it is not allowed. Link your project to " +
-                "move to production: isolated rooms, live usage and support on your dashboard.",
+            EditorGUILayout.HelpBox(relayFree
+                    ? "Limited mode: test relay only, not for production. Link a free project to ship (unlimited players, fair use)."
+                    : "Limited mode: test relay only, not for production. Link a free PurrNet project before you ship.",
                 MessageType.Warning);
 
             var installed = PurrPackageQuickInstall.IsInstalled(PackageName);
-            var blocked = _busy || PurrPackageQuickInstall.isInstalling || EditorApplication.isPlayingOrWillChangePlaymode;
+            var playing = EditorApplication.isPlayingOrWillChangePlaymode;
 
-            using (new EditorGUILayout.HorizontalScope())
-            using (new EditorGUI.DisabledScope(blocked))
+            if (installed && !playing && SessionState.GetBool(LinkAfterInstallKey, false))
+            {
+                SessionState.EraseBool(LinkAfterInstallKey);
+                EditorApplication.delayCall += () => StartLink(editorProfile);
+            }
+
+            using (new EditorGUI.DisabledScope(_busy || _linkAfterSignIn || PurrPackageQuickInstall.isInstalling || playing))
             {
                 if (!installed)
                 {
-                    if (GUILayout.Button(PurrPackageQuickInstall.isInstalling ? "Installing PurrServices…" : "Install PurrServices"))
+                    if (GUILayout.Button(PurrPackageQuickInstall.isInstalling ? "Installing PurrServices…" : "Install PurrServices & link"))
+                    {
+                        SessionState.SetBool(LinkAfterInstallKey, true);
                         _ = PurrPackageQuickInstall.InstallByUpmName(PackageName);
+                    }
                 }
                 else
                 {
-                    var unityProjectName = UnityProjectName();
-                    if (GUILayout.Button(_busy ? $"Creating {unityProjectName}…" : $"Create & Link ({unityProjectName})"))
-                        CreateAndLink(unityProjectName, editorProfile);
-                    if (GUILayout.Button("Open PurrServices", GUILayout.ExpandWidth(false)))
-                        OpenSetupWindow();
+                    var label = _busy ? "Linking…"
+                        : _linkAfterSignIn ? "Waiting for sign-in…"
+                        : PurrPackageManagerAuth.HasApiKey() ? "Link free project"
+                        : "Sign in & link free project";
+                    if (GUILayout.Button(label))
+                        StartLink(editorProfile);
                 }
             }
 
-            if (EditorApplication.isPlayingOrWillChangePlaymode)
-                EditorGUILayout.HelpBox("Exit Play Mode before changing the linked project.", MessageType.None);
+            if (playing)
+                EditorGUILayout.HelpBox("Exit Play Mode to link a project.", MessageType.None);
         }
 
         private static void ProjectRow(GUIContent label, string value)
@@ -86,8 +126,9 @@ namespace PurrNet.Editor
             {
                 EditorGUILayout.PrefixLabel(label);
                 GUILayout.Label(new GUIContent(value, label.tooltip), EditorStyles.label, GUILayout.ExpandWidth(true), GUILayout.MinWidth(0));
-                if (GUILayout.Button("Open PurrServices", GUILayout.ExpandWidth(false)))
-                    OpenSetupWindow();
+                if (GUILayout.Button(new GUIContent("...", "Open PurrServices"), GUILayout.ExpandWidth(false)) &&
+                    !EditorApplication.ExecuteMenuItem(SetupMenuPath))
+                    Debug.LogError($"Could not open {SetupMenuPath}. Install or update PurrServices.");
             }
         }
 
@@ -97,30 +138,45 @@ namespace PurrNet.Editor
             return directory?.Name ?? Application.productName ?? "Unity Project";
         }
 
-        private static void OpenSetupWindow()
+        private static void StartLink(bool editorProfile)
         {
-            if (!EditorApplication.ExecuteMenuItem(SetupMenuPath))
-                Debug.LogError($"Could not open {SetupMenuPath}. Install or update PurrServices.");
+            if (_busy || _linkAfterSignIn) return;
+            if (PurrPackageManagerAuth.HasApiKey())
+            {
+                Link(editorProfile);
+                return;
+            }
+
+            _linkAfterSignInEditorProfile = editorProfile;
+            _linkAfterSignIn = true;
+            PurrPackageManagerAuth.onAuthChanged += OnAuthChanged;
+            PurrPackageManagerAuth.Login();
+            RepaintInspectors();
         }
 
-        private static async void CreateAndLink(string projectName, bool editorProfile)
+        private static void OnAuthChanged()
+        {
+            PurrPackageManagerAuth.onAuthChanged -= OnAuthChanged;
+            _linkAfterSignIn = false;
+            if (PurrPackageManagerAuth.HasApiKey())
+                Link(_linkAfterSignInEditorProfile);
+            else
+                RepaintInspectors();
+        }
+
+        /// <summary>Creates a PurrNet project named after this Unity project and links it, through PurrServices.</summary>
+        private static async void Link(bool editorProfile)
         {
             if (_busy) return;
 
-            var windowType = Type.GetType(SetupWindowTypeName);
-            var method = windowType?.GetMethod("CreateAndLinkProject", new[] { typeof(string), typeof(bool) });
+            var method = Type.GetType(SetupWindowTypeName)?.GetMethod("CreateAndLinkProject", new[] { typeof(string), typeof(bool) });
             if (method == null)
             {
-                EditorUtility.DisplayDialog("PurrServices", "Update PurrServices to use one-click project setup.", "OK");
+                EditorUtility.DisplayDialog("PurrServices", "Update PurrServices to link a project from here.", "OK");
                 return;
             }
 
-            if (!PurrPackageManagerAuth.HasApiKey())
-            {
-                EditorUtility.DisplayDialog("PurrServices", "Sign in to PurrNet (Tools → PurrNet) before creating a project.", "OK");
-                return;
-            }
-
+            var projectName = UnityProjectName();
             _busy = true;
             RepaintInspectors();
             try
@@ -131,16 +187,16 @@ namespace PurrNet.Editor
                     : Result<bool>.Fail("The installed PurrServices version returned an unsupported result.");
                 if (!result.Success)
                 {
-                    EditorUtility.DisplayDialog("Could not create project", result.Error ?? "Unknown error.", "OK");
+                    EditorUtility.DisplayDialog("Could not link a project", result.Error ?? "Unknown error.", "OK");
                     return;
                 }
 
-                Debug.Log($"[PurrTransport] Created PurrNet project '{projectName}' and linked it to " +
+                Debug.Log($"[PurrTransport] Linked PurrNet project '{projectName}' to " +
                           (editorProfile ? "the Unity Editor override." : "Player Builds."));
             }
             catch (Exception exception)
             {
-                EditorUtility.DisplayDialog("Could not create project", exception.GetBaseException().Message, "OK");
+                EditorUtility.DisplayDialog("Could not link a project", exception.GetBaseException().Message, "OK");
             }
             finally
             {

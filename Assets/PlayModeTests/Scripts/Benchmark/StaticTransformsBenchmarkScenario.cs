@@ -116,7 +116,11 @@ public class StaticTransformsBenchmarkScenario : BenchmarkScenarioBase
     private static int CountSpawned()
     {
         int count = 0;
+#if UNITY_6000_4_OR_NEWER
+        var all = FindObjectsByType<NetworkTransform>();
+#else
         var all = FindObjectsByType<NetworkTransform>(FindObjectsSortMode.None);
+#endif
         for (int i = 0; i < all.Length; i++)
         {
             if (all[i].isSpawned && all[i].name == NT_NAME)

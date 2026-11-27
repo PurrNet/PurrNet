@@ -3,6 +3,7 @@ using System.Reflection;
 using PurrNet.Contributors;
 using PurrNet.Utils;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -101,6 +102,24 @@ namespace PurrNet.Editor
         public override VisualElement CreateInspectorGUI()
         {
             var root = OptionalInspectorIntegration.CreateInspectorGUI(this, editorAttributesExcludedProperties);
+#if !TRI_INSPECTOR_PACKAGE && !ODIN_INSPECTOR
+            if (root == null && GetType().GetMethod(nameof(OnInspectorGUI)).DeclaringType == typeof(NetworkIdentityInspector))
+            {
+                try
+                {
+                    root = new VisualElement();
+                    InspectorElement.FillDefaultInspector(root, serializedObject, this);
+                }
+                catch (System.IO.FileNotFoundException)
+                {
+                    root = null;
+                }
+                catch (System.Reflection.ReflectionTypeLoadException)
+                {
+                    root = null;
+                }
+            }
+#endif
             if (root == null)
                 return null;
 

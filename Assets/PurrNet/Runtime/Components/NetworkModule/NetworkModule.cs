@@ -12,9 +12,13 @@ namespace PurrNet
 {
     [Serializable]
     [PackerDependencies(typeof(NetworkIdentity), typeof(byte))]
-    public class NetworkModule
+    public partial class NetworkModule
     {
         public NetworkIdentity parent { get; private set; }
+
+        partial void OnRecordedChanged();
+
+        internal void RecordedChanged() => OnRecordedChanged();
 
         [UsedImplicitly] public string name { get; private set; }
 

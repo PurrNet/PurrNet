@@ -68,6 +68,16 @@ namespace PurrNet.Editor
                 settings.guardFailureAction);
             settings.guardFailureAction = (GuardFailureAction)guardFailureActionResult;
 
+            bool clientOnlyBuilds = ClientOnlyBuilds.isEnabled;
+            bool newClientOnlyBuilds = EditorGUILayout.Toggle(
+                new GUIContent("Client Only Builds",
+                    "Strips server code from builds that don't target Dedicated Server: they can't start a server, host or be promoted to server (host migration). " +
+                    "Adds the " + ClientOnlyBuilds.Define + " define to every platform except Dedicated Server. " +
+                    "Only enable this if your game runs on dedicated servers."),
+                clientOnlyBuilds);
+            if (newClientOnlyBuilds != clientOnlyBuilds)
+                ClientOnlyBuilds.isEnabled = newClientOnlyBuilds;
+
             if (EditorGUI.EndChangeCheck())
                 PurrNetSettings.SaveSettings(settings);
 

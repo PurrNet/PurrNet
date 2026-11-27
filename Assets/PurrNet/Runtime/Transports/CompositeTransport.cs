@@ -563,6 +563,7 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(false);
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Awake();
@@ -610,6 +611,7 @@ namespace PurrNet.Transports
             return !_hasServerTransportFilter || _serverTransportFilter.Contains(transport);
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             throw new NotSupportedException("Cannot listen on specific port with composite transport.");

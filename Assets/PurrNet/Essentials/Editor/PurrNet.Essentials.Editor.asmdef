@@ -1,0 +1,24 @@
+{
+    "name": "PurrNet.Essentials.Editor",
+    "rootNamespace": "PurrNet.Essentials",
+    "references": [],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "dev.purrnet.essentials",
+            "expression": "",
+            "define": "PURR_ESSENTIALS_STANDALONE"
+        }
+    ],
+    "noEngineReferences": false
+}

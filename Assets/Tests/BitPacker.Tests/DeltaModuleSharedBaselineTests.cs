@@ -315,4 +315,71 @@ public class DeltaModuleSharedBaselineTests
 
         return sw.Elapsed.TotalMilliseconds / measureTicks;
     }
+
+    static BitPacker WriteShared(DeltaModule sender, PlayerID player, uint keyHash, Vector3 value)
+    {
+        var packer = BitPackerPool.Get();
+        PackedUInt cachedKey = default;
+        sender.Write(packer, player, keyHash, value, ref cachedKey);
+        packer.ResetPositionAndMode(true);
+        return packer;
+    }
+
+    static Vector3 ReadShared(DeltaModule receiver, uint keyHash, BitPacker packer)
+    {
+        Vector3 value = default;
+        PackedUInt cachedKey = default;
+        receiver.Read(packer, keyHash, PlayerID.Server, ref value, ref cachedKey);
+        return value;
+    }
+
+    static void AckAndCleanup(DeltaModule sender, DeltaModule receiver, PlayerID player, uint keyHash, uint valueId)
+    {
+        uint upTo = sender.AcknowledgeForTests<Vector3>(player, keyHash, new PackedUInt(valueId), 0.5f);
+        if (upTo != 0)
+            receiver.CleanupForTests<Vector3>(keyHash, upTo);
+    }
+
+    [Test]
+    public void SharedBaseline_StillInFlight_SurvivesCleanup()
+    {
+        const uint keyHash = 9001;
+        var sender = new DeltaModule(null, null);
+        var receiver = new DeltaModule(null, null);
+        var player = Player(2);
+
+        sender.SetFrameTimeForTests(0f);
+        for (uint id = 1; id <= 64; id++)
+        {
+            using (var packer = WriteShared(sender, player, keyHash, new Vector3(id, 0, 0)))
+                ReadShared(receiver, keyHash, packer);
+            AckAndCleanup(sender, receiver, player, keyHash, id);
+        }
+
+        sender.SetFrameTimeForTests(1f);
+        using var late = WriteShared(sender, player, keyHash, new Vector3(100, 0, 0));
+        using (var overtaking = WriteShared(sender, player, keyHash, new Vector3(101, 0, 0)))
+            ReadShared(receiver, keyHash, overtaking);
+        AckAndCleanup(sender, receiver, player, keyHash, 66);
+
+        Vector3 decoded = default;
+        Assert.DoesNotThrow(() => decoded = ReadShared(receiver, keyHash, late),
+            "A baseline a packet was just encoded against must not be cleaned up while that packet may still be in flight");
+        Assert.That(decoded, Is.EqualTo(new Vector3(100, 0, 0)));
+
+        sender.SetFrameTimeForTests(2f);
+        uint highestUpTo = 0;
+        for (uint id = 67; id <= 67 + 64; id++)
+        {
+            using (var packer = WriteShared(sender, player, keyHash, new Vector3(id, 1, 0)))
+                ReadShared(receiver, keyHash, packer);
+            sender.SetFrameTimeForTests(2f + id * 0.01f);
+            uint upTo = sender.AcknowledgeForTests<Vector3>(player, keyHash, new PackedUInt(id), 0.5f);
+            if (upTo > highestUpTo)
+                highestUpTo = upTo;
+        }
+
+        Assert.That(highestUpTo, Is.GreaterThan(64u), "Once unused for longer than the history age, the baseline is cleaned up again");
+    }
 }
+

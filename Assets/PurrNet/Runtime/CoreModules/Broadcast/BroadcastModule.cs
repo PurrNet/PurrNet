@@ -9,7 +9,7 @@ using PurrNet.Utils;
 namespace PurrNet.Modules
 {
     [PackerDependencies]
-    public class BroadcastModule : INetworkModule, IDataListener, IConnectionListener, IFixedUpdate,
+    public partial class BroadcastModule : INetworkModule, IDataListener, IConnectionListener, IFixedUpdate,
         IPromoteToServerModule
     {
         public const int MAX_HEADER_SIZE = 5;
@@ -353,6 +353,7 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to all clients from client.");
 
+            RecordSent(default, in data, true);
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -380,6 +381,7 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to player from client.");
 
+            RecordSent(conn, in data, false);
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -397,6 +399,7 @@ namespace PurrNet.Modules
         {
             AssertIsServer("Cannot send data to player from client.");
 
+            RecordSent(conn, in data);
             var byteData = GetData(data);
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             var type = typeof(T);
@@ -513,8 +516,13 @@ namespace PurrNet.Modules
             var fragment = new ByteData(data.data, data.offset + FRAGMENT_FRAME_PREFIX,
                 data.length - FRAGMENT_FRAME_PREFIX);
             bool sequenced = channel == Channel.UnreliableSequenced;
-            if (_fragmentation.Receive(conn.connectionId, (byte)channel, sequenced, fragment, out var assembled))
-                ProcessData(conn, assembled);
+            if (!_fragmentation.Receive(conn.connectionId, (byte)channel, sequenced, fragment, out var assembled))
+                return;
+
+            if (assembled.length >= sizeof(uint) && ReadUInt32(assembled.data, assembled.offset) == _fragmentFrameTypeId)
+                return;
+
+            ProcessData(conn, assembled);
         }
 
         public void FixedUpdate()
@@ -572,6 +580,8 @@ namespace PurrNet.Modules
         {
             var startPos = packer.positionInBits;
 
+            RecordReceiving(true);
+
             if (_actions.TryGetValue(hash, out var actions))
             {
                 for (int i = 0; i < actions.Count; i++)
@@ -582,7 +592,14 @@ namespace PurrNet.Modules
             }
 
             onRawDataReceived?.Invoke(conn, hash, packer);
+            RecordReceiving(false);
         }
+
+        partial void RecordSent<T>(Connection conn, in T data, bool toAll);
+
+        partial void RecordSent<T>(IReadOnlyList<Connection> conn, in T data);
+
+        partial void RecordReceiving(bool begin);
 
         public void PromoteToServerModule()
         {

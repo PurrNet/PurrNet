@@ -214,6 +214,8 @@ namespace PurrNet.Modules
                 floatingPoint = 0;
 
                 bool triggerNormalTicks = ticksHandled < _maxTicksPerFrame;
+                hasQueuedTicks = ticksHandled + 1 < _maxTicksPerFrame &&
+                                 _lastTickTime + interval <= Time.unscaledTimeAsDouble;
 
                 if (triggerNormalTicks)
                     onPreTick?.Invoke();
@@ -233,7 +235,14 @@ namespace PurrNet.Modules
 
                 ticksHandled++;
             }
+
+            hasQueuedTicks = false;
         }
+
+        /// <summary>
+        /// True while catching up when another normal tick follows in this same frame.
+        /// </summary>
+        public bool hasQueuedTicks { get; private set; }
         
         internal int AddIdentityTick(NetworkIdentity identity) => _identityTicks.Add(identity);
 

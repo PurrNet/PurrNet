@@ -132,6 +132,9 @@ namespace PurrNet.Analyzers
 
             if (backingField == null)
             {
+                if (ReturnsOnlyOwnMembers(context.Compilation, property))
+                    return;
+
                 context.ReportDiagnostic(Diagnostic.Create(
                     PurrNetDiagnostics.NetworkModuleProperty,
                     property.Locations.FirstOrDefault(),
@@ -169,6 +172,80 @@ namespace PurrNet.Analyzers
                     property.Locations.FirstOrDefault(),
                     property.Name));
             }
+        }
+
+        private static bool ReturnsOnlyOwnMembers(Compilation compilation, IPropertySymbol property)
+        {
+            if (property.GetMethod == null)
+                return false;
+
+            bool any = false;
+            foreach (var reference in property.DeclaringSyntaxReferences)
+            {
+                if (reference.GetSyntax() is not PropertyDeclarationSyntax declaration)
+                    return false;
+
+                var semanticModel = compilation.GetSemanticModel(declaration.SyntaxTree);
+                var getter = declaration.AccessorList?.Accessors.FirstOrDefault(a => a.IsKind(SyntaxKind.GetAccessorDeclaration));
+                var arrow = declaration.ExpressionBody ?? getter?.ExpressionBody;
+
+                if (arrow != null)
+                {
+                    if (!IsOwnMember(semanticModel, property, arrow.Expression))
+                        return false;
+                    any = true;
+                    continue;
+                }
+
+                if (getter?.Body == null)
+                    return false;
+
+                foreach (var statement in getter.Body.DescendantNodes().OfType<ReturnStatementSyntax>())
+                {
+                    if (statement.Expression == null || !IsOwnMember(semanticModel, property, statement.Expression))
+                        return false;
+                    any = true;
+                }
+            }
+
+            return any;
+        }
+
+        private static bool IsOwnMember(SemanticModel semanticModel, IPropertySymbol property, ExpressionSyntax expression)
+        {
+            expression = StripParentheses(expression);
+
+            switch (expression)
+            {
+                case ConditionalExpressionSyntax conditional:
+                    return IsOwnMember(semanticModel, property, conditional.WhenTrue) &&
+                           IsOwnMember(semanticModel, property, conditional.WhenFalse);
+                case BinaryExpressionSyntax binary when binary.IsKind(SyntaxKind.CoalesceExpression):
+                    return IsOwnMember(semanticModel, property, binary.Left) &&
+                           IsOwnMember(semanticModel, property, binary.Right);
+                case MemberAccessExpressionSyntax access when access.Expression is not ThisExpressionSyntax:
+                    return false;
+                case IdentifierNameSyntax:
+                case MemberAccessExpressionSyntax:
+                    break;
+                default:
+                    return false;
+            }
+
+            var symbol = semanticModel.GetSymbolInfo(expression).Symbol;
+            if (symbol == null || symbol.IsStatic || SymbolEqualityComparer.Default.Equals(symbol, property))
+                return false;
+
+            if (symbol is not IFieldSymbol && symbol is not IPropertySymbol)
+                return false;
+
+            for (var type = property.ContainingType; type != null; type = type.BaseType)
+            {
+                if (SymbolEqualityComparer.Default.Equals(symbol.ContainingType, type))
+                    return true;
+            }
+
+            return false;
         }
 
         private static IFieldSymbol? GetBackingField(IPropertySymbol property)

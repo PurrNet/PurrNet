@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using PurrNet.Modules;
 using PurrNet.Packing;
@@ -15,7 +16,7 @@ namespace PurrNet
         void TriggerCallback(PlayerID playerId, BitPacker data, bool asServer);
     }
 
-    internal readonly struct PlayerBroadcastCallback<T> : IPlayerBroadcastCallback
+    internal readonly partial struct PlayerBroadcastCallback<T> : IPlayerBroadcastCallback
     {
         readonly PlayerBroadcastDelegate<T> callback;
 
@@ -33,8 +34,11 @@ namespace PurrNet
         {
             var result = default(T);
             Packer<T>.Read(data, ref result);
+            RecordReceived(playerId, in result);
             callback?.Invoke(playerId, result, asServer);
         }
+
+        partial void RecordReceived(PlayerID playerId, in T data);
     }
 
     [PackerDependencies]
@@ -128,9 +132,37 @@ namespace PurrNet
             }
         }
 
+        /// <summary>
+        /// Raised before a reliable-ordered message to players goes out, so queued data that
+        /// must precede it on the same channel (deferred spawns) can be flushed first.
+        /// </summary>
+        internal event Action onBeforeReliableOrderedSend;
+
+        private bool _inBeforeSend;
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        private void BeforeSend(Channel method)
+        {
+            if (method != Channel.ReliableOrdered || onBeforeReliableOrderedSend == null || _inBeforeSend)
+                return;
+
+            _inBeforeSend = true;
+            try
+            {
+                onBeforeReliableOrderedSend();
+            }
+            finally
+            {
+                _inBeforeSend = false;
+            }
+        }
+
         public void Send<T>(PlayerID player, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            if (player != PlayerID.Server)
+                BeforeSend(method);
+
             if (player == PlayerID.Server)
             {
                 SendToServer(data, method, mtuOverride);
@@ -147,6 +179,7 @@ namespace PurrNet
         public void Send<T>(IEnumerable<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            BeforeSend(method);
             _connections.Clear();
 
             foreach (var player in players)
@@ -164,6 +197,7 @@ namespace PurrNet
         public void Send<T>(IReadOnlyList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            BeforeSend(method);
             _connections.Clear();
 
             for (var index = 0; index < players.Count; index++)
@@ -182,6 +216,7 @@ namespace PurrNet
         public void Send<T>(IList<PlayerID> players, T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            BeforeSend(method);
             _connections.Clear();
 
             for (var index = 0; index < players.Count; index++)
@@ -200,6 +235,7 @@ namespace PurrNet
         public void SendToAll<T>(T data, Channel method = Channel.ReliableOrdered,
             MTUExceededBehaviour? mtuOverride = null)
         {
+            BeforeSend(method);
             _broadcastModule.SendToAll(data, method, mtuOverride);
         }
 

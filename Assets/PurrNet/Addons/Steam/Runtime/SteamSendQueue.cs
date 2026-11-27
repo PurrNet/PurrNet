@@ -6,12 +6,20 @@
 #define STEAMWORKS_NET_PACKAGE
 #endif
 
-#if STEAMWORKS_NET_PACKAGE && !DISABLESTEAMWORKS
+#if STEAMWORKS_NET_PACKAGE
+#undef PURRNET_FACEPUNCH
+#endif
+
+#if (STEAMWORKS_NET_PACKAGE || PURRNET_FACEPUNCH) && !DISABLESTEAMWORKS
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using PurrNet.Transports;
+#if PURRNET_FACEPUNCH
+using EResult = Steamworks.Result;
+#else
 using Steamworks;
+#endif
 
 namespace PurrNet.Steam
 {
@@ -22,6 +30,22 @@ namespace PurrNet.Steam
         internal const int MaxQueuedMessages = 1024;
         internal const double MaxQueueAgeSeconds = 10;
         internal const double MaxCountedCheckGapSeconds = 0.5;
+
+#if PURRNET_FACEPUNCH
+        private const EResult Ok = EResult.OK;
+        private const EResult LimitExceeded = EResult.LimitExceeded;
+        private const EResult NoConnection = EResult.NoConnection;
+        private const EResult Ignored = EResult.Ignored;
+        private const int ReliableFlag = (int)Steamworks.Data.SendType.Reliable;
+        private const int UnreliableFlag = (int)Steamworks.Data.SendType.Unreliable;
+#else
+        private const EResult Ok = EResult.k_EResultOK;
+        private const EResult LimitExceeded = EResult.k_EResultLimitExceeded;
+        private const EResult NoConnection = EResult.k_EResultNoConnection;
+        private const EResult Ignored = EResult.k_EResultIgnored;
+        private const int ReliableFlag = Constants.k_nSteamNetworkingSend_Reliable;
+        private const int UnreliableFlag = Constants.k_nSteamNetworkingSend_Unreliable;
+#endif
 
         internal delegate EResult NativeSend(IntPtr data, uint length, int flags);
 
@@ -50,9 +74,10 @@ namespace PurrNet.Steam
         public SteamSendStatistics statistics => _statistics;
 
         /// <summary>
-        /// True when the last failed send was refused because Steam had already closed the connection.
+        /// True when the last failed send was refused with k_EResultNoConnection: Steam no longer has the connection
+        /// open. It does not say which side closed it.
         /// </summary>
-        public bool peerClosed => _statistics.lastSendResult == (int)EResult.k_EResultNoConnection;
+        public bool peerClosed => _statistics.lastSendResult == (int)NoConnection;
 
         public SteamSendQueue(NativeSend send, Func<double> clock)
         {
@@ -83,16 +108,16 @@ namespace PurrNet.Steam
             }
 
             var flags = reliable
-                ? Constants.k_nSteamNetworkingSend_Reliable
-                : Constants.k_nSteamNetworkingSend_Unreliable;
+                ? ReliableFlag
+                : UnreliableFlag;
             var result = SendNative(data, flags);
-            if (result == EResult.k_EResultOK)
+            if (result == Ok)
                 return accepted = true;
 
-            if (reliable && result == EResult.k_EResultLimitExceeded)
+            if (reliable && result == LimitExceeded)
                 return accepted = Enqueue(data);
 
-            if (!reliable && (result == EResult.k_EResultIgnored || result == EResult.k_EResultLimitExceeded))
+            if (!reliable && (result == Ignored || result == LimitExceeded))
             {
                 _statistics.droppedUnreliableMessages++;
                 return true;
@@ -109,15 +134,17 @@ namespace PurrNet.Steam
             while (_pending.Count > 0)
             {
                 var next = _pending.Peek();
-                var result = SendNative(next.data, Constants.k_nSteamNetworkingSend_Reliable);
-                if (result == EResult.k_EResultLimitExceeded)
+                var result = SendNative(next.data, ReliableFlag);
+                if (result == LimitExceeded)
                     return true;
-                if (result != EResult.k_EResultOK)
+                if (result != Ok)
                     return Fail($"Steam rejected a reliable retry: {result}.");
 
                 _pending.Dequeue();
                 _statistics.queuedReliableBytes -= next.data.length;
                 _statistics.queuedReliableMessages = _pending.Count;
+                _blockedSeconds = 0;
+                _longestCheckGap = 0;
             }
 
             return true;
@@ -130,7 +157,7 @@ namespace PurrNet.Steam
             {
                 var result = _send(pin.AddrOfPinnedObject() + data.offset, (uint)data.length, flags);
                 _statistics.lastSendResult = (int)result;
-                if (result == EResult.k_EResultOK)
+                if (result == Ok)
                     _statistics.acceptedMessages++;
                 else
                     _statistics.rejectedSendAttempts++;
@@ -178,8 +205,8 @@ namespace PurrNet.Steam
             _blockedSeconds += Math.Min(gap, MaxCountedCheckGapSeconds);
 
             if (_blockedSeconds >= MaxQueueAgeSeconds)
-                return Fail($"Steam did not accept a queued reliable message within {MaxQueueAgeSeconds:0} seconds of sending " +
-                            $"(oldest queued {now - _pending.Peek().queuedAt:0.#} s ago, longest gap between sends {_longestCheckGap:0.##} s).");
+                return Fail($"Steam accepted none of the queued reliable messages for {MaxQueueAgeSeconds:0} seconds " +
+                            $"({_pending.Count} queued, oldest {now - _pending.Peek().queuedAt:0.#} s ago, longest gap between sends {_longestCheckGap:0.##} s).");
             return true;
         }
 
@@ -198,19 +225,33 @@ namespace PurrNet.Steam
         }
     }
 
+#if !PURRNET_FACEPUNCH
     internal static class SteamConnectionStatus
     {
-        internal static string Describe(HSteamNetConnection conn, bool dedicated, out bool peerGone)
+        /// <summary>
+        /// The reason to report when a failed send closes a connection. Only a status that already reads ClosedByPeer
+        /// shows the other side chose to leave. A send can see a local problem before Steam posts the status callback,
+        /// and neither a k_EResultNoConnection send nor a failed status lookup says who closed the connection, so
+        /// anything else is a Timeout. Closing the handle drops the callback that would have said more.
+        /// </summary>
+        internal static DisconnectReason SendFailureReason(ESteamNetworkingConnectionState state,
+            DisconnectReason peerRequest)
+        {
+            return state == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer
+                ? peerRequest
+                : DisconnectReason.Timeout;
+        }
+
+        internal static string Describe(ISteamSockets sockets, HSteamNetConnection conn, out bool peerGone,
+            out ESteamNetworkingConnectionState state)
         {
             peerGone = false;
+            state = ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None;
             var status = new SteamNetConnectionRealTimeStatus_t();
-            var lanes = new SteamNetConnectionRealTimeLaneStatus_t();
             EResult result;
             try
             {
-                result = dedicated
-                    ? SteamGameServerNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes)
-                    : SteamNetworkingSockets.GetConnectionRealTimeStatus(conn, ref status, 0, ref lanes);
+                result = sockets.GetConnectionRealTimeStatus(conn, ref status);
             }
             catch (Exception e)
             {
@@ -223,11 +264,13 @@ namespace PurrNet.Steam
                 return $"status unavailable ({result})";
             }
 
+            state = status.m_eState;
             peerGone = status.m_eState != ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected;
             return $"state {status.m_eState}, ping {status.m_nPing} ms, quality local {status.m_flConnectionQualityLocal:0.##} remote {status.m_flConnectionQualityRemote:0.##}, " +
                    $"out {status.m_flOutBytesPerSec / 1024f:0.#} KiB/s, in {status.m_flInBytesPerSec / 1024f:0.#} KiB/s, rate {status.m_nSendRateBytesPerSecond / 1024} KiB/s, " +
                    $"pending reliable {status.m_cbPendingReliable} B, unacked reliable {status.m_cbSentUnackedReliable} B";
         }
     }
+#endif
 }
 #endif

@@ -436,6 +436,9 @@ namespace PurrNet
         {
             if (Application.isPlaying || UnityEditor.EditorApplication.isPlayingOrWillChangePlaymode) return;
 
+            // Assets of scripts that do not compile cannot be found; see scriptsAreBroken.
+            if (AssetScannerUtility.scriptsAreBroken) return;
+
             var enabledTypes = enabledTypeNames.Select(Type.GetType).Where(t => t != null).ToArray();
             bool isSceneSource = folder is UnityEditor.SceneAsset;
             var found = isSceneSource

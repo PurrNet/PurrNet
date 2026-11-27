@@ -8,7 +8,17 @@ namespace PurrNet
 {
     public sealed partial class NetworkAnimator : ITick
     {
-        private DisposableList<NetAnimatorRPC> _dirty = DisposableList<NetAnimatorRPC>.Create();
+        private DisposableList<NetAnimatorRPC> _dirtyList;
+
+        private ref DisposableList<NetAnimatorRPC> _dirty
+        {
+            get
+            {
+                if (_dirtyList.isDisposed)
+                    _dirtyList = DisposableList<NetAnimatorRPC>.Create();
+                return ref _dirtyList;
+            }
+        }
         readonly List<NetAnimatorRPC> _ikActions = new List<NetAnimatorRPC>();
 
         readonly List<PlayerID> _reconcilePlayers = new List<PlayerID>();
@@ -17,6 +27,12 @@ namespace PurrNet
         // couldn't include animation state (Play/layer weights); once the animator
         // is active again a full reconcile is re-sent
         private bool _needsStateReconcile;
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            _dirtyList.Dispose();
+        }
 
         protected override void OnObserverAdded(PlayerID player, bool isSpawner)
         {

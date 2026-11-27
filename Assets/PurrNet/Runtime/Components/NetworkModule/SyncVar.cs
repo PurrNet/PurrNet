@@ -11,7 +11,7 @@ using PurrNet.Utils;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver, ITickListener
+    public partial class SyncVar<T> : NetworkModule, ISerializationCallbackReceiver, ITickListener
     {
         private TickManager _tickManager;
 
@@ -78,6 +78,7 @@ namespace PurrNet
                 var oldValue = _value;
                 _value = value;
                 _valueHash = hash;
+                RecordedChanged();
                 _ignoreServerUpdates = true;
 
                 SetDirty();
@@ -369,6 +370,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            RecordedChanged();
             UpdateValueHash();
             TriggerEvents(oldValue);
         }
@@ -435,6 +437,7 @@ namespace PurrNet
             if (!Packer.Transform(ref _value, newValue))
                 return;
 
+            RecordedChanged();
             UpdateValueHash();
             TriggerEvents(oldValue);
         }

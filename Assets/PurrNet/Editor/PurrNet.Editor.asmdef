@@ -2,6 +2,7 @@
     "name": "PurrNet.Editor",
     "rootNamespace": "PurrNet.Editor",
     "references": [
+        "GUID:a0a384ce9150428b833985b4e1216af9",
         "GUID:6e20f757a1bae164fa42750dd2b27dcb",
         "GUID:f51ebe6a0ceec4240a699833d6309b23",
         "GUID:e851236b9ac2b9b4eaaa99506366edea",

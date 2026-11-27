@@ -21,6 +21,11 @@
             "name": "com.rlabrecque.steamworks.net",
             "expression": "2024",
             "define": "STEAMWORKS_NET_PACKAGE"
+        },
+        {
+            "name": "dev.purrnet.facepunch",
+            "expression": "",
+            "define": "PURRNET_FACEPUNCH"
         }
     ],
     "noEngineReferences": false

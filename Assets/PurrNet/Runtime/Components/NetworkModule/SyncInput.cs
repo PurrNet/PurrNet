@@ -12,7 +12,7 @@ namespace PurrNet
     /// </summary>
     /// <typeparam name="T">Type to sync to the server</typeparam>
     [Serializable]
-    public class SyncInput<T> : NetworkModule, ITick, ISerializationCallbackReceiver where T : unmanaged, IEquatable<T>
+    public partial class SyncInput<T> : NetworkModule, ITick, ISerializationCallbackReceiver where T : unmanaged, IEquatable<T>
     {
         public SyncInput(T defaultValue = default, float hostPing = 0f)
         {

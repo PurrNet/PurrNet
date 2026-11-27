@@ -93,5 +93,23 @@ public class AddressablePrefabsLookupTests
 
         Assert.That(provider.TryGetPrefabData(bundleCopy, out _), Is.False);
     }
+
+#if UNITY_EDITOR
+    [Test]
+    public void CountIncludesLinkedEntriesWhenRootIsEmpty()
+    {
+        var root = CreateProvider();
+        var linked = CreateProvider();
+        var nested = CreateProvider();
+        linked.AddEntry(new UnityEngine.AddressableAssets.AssetReferenceGameObject("00000000000000000000000000000001"));
+        nested.AddEntry(new UnityEngine.AddressableAssets.AssetReferenceGameObject("00000000000000000000000000000002"));
+
+        root.linkedAddressablePrefabs.Add(linked);
+        linked.linkedAddressablePrefabs.Add(nested);
+        nested.linkedAddressablePrefabs.Add(root);
+
+        Assert.That(root.count, Is.EqualTo(2));
+    }
+#endif
 }
 #endif

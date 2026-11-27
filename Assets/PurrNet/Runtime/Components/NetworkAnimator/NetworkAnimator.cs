@@ -484,7 +484,9 @@ namespace PurrNet
 
         public bool animatePhysics
         {
+#pragma warning disable CS0618
             get => _animator.animatePhysics;
+#pragma warning restore CS0618
             set
             {
                 if (!IsController(_ownerAuth))

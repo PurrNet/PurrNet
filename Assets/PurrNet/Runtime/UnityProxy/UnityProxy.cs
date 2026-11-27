@@ -16,8 +16,18 @@ using Object = UnityEngine.Object;
 namespace PurrNet
 {
     [UsedByIL]
-    public static class UnityProxy
+    public static partial class UnityProxy
     {
+        static partial void OnCreated(Object instance);
+
+        static partial void OnDestroying(Object instance);
+
+        static T Created<T>(T instance) where T : Object
+        {
+            OnCreated(instance);
+            return instance;
+        }
+
         public delegate void AsyncInstantiateCompleted(Object original, Object instance);
         static readonly Unity.Profiling.ProfilerMarker _asyncInstantiateCompletionMarker = new Unity.Profiling.ProfilerMarker("PurrNet.InstantiateAsync.Completion");
         static readonly Unity.Profiling.ProfilerMarker _destroyCollectIdentitiesMarker = new Unity.Profiling.ProfilerMarker("PurrNet.Destroy.CollectIdentities");
@@ -489,7 +499,7 @@ namespace PurrNet
         public static Object InstantiateDirectlyFromPool(Object original)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
+                return Created(Object.Instantiate(original));
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original), false);
         }
 
@@ -497,7 +507,7 @@ namespace PurrNet
         public static Object Instantiate(Object original)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
+                return Created(Object.Instantiate(original));
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original));
         }
 
@@ -505,7 +515,7 @@ namespace PurrNet
         public static Object Instantiate(Object original, Transform parent, bool instantiateInWorldSpace)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, instantiateInWorldSpace);
+                return Created(Object.Instantiate(original, parent, instantiateInWorldSpace));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent, instantiateInWorldSpace));
         }
@@ -516,7 +526,7 @@ namespace PurrNet
         public static Object InstantiateDirectlyFromPool(Object original, Transform parent, bool instantiateInWorldSpace)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, instantiateInWorldSpace);
+                return Created(Object.Instantiate(original, parent, instantiateInWorldSpace));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent, instantiateInWorldSpace),
                 false);
@@ -526,7 +536,7 @@ namespace PurrNet
         public static Object Instantiate(Object original, Vector3 position, Quaternion rotation)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
+                return Created(Object.Instantiate(original, position, rotation));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation));
         }
@@ -537,7 +547,7 @@ namespace PurrNet
         public static Object InstantiateDirectlyFromPool(Object original, Vector3 position, Quaternion rotation)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
+                return Created(Object.Instantiate(original, position, rotation));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation), false);
         }
@@ -550,7 +560,7 @@ namespace PurrNet
             Transform parent)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
+                return Created(Object.Instantiate(original, position, rotation, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation, parent));
         }
@@ -561,7 +571,7 @@ namespace PurrNet
             Quaternion rotation,
             Transform parent)
         {
-            return Object.Instantiate(original, position, rotation, parent);
+            return Created(Object.Instantiate(original, position, rotation, parent));
         }
 
         public static Object InstantiateDirectlyFromPool(
@@ -571,7 +581,7 @@ namespace PurrNet
             Transform parent)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
+                return Created(Object.Instantiate(original, position, rotation, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, position, rotation, parent),
                 false);
@@ -582,7 +592,7 @@ namespace PurrNet
         public static Object Instantiate(Object original, Scene scene)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, scene);
+                return Created(Object.Instantiate(original, scene));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, scene));
         }
@@ -593,7 +603,7 @@ namespace PurrNet
         public static Object InstantiateDirectlyFromPool(Object original, Scene scene)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, scene);
+                return Created(Object.Instantiate(original, scene));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, scene), false);
         }
@@ -614,7 +624,7 @@ namespace PurrNet
         public static Object Instantiate(Object original, Transform parent)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
+                return Created(Object.Instantiate(original, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent));
         }
@@ -625,7 +635,7 @@ namespace PurrNet
         public static Object InstantiateDirectlyFromPool(Object original, Transform parent)
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
+                return Created(Object.Instantiate(original, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<Object>(original, parent), false);
         }
@@ -634,7 +644,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
+                return Created(Object.Instantiate(original));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original));
         }
@@ -644,7 +654,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original, InstantiateParameters parameters) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parameters);
+                return Created(Object.Instantiate(original, parameters));
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parameters));
         }
 
@@ -652,7 +662,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original, Vector3 pos, Quaternion rot, InstantiateParameters parameters) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, pos, rot, parameters);
+                return Created(Object.Instantiate(original, pos, rot, parameters));
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, pos, rot, parameters));
         }
 
@@ -663,7 +673,7 @@ namespace PurrNet
         public static T InstantiateDirectlyFromPool<T>(T original, InstantiateParameters parameters) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parameters);
+                return Created(Object.Instantiate(original, parameters));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parameters), false);
         }
@@ -675,7 +685,7 @@ namespace PurrNet
         public static T InstantiateDirectlyFromPool<T>(T original, Vector3 pos, Quaternion rot, InstantiateParameters parameters) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, pos, rot, parameters);
+                return Created(Object.Instantiate(original, pos, rot, parameters));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, pos, rot, parameters), false);
         }
@@ -687,7 +697,7 @@ namespace PurrNet
         public static T InstantiateDirectlyFromPool<T>(T original) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original);
+                return Created(Object.Instantiate(original));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original), false);
         }
@@ -696,7 +706,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original, Vector3 position, Quaternion rotation) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
+                return Created(Object.Instantiate(original, position, rotation));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation));
         }
@@ -707,7 +717,7 @@ namespace PurrNet
         public static T InstantiateDirectlyFromPool<T>(T original, Vector3 position, Quaternion rotation) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation);
+                return Created(Object.Instantiate(original, position, rotation));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation), false);
         }
@@ -756,7 +766,7 @@ namespace PurrNet
             where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
+                return Created(Object.Instantiate(original, position, rotation, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation, parent));
         }
@@ -777,7 +787,7 @@ namespace PurrNet
             where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, position, rotation, parent);
+                return Created(Object.Instantiate(original, position, rotation, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, position, rotation, parent), false);
         }
@@ -786,7 +796,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original, Transform parent) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
+                return Created(Object.Instantiate(original, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent));
         }
@@ -797,7 +807,7 @@ namespace PurrNet
         public static T InstantiateDirectlyFromPool<T>(T original, Transform parent) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent);
+                return Created(Object.Instantiate(original, parent));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent), false);
         }
@@ -806,7 +816,7 @@ namespace PurrNet
         public static T Instantiate<T>(T original, Transform parent, bool worldPositionStays) where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, worldPositionStays);
+                return Created(Object.Instantiate(original, parent, worldPositionStays));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent, worldPositionStays));
         }
@@ -818,7 +828,7 @@ namespace PurrNet
             where T : Object
         {
             if (!TryGetPrefabData(original, out var prefabData))
-                return Object.Instantiate(original, parent, worldPositionStays);
+                return Created(Object.Instantiate(original, parent, worldPositionStays));
 
             return OnPreInstantiate(prefabData, new InstantiateData<T>(original, parent, worldPositionStays), false);
         }
@@ -826,8 +836,10 @@ namespace PurrNet
         [UsedByIL]
         public static void Destroy(Object obj)
         {
-            if (OnDestroy(obj))
-                Object.Destroy(obj);
+            if (!OnDestroy(obj))
+                return;
+            OnDestroying(obj);
+            Object.Destroy(obj);
         }
 
         public static void DestroyDirectly(Object obj)

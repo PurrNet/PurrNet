@@ -163,7 +163,11 @@ public class SceneScopedAssetHintScenario : Scenario
 
     private static SceneScopedAssetSender FindSender()
     {
+#if UNITY_6000_4_OR_NEWER
+        var senders = FindObjectsByType<SceneScopedAssetSender>(FindObjectsInactive.Exclude);
+#else
         var senders = FindObjectsByType<SceneScopedAssetSender>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+#endif
 
         for (var i = 0; i < senders.Length; i++)
         {

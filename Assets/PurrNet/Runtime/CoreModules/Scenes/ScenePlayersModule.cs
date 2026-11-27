@@ -357,7 +357,7 @@ namespace PurrNet.Modules
             {
                 if (!IsPlayerLoadedInScene(player, scene))
                 {
-                    if (CanRestoreLoadedStateWithoutSceneAction(scene))
+                    if (CanRestoreLoadedStateWithoutSceneAction(scene) || IsLoadedOnHostClient(player, scene))
                         MarkPlayerLoadedInScene(player, scene);
                 }
 
@@ -368,6 +368,17 @@ namespace PurrNet.Modules
             onPlayerJoinedScene?.Invoke(player, scene, _asServer);
             if(player.isBot)
                 NotifyBotSceneLoaded(player, scene);
+            else if (IsLoadedOnHostClient(player, scene))
+                MarkPlayerLoadedInScene(player, scene);
+        }
+
+        private bool IsLoadedOnHostClient(PlayerID player, SceneID scene)
+        {
+            if (!_manager.isHost || _manager.localPlayer != player)
+                return false;
+
+            return _manager.TryGetModule<ScenesModule>(false, out var clientScenes) &&
+                   clientScenes.TryGetSceneState(scene, out var state) && state.scene.isLoaded;
         }
 
         private bool CanRestoreLoadedStateWithoutSceneAction(SceneID scene)

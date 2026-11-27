@@ -19,6 +19,11 @@ namespace PurrNet.Modules
         [DontPack]
         internal List<NetworkIdentity> localcache;
 
+        // The prototype belongs to the hierarchy's per-flush prototype cache, which outlives this
+        // packet's send; it is shared by every observer's packet and must not be disposed here.
+        [DontPack]
+        internal bool borrowedPrototype;
+
         /// <summary>
         /// Checks if the prefab is a raw prefab, meaning it is not a mix between multiple prefabs or scene objects.
         /// And if it is, retrieves the prefab from the NetworkManager's prefab provider.
@@ -81,7 +86,8 @@ namespace PurrNet.Modules
         {
             if (customData.packer is { isWrapper: false })
                 customData.Dispose();
-            prototype.Dispose();
+            if (!borrowedPrototype)
+                prototype.Dispose();
             if (localcache != null)
             {
                 ListPool<NetworkIdentity>.Destroy(localcache);

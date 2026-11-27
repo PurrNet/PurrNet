@@ -21,7 +21,7 @@ namespace PurrNet
     }
 
     [Serializable]
-    public class SyncTimer : NetworkModule, ITick
+    public partial class SyncTimer : NetworkModule, ITick
     {
         private readonly bool _ownerAuth;
         private readonly bool _ownerOnly;
@@ -152,6 +152,7 @@ namespace PurrNet
         private void SendTimerEventToServer(TimerEvent timerEvent, float remainingTime, bool syncRemaining,
             RPCInfo info = default)
         {
+            if (!_ownerAuth) return;
             ProcessTimerEvent(timerEvent, remainingTime, syncRemaining);
             SendTimerEventToAll(timerEvent, remainingTime, syncRemaining, info.sender);
         }

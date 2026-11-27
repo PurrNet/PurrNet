@@ -282,7 +282,7 @@ namespace PurrNet.Tests
         [TestCase(false, false)]
         public void Handshake_UsesRepairsOnlyWhenBothEndsEnableThem(bool serverRepairs, bool clientRepairs)
         {
-            const int count = 150;
+            const int count = NetConstants.DefaultWindowSize * 2;
             bool agreed = serverRepairs && clientRepairs;
             int repairFormatToServer = 0, repairFormatToClient = 0;
             var random = new Random(5);

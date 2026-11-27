@@ -1,12 +1,17 @@
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using PurrNet;
+using PurrNet.Modules;
 using UnityEngine;
 
 // Server-authoritative state replication: the server owns and continuously mutates N
 // NetworkTransforms; clients only observe. Stresses server->all fan-out.
+// -benchBots N adds N CreateBot players on the server.
 public class BenchmarkScenario : BenchmarkScenarioBase
 {
     [SerializeField] private int _objectCount = 50;
+
+    private readonly List<PlayerID> _bots = new();
 
     public override void ApplyOverrides(int? objectCount, float? pingsPerSecond)
     {
@@ -25,6 +30,13 @@ public class BenchmarkScenario : BenchmarkScenarioBase
     {
         if (ctx.isServer)
         {
+            if (CommandLineUtils.TryGetArgument("-benchBots", out var bots) && int.TryParse(bots, out var botCount) &&
+                ctx.networkManager.TryGetModule<PlayersManager>(true, out var players))
+            {
+                for (int i = 0; i < botCount; i++)
+                    _bots.Add(players.CreateBot());
+            }
+
             SpawnSuppressed(() =>
             {
                 for (int i = 0; i < _objectCount; i++)
@@ -55,6 +67,18 @@ public class BenchmarkScenario : BenchmarkScenarioBase
                 Mathf.Sin(elapsed + phase) * 5f,
                 Mathf.Cos(elapsed * 0.5f + phase) * 5f,
                 i);
+        }
+    }
+
+    protected override void Despawn(ScenarioContext ctx)
+    {
+        base.Despawn(ctx);
+
+        if (_bots.Count > 0 && ctx.networkManager.TryGetModule<PlayersManager>(true, out var players))
+        {
+            for (int i = 0; i < _bots.Count; i++)
+                players.KickPlayer(_bots[i]);
+            _bots.Clear();
         }
     }
 

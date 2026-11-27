@@ -12,6 +12,7 @@
     "com.unity.localization": "1.5.12",
     "com.unity.multiplayer.center": "1.0.1",
     "com.unity.multiplayer.playmode": "2.0.2",
+    "com.unity.nuget.mono-cecil": "1.11.6",
     "com.unity.nuget.newtonsoft-json": "3.2.2",
     "com.unity.render-pipelines.universal": "17.5.0",
     "com.unity.scriptablebuildpipeline": "2.6.1",

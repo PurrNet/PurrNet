@@ -8,7 +8,7 @@ using PurrNet.Logging;
 namespace PurrNet
 {
     [Serializable]
-    public class SyncQueue<T> : NetworkModule, IReadOnlyCollection<T>
+    public partial class SyncQueue<T> : NetworkModule, IReadOnlyCollection<T>
     {
         [SerializeField] private bool _ownerAuth;
 
@@ -198,6 +198,7 @@ namespace PurrNet
 
         private void InvokeChange(SyncQueueChange<T> change)
         {
+            RecordedChanged();
             try
             {
                 onChanged?.Invoke(change);

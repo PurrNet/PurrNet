@@ -20,6 +20,9 @@ namespace PurrNet.Utils
 #if UNITY_SERVER && !UNITY_EDITOR
         public static bool isServerBuild => true;
         public static bool isClientBuild => false;
+#elif PURRNET_CLIENT_ONLY_BUILDS && !UNITY_EDITOR
+        public static bool isServerBuild => false;
+        public static bool isClientBuild => true;
 #elif !UNITY_EDITOR
         public static bool isServerBuild => Application.isBatchMode;
         public static bool isClientBuild => !Application.isBatchMode;

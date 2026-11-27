@@ -8,14 +8,14 @@ namespace PurrNet.Editor
     {
         static CustomHierarchyDelete()
         {
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
             EditorApplication.hierarchyWindowItemByEntityIdOnGUI += OnHierarchyGUI;
 #else
             EditorApplication.hierarchyWindowItemOnGUI += OnHierarchyGUI;
 #endif
         }
 
-#if UNITY_6000_5_OR_NEWER
+#if UNITY_6000_4_OR_NEWER
         private static void OnHierarchyGUI(EntityId entityId, Rect selectionrect)
 #else
         private static void OnHierarchyGUI(int instanceid, Rect selectionrect)

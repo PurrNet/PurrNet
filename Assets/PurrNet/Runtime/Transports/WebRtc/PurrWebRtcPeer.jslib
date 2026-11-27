@@ -1,3 +1,7 @@
+// '$UTF8ToString' only exists as a library symbol on newer Emscripten; on older
+// versions (Unity 2022.3) UTF8ToString is always available and must not be listed.
+var PurrRtcPeerUtf8Deps = LibraryManager.library['$UTF8ToString'] ? ['$UTF8ToString'] : [];
+
 var PurrRtcPeerLibrary = {
     $PurrRtcPeer__deps: ['$PurrRtc'],
     $PurrRtcPeer: {
@@ -189,7 +193,7 @@ var PurrRtcPeerLibrary = {
         }
     },
 
-    PurrRtc_CreatePeer__deps: ['$UTF8ToString', '$stringToNewUTF8', 'malloc', 'free'],
+    PurrRtc_CreatePeer__deps: ['$stringToNewUTF8', 'malloc', 'free'].concat(PurrRtcPeerUtf8Deps),
     PurrRtc_CreatePeer: function (initiator, iceServersPtr, maxMessageSize, opened, closed, data, error, signal) {
         var id = PurrRtcPeer.create(initiator, UTF8ToString(iceServersPtr), maxMessageSize,
             function () { {{{ makeDynCall('vi', 'opened') }}}(id); },
@@ -214,7 +218,7 @@ var PurrRtcPeerLibrary = {
         return id;
     },
 
-    PurrRtc_ReceiveSignal__deps: ['$UTF8ToString'],
+    PurrRtc_ReceiveSignal__deps: [].concat(PurrRtcPeerUtf8Deps),
     PurrRtc_ReceiveSignal: function (id, jsonPtr) {
         PurrRtcPeer.receiveSignal(id, UTF8ToString(jsonPtr));
     }

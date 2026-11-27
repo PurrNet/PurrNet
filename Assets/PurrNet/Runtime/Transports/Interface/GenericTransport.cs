@@ -85,6 +85,7 @@ namespace PurrNet.Transports
                 networkManager.StartServer();
         }
 
+        [StripInClientOnlyBuild]
         internal void StartServer(INetworkManager manager)
         {
             if (TryGetNetworkManager(manager, out var networkManager))
@@ -174,6 +175,7 @@ namespace PurrNet.Transports
             StopClientInternal();
         }
 
+        [StripInClientOnlyBuild]
         internal void StartServerInternalOnly()
         {
             StartServerInternal();

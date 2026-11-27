@@ -18,6 +18,9 @@ namespace PurrNet.Modules
 
         readonly List<HierarchyV2> _rawHierarchies = new();
 
+        /// <summary>One hierarchy per loaded scene.</summary>
+        internal List<HierarchyV2> hierarchies => _rawHierarchies;
+
         readonly PlayersManager _playersManager;
 
         public HierarchyFactory(NetworkManager manager, ScenesModule scenes, ScenePlayersModule scenePlayersModule,
@@ -241,5 +244,19 @@ namespace PurrNet.Modules
             for (var i = 0; i < _rawHierarchies.Count; i++)
                 _rawHierarchies[i].EvaluateVisibilityForPlayer(player);
         }
+
+#if ADDRESSABLES_PURRNET_SUPPORT
+        public void EvaluateVisibilityForLoadedPrefab(PlayerID player, string assetGuid)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].EvaluateVisibilityForLoadedPrefab(player, assetGuid);
+        }
+
+        public void ForgetVisibilityWaitingForLoad(PlayerID player)
+        {
+            for (var i = 0; i < _rawHierarchies.Count; i++)
+                _rawHierarchies[i].ForgetVisibilityWaitingForLoad(player);
+        }
+#endif
     }
 }

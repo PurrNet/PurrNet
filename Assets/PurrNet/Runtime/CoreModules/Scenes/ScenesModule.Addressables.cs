@@ -543,12 +543,7 @@ namespace PurrNet.Modules
                     }
                 }
 
-                for (var i = 0; i < _rawScenes.Count; i++)
-                {
-                    var isDontDestroyOnLoadScene = IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene);
-                    if (!isDontDestroyOnLoadScene)
-                        RemoveScene(_scenes[_rawScenes[i]].scene);
-                }
+                RemoveScenesReplacedBySingleLoad();
             }
 
             _history.AddLoadAddressableAction(new LoadAddressableSceneAction
@@ -626,12 +621,7 @@ namespace PurrNet.Modules
                     }
                 }
 
-                for (var i = 0; i < _rawScenes.Count; i++)
-                {
-                    var isDontDestroyOnLoadScene = IsDontDestroyOnLoadScene(_scenes[_rawScenes[i]].scene);
-                    if (!isDontDestroyOnLoadScene)
-                        RemoveScene(_scenes[_rawScenes[i]].scene);
-                }
+                RemoveScenesReplacedBySingleLoad();
             }
 
             _history.AddLoadAddressableAction(new LoadAddressableSceneAction

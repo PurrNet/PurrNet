@@ -5,7 +5,7 @@ namespace PurrNet.Modules
 {
     public delegate void BroadcastDelegate<in T>(Connection conn, T data, bool asServer);
 
-    internal readonly struct BroadcastCallback<T> : IBroadcastCallback
+    internal readonly partial struct BroadcastCallback<T> : IBroadcastCallback
     {
         readonly BroadcastDelegate<T> callback;
 
@@ -23,8 +23,11 @@ namespace PurrNet.Modules
         {
             var result = default(T);
             Packer<T>.Read(data, ref result);
+            RecordReceived(conn, in result);
             callback?.Invoke(conn, result, asServer);
         }
+
+        partial void RecordReceived(Connection conn, in T data);
 
         public void Subscribe(BroadcastModule module)
         {

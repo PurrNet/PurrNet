@@ -64,8 +64,19 @@ namespace PurrNet
         public virtual void ApplyHardCorrection(in RigidbodyCorrectionContext ctx)
         {
             var rb = ctx.rigidbody;
-            rb.MovePosition(ctx.targetPosition);
-            rb.MoveRotation(NormalizeQuaternion(ctx.targetRotation));
+            // A hard correction is a jump, not a move. MovePosition on a kinematic body is a swept move:
+            // it crosses the whole gap in one physics step and shoves every dynamic body on the way at the
+            // speed that implies. Setting the pose places it without touching anything in between.
+            if (rb.isKinematic)
+            {
+                rb.position = ctx.targetPosition;
+                rb.rotation = NormalizeQuaternion(ctx.targetRotation);
+            }
+            else
+            {
+                rb.MovePosition(ctx.targetPosition);
+                rb.MoveRotation(NormalizeQuaternion(ctx.targetRotation));
+            }
             SetLinearVelocity(rb, ctx.targetLinearVelocity);
             SetAngularVelocity(rb, ctx.targetAngularVelocity);
         }

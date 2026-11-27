@@ -62,8 +62,7 @@ namespace PurrNet
         private NetworkPrefabs _networkPrefabs;
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-        //[PurrDocs("systems-and-modules/addressables/addressable-spawning-and-despawning")] //TODO: Add this in the future
-        [SerializeField]
+        [PurrDocs("systems-and-modules/addressables/addressable-spawning-and-despawning")] [SerializeField]
         private AddressableNetworkPrefabs _addressableNetworkPrefabs;
 #endif
 
@@ -418,7 +417,13 @@ namespace PurrNet
                 _transport.externalPump = null;
         }
 
-        private bool IsProbeEvent(bool asServer) => !asServer && _transport && _transport.isPinging;
+        private bool IsProbeEvent(bool asServer) =>
+            asServer ? _probingPromotionListen : _transport && _transport.isPinging;
+
+        // A promotion opens its listen socket before the client modules move to the server: until the transport
+        // reports Connected its server events stay inside PurrNet, so a socket that never opens leaves the client
+        // state untouched.
+        private bool _probingPromotionListen;
 
         /// <summary>
         /// Whether the server should automatically start.
@@ -567,6 +572,9 @@ namespace PurrNet
             prefabProvider = provider;
             prefabProvider.Refresh();
             HierarchyPool.EvictGlobalPrototypes();
+#if ADDRESSABLES_PURRNET_SUPPORT
+            addressableUsage.Bind(provider);
+#endif
         }
 
         /// <summary>
@@ -795,7 +803,11 @@ namespace PurrNet
         private void OnApplicationQuit()
         {
             if (_patchLingeringProcessBug)
+#if ENABLE_CORECLR
+                System.Diagnostics.Process.GetCurrentProcess().Kill();
+#else
                 Environment.FailFast("Applying patch for lingering process bug.");
+#endif
         }
 #endif
 
@@ -873,7 +885,7 @@ namespace PurrNet
         {
             if (TryGetComponent(out GenericTransport _) || transport)
                 return;
-            transport = gameObject.AddComponent<UDPTransport>();
+            transport = gameObject.AddComponent<PurrTransport>();
         }
 #endif
 
@@ -1123,6 +1135,9 @@ namespace PurrNet
         {
             onPlayerJoined?.Invoke(player, isReconnect, asServer);
 
+            if (asServer)
+                NoteHostMigrationPlayerJoined(player);
+
             if (!asServer && !_telemetrySentClient)
             {
                 _telemetrySentClient = true;
@@ -1232,7 +1247,9 @@ namespace PurrNet
                     RegisterPromotedServerModules(modules);
                     return;
                 case false when isTranferingToNewServer && modules.hasModules:
-                    modules.TransferToNewServer();
+                    // Applied once the new server accepts the connection, so an attempt that never connects
+                    // leaves the old session's state in place.
+                    _transferResetPending = true;
                     return;
             }
 
@@ -1384,6 +1401,9 @@ namespace PurrNet
             modules.AddModule(scenePlayers);
 
             var hierarchyV2 = new HierarchyFactory(this, scenesModule, scenePlayers, playersManager);
+#if ADDRESSABLES_PURRNET_SUPPORT
+            addressableUsage.Track(hierarchyV2, asServer);
+#endif
             var ownershipModule =
                 new GlobalOwnershipModule(this, hierarchyV2, playersManager, scenePlayers, scenesModule);
             var rpcModule = new RPCModule(this, playersManager, hierarchyV2, ownershipModule, scenesModule);
@@ -1412,8 +1432,10 @@ namespace PurrNet
             modules.AddModule(networkLOD);
 
 #if ADDRESSABLES_PURRNET_SUPPORT
-            if (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0 &&
-                networkRules && networkRules.AddressablesSyncLoadState)
+            bool hasAddressablePrefabs = prefabProvider is IAddressablePrefabProvider ||
+                                         (_addressableNetworkPrefabs && _addressableNetworkPrefabs.count > 0);
+
+            if (hasAddressablePrefabs && networkRules && networkRules.AddressablesSyncLoadState)
             {
                 modules.AddModule(new AddressablesSyncModule(this, playersManager));
             }
@@ -1686,6 +1708,11 @@ namespace PurrNet
                         if (_addressableNetworkPrefabs.preloadAtStartup)
                         {
                             await _addressableNetworkPrefabs.LoadAllAsync();
+
+                            // Preloaded prefabs are expected to be spawnable at any time, so they
+                            // stay loaded for as long as this manager lives.
+                            foreach (var guid in _addressableNetworkPrefabs.GetLoadedGuids())
+                                addressableUsage.Retain(guid);
                         }
                         SetupCompositePrefabProvider();
                     }
@@ -1741,6 +1768,9 @@ namespace PurrNet
         {
             _serverModules.TriggerOnUpdate();
             _clientModules.TriggerOnUpdate();
+#if ADDRESSABLES_PURRNET_SUPPORT
+            _addressableUsage?.Update();
+#endif
 
             if (_transportLayer == null)
                 return;
@@ -1856,6 +1886,40 @@ namespace PurrNet
                 _transportLayer.SendMessages(sendDelta);
         }
 
+        private void RunPendingCleanup()
+        {
+            if (_isCleaningClient)
+            {
+                if (_preserveClientStateForHostMigration || isPromotingToServer || isTranferingToNewServer)
+                {
+                    _isCleaningClient = false;
+                }
+                else if (_clientModules.Cleanup())
+                {
+                    _clientModules.UnregisterModules();
+                    CleanupClientModules();
+                    TriggerUnsubscribeEvents(false);
+                    _isCleaningClient = false;
+                }
+            }
+
+            if (_isCleaningServer)
+            {
+                if (isPromotingToServer)
+                {
+                    _isCleaningServer = false;
+                }
+                else if (_serverModules.Cleanup())
+                {
+                    _isServerTicking = false;
+                    _serverModules.UnregisterModules();
+                    CleanupServerModules();
+                    TriggerUnsubscribeEvents(true);
+                    _isCleaningServer = false;
+                }
+            }
+        }
+
         private void OnTick()
         {
             var delta = tickModule?.tickDelta ?? Time.fixedUnscaledDeltaTime;
@@ -1918,40 +1982,29 @@ namespace PurrNet
 
             SendMessagesNow(delta);
 
-            if (_isCleaningClient)
-            {
-                if (_preserveClientStateForHostMigration || isPromotingToServer || isTranferingToNewServer)
-                {
-                    _isCleaningClient = false;
-                }
-                else if (_clientModules.Cleanup())
-                {
-                    _clientModules.UnregisterModules();
-                    CleanupClientModules();
-                    TriggerUnsubscribeEvents(false);
-                    _isCleaningClient = false;
-                }
-            }
-
-            if (_isCleaningServer)
-            {
-                if (isPromotingToServer)
-                {
-                    _isCleaningServer = false;
-                }
-                else if (_serverModules.Cleanup())
-                {
-                    _isServerTicking = false;
-                    _serverModules.UnregisterModules();
-                    CleanupServerModules();
-                    TriggerUnsubscribeEvents(true);
-                    _isCleaningServer = false;
-                }
-            }
+            RunPendingCleanup();
 
 #if UNITY_EDITOR || PURR_RUNTIME_PROFILING
             Statistics.MarkEndOfSampling();
 #endif
+        }
+
+        /// <summary>
+        /// Raised before an RPC is queued on the server, so spawns deferred to the tick's batch
+        /// reach observers before the RPC (and before any buffered-RPC replay on spawn).
+        /// </summary>
+        internal event Action onBeforeServerRpc;
+
+        internal void BeforeServerRpc() => onBeforeServerRpc?.Invoke();
+
+        internal bool HasPendingBatchedRPCs()
+        {
+            if (serverState == ConnectionState.Connected && TryGetModule<RPCModule>(true, out var server) &&
+                server.hasPendingBatchedRPCs)
+                return true;
+
+            return clientState == ConnectionState.Connected && TryGetModule<RPCModule>(false, out var client) &&
+                   client.hasPendingBatchedRPCs;
         }
 
         public void FlushBatchedRPCs()
@@ -1992,6 +2045,8 @@ namespace PurrNet
             }
 
 #if ADDRESSABLES_PURRNET_SUPPORT
+            _addressableUsage?.Dispose();
+
             if (_addressableNetworkPrefabs)
                 _addressableNetworkPrefabs.ReleaseAll();
 #endif
@@ -2076,6 +2131,7 @@ namespace PurrNet
         /// Starts the server.
         /// This will start the transport server.
         /// </summary>
+        [StripInClientOnlyBuild]
         public void StartServer()
         {
             if (!_transport)
@@ -2088,6 +2144,76 @@ namespace PurrNet
         private const float PromoteToServerStartRetryIntervalSeconds = 0.1f;
 
         public bool isPromotingToServer { get; private set; }
+
+        /// <summary>
+        /// Seconds PromoteToServer or TransferToNewServer keeps retrying before it gives up (stops the client and the
+        /// server, as on an exception). 0, the default, retries until it succeeds or CancelHostMigration is called.
+        /// </summary>
+        public float hostMigrationTimeout { get; set; }
+
+        // Counts CancelHostMigration calls. A migration remembers the count it started with, so a cancel reaches every
+        // migration running at the time and never one that starts later.
+        private int _hostMigrationCancels;
+
+        private readonly struct HostMigrationRun
+        {
+            public readonly string operation;
+            public readonly double startedAt;
+            public readonly int cancels;
+
+            public HostMigrationRun(string operation, double startedAt, int cancels)
+            {
+                this.operation = operation;
+                this.startedAt = startedAt;
+                this.cancels = cancels;
+            }
+        }
+
+        /// <summary>
+        /// Stops a PromoteToServer or TransferToNewServer that is still waiting or retrying, for example when the new
+        /// host never comes up. The client and the server are stopped, as on an exception. Does nothing otherwise.
+        /// </summary>
+        public void CancelHostMigration()
+        {
+            _hostMigrationCancels++;
+        }
+
+        private bool ShouldAbortHostMigration(HostMigrationRun run)
+        {
+            if (_hostMigrationCancels != run.cancels)
+            {
+                PurrLogger.LogWarning($"{run.operation} cancelled.");
+                return true;
+            }
+
+            if (hostMigrationTimeout > 0 && Time.unscaledTimeAsDouble - run.startedAt > hostMigrationTimeout)
+            {
+                PurrLogger.LogWarning($"{run.operation} gave up after {hostMigrationTimeout:0.#} seconds.");
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Waits a frame at a time until done returns true or waitUntil passes. Returns false once the migration is
+        /// cancelled or out of time. That check runs before done on every frame, the last one included, so a true result
+        /// can be acted on straight away (accept success, restart the transport) without the deadline having passed.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> WaitForHostMigration(HostMigrationRun run, Func<bool> done,
+            double waitUntil = double.MaxValue)
+        {
+            while (true)
+            {
+                if (ShouldAbortHostMigration(run))
+                    return false;
+
+                if (done() || Time.unscaledTimeAsDouble >= waitUntil)
+                    return true;
+
+                await UnityLatestUpdate.Yield();
+            }
+        }
 
         /// <summary>
         /// Keeps the current client modules alive while an external host migration system
@@ -2117,64 +2243,144 @@ namespace PurrNet
         /// Great for host migration.
         /// It's your responsibility to prepare the transport for this transition.
         /// </summary>
-        [ContextMenu("Promote To Server"), PurrContextButton]
+        [ContextMenu("Promote To Server"), PurrContextButton, StripInClientOnlyBuild]
         public async void PromoteToServer()
         {
+            if (isPromotingToServer)
+                return;
+
+            if (serverState != ConnectionState.Disconnected)
+            {
+                PurrLogger.LogError("Cannot promote to server, you already are a server.");
+                return;
+            }
+
+            // Set and cleared only here, around the call that owns it: a call that returned above must not clear the
+            // flag of the promotion that is still running.
+            isPromotingToServer = true;
+            bool promoted = false;
+
             try
             {
-                if (isPromotingToServer)
-                    return;
-
-                if (serverState != ConnectionState.Disconnected)
-                {
-                    PurrLogger.LogError("Cannot promote to server, you already are a server.");
-                    return;
-                }
-
-                isPromotingToServer = true;
-                _preserveClientStateForHostMigration = false;
-
-                StopServer();
-                StopClient();
-
-                while (clientState != ConnectionState.Disconnected ||
-                       serverState != ConnectionState.Disconnected)
-                    await UnityLatestUpdate.Yield();
-
-                StartServer();
-
-                while (serverState != ConnectionState.Connected)
-                {
-                    var nextRetryAt = Time.unscaledTimeAsDouble + PromoteToServerStartRetryIntervalSeconds;
-                    while (serverState != ConnectionState.Connected && Time.unscaledTimeAsDouble < nextRetryAt)
-                        await UnityLatestUpdate.Yield();
-
-                    if (serverState == ConnectionState.Disconnected)
-                        _transport.StartServerInternalOnly();
-                }
-
-                _serverModules.PostPromoteToServer();
-
-                _isCleaningClient = false;
-                isPromotingToServer = false;
-
-                if (_networkRules && _networkRules.ShouldMigrateAsHost())
-                    StartClient();
+                promoted = await PromoteToServerAsync();
             }
             catch (Exception e)
             {
                 PurrLogger.LogException(e);
-                isPromotingToServer = false;
-                StopClient();
-                StopServer();
             }
             finally
             {
                 isPromotingToServer = false;
             }
+
+            // After the flag is cleared, since RunPendingCleanup keeps the modules while a promotion is running.
+            if (!promoted)
+            {
+                ClearHostMigrationRoster();
+                await AbortHostMigrationAsync();
+                _probingPromotionListen = false;
+            }
+        }
+
+        private async System.Threading.Tasks.Task<bool> PromoteToServerAsync()
+        {
+            _preserveClientStateForHostMigration = false;
+            var run = new HostMigrationRun(nameof(PromoteToServer), Time.unscaledTimeAsDouble, _hostMigrationCancels);
+
+            // The old session's players, while this client still sees them.
+            CaptureHostMigrationRoster(isLocalPlayerReady ? localPlayer : (PlayerID?)null);
+
+            StopServer();
+            StopClient();
+
+            if (!await WaitForHostMigration(run, IsClientAndServerDisconnected))
+                return false;
+
+            // Listen first; the client modules move to the server once the socket is up (OnConnectionState). On
+            // failure the probe stays on until the abort has stopped the socket, so its events never reach the
+            // server modules that were never registered.
+            _probingPromotionListen = true;
+            _lastSendTime = 0d;
+            _transport.StartServerInternalOnly();
+
+            while (true)
+            {
+                var nextRetryAt = Time.unscaledTimeAsDouble + PromoteToServerStartRetryIntervalSeconds;
+                if (!await WaitForHostMigration(run, () => serverState == ConnectionState.Connected, nextRetryAt))
+                    return false;
+
+                if (serverState == ConnectionState.Connected)
+                    break;
+
+                if (serverState == ConnectionState.Disconnected)
+                    _transport.StartServerInternalOnly();
+            }
+
+            // A transport that reports Connected outside its state event never ended the probe.
+            if (_probingPromotionListen)
+            {
+                _probingPromotionListen = false;
+                InternalRegisterServerModules();
+                OnConnectionState(ConnectionState.Connecting, true);
+                OnConnectionState(ConnectionState.Connected, true);
+            }
+
+            _serverModules.PostPromoteToServer();
+
+            _isCleaningClient = false;
+            isPromotingToServer = false;
+
+            StartHostMigrationRoster();
+
+            if (_networkRules && _networkRules.ShouldMigrateAsHost())
+                StartClient();
+
+            return true;
         }
 
         public bool isTranferingToNewServer { get; private set; }
+
+        private bool IsClientAndServerDisconnected()
+        {
+            return clientState == ConnectionState.Disconnected && serverState == ConnectionState.Disconnected;
+        }
+
+        private bool _transferResetPending;
+
+        private async System.Threading.Tasks.Task AbortHostMigrationAsync()
+        {
+            StopClient();
+            StopServer();
+
+            // The client modules are still the old session's (a promotion moves them only once it listens, a
+            // transfer resets them only once it connects), so they can wait for another attempt.
+            bool keepClient = keepClientStateOnFailedHostMigration && _clientModules.hasModules;
+            if (keepClient)
+                _preserveClientStateForHostMigration = true;
+
+            if (!keepClient && clientState == ConnectionState.Disconnected && _clientModules.hasModules)
+                _isCleaningClient = true;
+            if (serverState == ConnectionState.Disconnected && _serverModules.hasModules)
+                _isCleaningServer = true;
+
+            // Nothing ticks once both are down, and the tick is what finishes a stop's cleanup: a server whose listen
+            // socket never opened would stay Disconnecting for good, and StartServer would refuse to run again. A
+            // transport can also finish disconnecting some frames later, which starts another cleanup, so this waits
+            // for the transport as well.
+            var giveUpAt = Time.unscaledTimeAsDouble + 5d;
+            while (true)
+            {
+                RunPendingCleanup();
+                if (IsClientAndServerDisconnected() && !_isCleaningClient && !_isCleaningServer)
+                    break;
+                if (Time.unscaledTimeAsDouble >= giveUpAt)
+                {
+                    PurrLogger.LogWarning("Host migration abort timed out waiting for the transport to disconnect.");
+                    break;
+                }
+                await UnityLatestUpdate.Yield();
+            }
+        }
 
         private const float TransferToNewServerConnectRetryIntervalSeconds = 2f;
 
@@ -2187,55 +2393,84 @@ namespace PurrNet
         [ContextMenu("TransferToNewServer"), PurrContextButton]
         public async void TransferToNewServer()
         {
+            if (isTranferingToNewServer)
+                return;
+
+            // Set and cleared only here, as in PromoteToServer.
+            isTranferingToNewServer = true;
+            bool transferred = false;
+
             try
             {
-                if (isTranferingToNewServer)
-                    return;
-
-                isTranferingToNewServer = true;
-                _preserveClientStateForHostMigration = false;
-
-                StopClient();
-                StopServer();
-
-                while (clientState != ConnectionState.Disconnected ||
-                       serverState != ConnectionState.Disconnected)
-                    await UnityLatestUpdate.Yield();
-
-                StartClient();
-
-                while (clientState != ConnectionState.Connected || !isLocalPlayerReady)
-                {
-                    var nextRetryAt = Time.unscaledTimeAsDouble + TransferToNewServerConnectRetryIntervalSeconds;
-                    while ((clientState != ConnectionState.Connected || !isLocalPlayerReady) &&
-                           Time.unscaledTimeAsDouble < nextRetryAt)
-                        await UnityLatestUpdate.Yield();
-
-                    if (clientState == ConnectionState.Connected && isLocalPlayerReady)
-                        break;
-
-                    _transport.StopClientInternalOnly();
-                    _isCleaningClient = false;
-
-                    while (_transportLayer != null && _transportLayer.clientState != ConnectionState.Disconnected)
-                        await UnityLatestUpdate.Yield();
-
-                    _transport.StartClientInternalOnly();
-                }
-
-                _clientModules.PostTransferToNewServer();
+                transferred = await TransferToNewServerAsync();
             }
             catch (Exception e)
             {
                 PurrLogger.LogException(e);
-                isTranferingToNewServer = false;
-                StopClient();
-                StopServer();
             }
             finally
             {
                 isTranferingToNewServer = false;
             }
+
+            if (!transferred)
+            {
+                _transferResetPending = false;
+                await AbortHostMigrationAsync();
+            }
+        }
+
+        private async System.Threading.Tasks.Task<bool> TransferToNewServerAsync()
+        {
+            _preserveClientStateForHostMigration = false;
+            var run = new HostMigrationRun(nameof(TransferToNewServer), Time.unscaledTimeAsDouble, _hostMigrationCancels);
+
+            StopClient();
+            StopServer();
+
+            if (!await WaitForHostMigration(run, IsClientAndServerDisconnected))
+                return false;
+
+            StartClient();
+
+            while (true)
+            {
+                var nextRetryAt = Time.unscaledTimeAsDouble + TransferToNewServerConnectRetryIntervalSeconds;
+                if (!await WaitForHostMigration(run, IsTransferredToNewServer, nextRetryAt))
+                    return false;
+
+                if (IsTransferredToNewServer())
+                    break;
+
+                _clientStopRequested = true;
+                _transport.StopClientInternalOnly();
+                _isCleaningClient = false;
+
+                if (!await WaitForHostMigration(run, IsTransportClientDisconnected))
+                    return false;
+
+                _clientStopRequested = false;
+                _transport.StartClientInternalOnly();
+            }
+
+            if (_transferResetPending)
+            {
+                _transferResetPending = false;
+                _clientModules.TransferToNewServer();
+            }
+
+            _clientModules.PostTransferToNewServer();
+            return true;
+        }
+
+        private bool IsTransferredToNewServer()
+        {
+            return clientState == ConnectionState.Connected && isLocalPlayerReady;
+        }
+
+        private bool IsTransportClientDisconnected()
+        {
+            return _transportLayer == null || _transportLayer.clientState == ConnectionState.Disconnected;
         }
 
         /// <summary>
@@ -2252,6 +2487,7 @@ namespace PurrNet
         /// Internal method to register the server modules.
         /// Avoid calling this method directly if you're not sure what you're doing.
         /// </summary>
+        [StripInClientOnlyBuild]
         public void InternalRegisterServerModules()
         {
             if (!_ready)
@@ -2385,6 +2621,8 @@ namespace PurrNet
                 yield return null;
             
             _lastSendTime = 0d;
+            _clientStopRequested = false;
+            _clientKicked = false;
             _transport.StartClient(this);
         }
 
@@ -2417,6 +2655,7 @@ namespace PurrNet
                 _clientBroadcast?.DrainDeferred();
                 clientToServerConn = null;
                 _clientModules.OnLostConnection(conn, false);
+                RaiseClientDisconnected(conn, reason);
             }
 #if UNITY_EDITOR
             if (isOffline && networkRules && _stopPlayingOnDisconnect)
@@ -2436,8 +2675,26 @@ namespace PurrNet
 
         private void OnConnectionState(ConnectionState state, bool asServer)
         {
+            if (asServer && _probingPromotionListen)
+            {
+                if (state != ConnectionState.Connected)
+                    return;
+
+                // The socket is up: move the client modules over and let them see the start as usual.
+                _probingPromotionListen = false;
+                InternalRegisterServerModules();
+                OnConnectionState(ConnectionState.Connecting, true);
+            }
+
             if (IsProbeEvent(asServer))
                 return;
+
+            if (!asServer && state == ConnectionState.Connected && _transferResetPending)
+            {
+                // Reached the new server: drop the old session's client state before any of its data arrives.
+                _transferResetPending = false;
+                _clientModules.TransferToNewServer();
+            }
 
             if (asServer)
             {
@@ -2498,6 +2755,8 @@ namespace PurrNet
         /// </summary>
         public void StopClient()
         {
+            _clientStopRequested = true;
+
             if (_clientCoroutine != null)
             {
                 StopCoroutine(_clientCoroutine);

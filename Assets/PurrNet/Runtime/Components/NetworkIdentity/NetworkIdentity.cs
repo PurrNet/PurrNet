@@ -305,7 +305,7 @@ namespace PurrNet
 
         public bool isClient => isSpawned && networkManager.isClient;
 
-        public bool isClientAndObserving => isClient && _observers.Contains(localPlayerForced);
+        public bool isClientAndObserving => isClient && _observerSet.Contains(localPlayerForced);
 
         public bool isHost => isSpawned && networkManager.isHost;
 
@@ -434,10 +434,16 @@ namespace PurrNet
         public PlayerID localPlayerForced => localPlayer ?? default;
 
         private readonly List<PlayerID> _observers = new List<PlayerID>(4);
+
+        // Mirrors _observers for membership checks, which run once per observer of every spawn.
+        private readonly HashSet<PlayerID> _observerSet = new HashSet<PlayerID>();
         [System.NonSerialized] private List<PlayerID> _pendingObservers;
         [System.NonSerialized] private List<PlayerID> _mutedObservers;
 
         public IReadOnlyList<PlayerID> observers => _observers;
+
+        /// <summary>Goes up whenever <see cref="observers"/> changes.</summary>
+        internal int observersVersion;
 
         internal IReadOnlyList<PlayerID> pendingObservers =>
             _pendingObservers != null ? _pendingObservers : Array.Empty<PlayerID>();
@@ -446,10 +452,10 @@ namespace PurrNet
 
         internal bool pendingObserverStorageAllocated => _pendingObservers != null;
 
-        public bool IsObserver(PlayerID player) => _observers.Contains(player);
+        public bool IsObserver(PlayerID player) => _observerSet.Contains(player);
 
         internal bool IsObserverOrPending(PlayerID player) =>
-            _observers.Contains(player) || _pendingObservers?.Contains(player) == true;
+            _observerSet.Contains(player) || _pendingObservers?.Contains(player) == true;
 
         private void ReleasePendingObserversIfEmpty()
         {
@@ -1025,6 +1031,7 @@ namespace PurrNet
             _cachedHasConnectedOwner = false;
             _moduleId = 0;
             _modules.Clear();
+            _nullModules?.Clear();
             _externalModulesView.Clear();
             _tickables.Clear();
             _spawnedCount = 0;
@@ -1079,6 +1086,7 @@ namespace PurrNet
             if (!wasAlreadySpawned)
             {
                 _modules.Clear();
+                _nullModules?.Clear();
                 _externalModulesView.Clear();
                 _moduleId = 0;
 
@@ -1581,6 +1589,7 @@ namespace PurrNet
             {
                 _externalModulesView.Clear();
                 _modules.Clear();
+                _nullModules?.Clear();
             }
         }
 
@@ -1896,6 +1905,8 @@ namespace PurrNet
         internal void ClearObservers()
         {
             _observers.Clear();
+            _observerSet.Clear();
+            observersVersion++;
             ReleasePendingObservers();
         }
 

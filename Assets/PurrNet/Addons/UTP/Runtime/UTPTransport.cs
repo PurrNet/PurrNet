@@ -211,6 +211,7 @@ namespace PurrNet.UTP
             Connect(_address, _serverPort);
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(_serverPort);
@@ -293,6 +294,7 @@ namespace PurrNet.UTP
         /// Can operate in direct connection mode or peer-to-peer mode using Unity Relay.
         /// </summary>
         /// <param name="port">The port number to listen on.</param>
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             // LogTransportTrace($"Listen requested port={port} p2p={_peerToPeer} dedicated={_dedicatedServer} hasServer={_server != null}");

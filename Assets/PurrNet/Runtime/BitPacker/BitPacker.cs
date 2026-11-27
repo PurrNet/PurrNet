@@ -395,6 +395,13 @@ namespace PurrNet.Packing
             CopyBitsFromValidatedSource(packer, packer._readStartInBits, bits);
         }
 
+        /// <summary>Appends <paramref name="bits"/> bits of <paramref name="packer"/> starting at its bit <paramref name="bitOrigin"/>.</summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteBitsFrom(BitPacker packer, int bitOrigin, int bits)
+        {
+            CopyBitsWithoutConsuming(packer, bitOrigin, bits);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void CopyBitsWithoutConsuming(BitPacker other, int bitOrigin, int bits)
         {

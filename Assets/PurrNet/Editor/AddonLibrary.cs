@@ -343,7 +343,11 @@ namespace PurrNet.Editor
 
             if (File.Exists(tempPath))
             {
+#if UNITY_6000_6_OR_NEWER
+                UnityEditor.AssetPackage.Package.Import(tempPath, true);
+#else
                 AssetDatabase.ImportPackage(tempPath, true);
+#endif
                 File.Delete(tempPath);
 
                 EditorUtility.FocusProjectWindow();

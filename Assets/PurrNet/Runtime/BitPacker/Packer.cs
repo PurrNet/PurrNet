@@ -148,6 +148,10 @@ namespace PurrNet.Packing
                 return;
             }
 
+            if (!typeof(T).IsAssignableFrom(type))
+                throw new System.Runtime.Serialization.SerializationException(
+                    $"Received `{type}` where `{typeof(T)}` was expected.");
+
             object result = value;
             Packer.ReadAsExactType(packer, type, ref result);
 

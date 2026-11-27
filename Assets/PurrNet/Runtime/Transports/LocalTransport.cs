@@ -39,6 +39,7 @@ namespace PurrNet.Transports
             return int.MaxValue;
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             listenerState = ConnectionState.Connecting;
@@ -57,6 +58,7 @@ namespace PurrNet.Transports
             }
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(default);

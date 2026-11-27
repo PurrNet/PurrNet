@@ -8,7 +8,7 @@ namespace PurrNet.Transports
 {
     [AddComponentMenu("PurrNet/Transport/UDP Transport")]
     [DefaultExecutionOrder(-100)]
-    public partial class UDPTransport : GenericTransport, ITransport, INetLogger
+    public partial class UDPTransport : GenericTransport, ITransport, INetLogger, IHostMigrationPeerEndpointTransport
     {
         [SerializeField] private AutomaticCloudSetups _automaticCloudSetups;
 
@@ -32,6 +32,9 @@ namespace PurrNet.Transports
 
         [Tooltip("Use native UDP sockets on supported Windows/Linux runtimes to avoid per-packet socket allocations. Other platforms use managed sockets. Applied when the transport is enabled.")]
         [SerializeField] private bool _useNativeSockets = true;
+
+        [Tooltip("Run the server's socket sends, resends and receive parsing on LiteNetLib's own threads instead of the main thread. Events are still raised on the main thread. Clients always run on the main thread. Applied when the server starts.")]
+        [SerializeField] private bool _threadedSockets = true;
 
         [SerializeField] private NetworkSimulation _networkSimulation = NetworkSimulation.@default;
 
@@ -275,6 +278,7 @@ namespace PurrNet.Transports
             else request.Reject();
         }
 
+        [StripInClientOnlyBuild]
         protected override void StartServerInternal()
         {
             Listen(_serverPort);
@@ -285,6 +289,43 @@ namespace PurrNet.Transports
             Connect(_address, _serverPort);
         }
 
+        public bool supportsPeerHostMigration => true;
+
+        public bool TryGetPeerMigrationEndpoint(Connection connection, out PeerMigrationEndpoint endpoint)
+        {
+            // Every peer listens on the configured port once it hosts.
+            if (_connectionToPeer.TryGetValue(connection, out var peer) && peer != null)
+            {
+                endpoint = new PeerMigrationEndpoint(peer.Address.ToString(), _serverPort);
+                return true;
+            }
+
+            endpoint = default;
+            return false;
+        }
+
+        public bool TryPreparePeerMigrationEndpoint(PeerMigrationEndpoint endpoint, bool isPromotion, out string failure)
+        {
+            failure = null;
+            if (isPromotion)
+            {
+                if (endpoint.port != 0)
+                    _serverPort = endpoint.port;
+                return true;
+            }
+
+            if (!endpoint.isValid)
+            {
+                failure = "No address for the new host.";
+                return false;
+            }
+
+            _address = endpoint.address;
+            if (endpoint.port != 0)
+                _serverPort = endpoint.port;
+            return true;
+        }
+
         private void OnClientDisconnected(NetPeer peer, DisconnectInfo disconnectinfo)
         {
             clientState = ConnectionState.Disconnected;
@@ -293,6 +334,11 @@ namespace PurrNet.Transports
             {
                 LiteNetLib.DisconnectReason.Timeout => DisconnectReason.Timeout,
                 LiteNetLib.DisconnectReason.RemoteConnectionClose => DisconnectReason.ServerRequest,
+                LiteNetLib.DisconnectReason.ConnectionRejected => DisconnectReason.ServerRequest,
+                LiteNetLib.DisconnectReason.ConnectionFailed or
+                    LiteNetLib.DisconnectReason.HostUnreachable or
+                    LiteNetLib.DisconnectReason.NetworkUnreachable or
+                    LiteNetLib.DisconnectReason.UnknownHost => DisconnectReason.ConnectionFailed,
                 _ => DisconnectReason.ClientRequest
             };
 
@@ -362,7 +408,12 @@ namespace PurrNet.Transports
             var dInMs = delta * 1000f;
 
             if (_server.IsRunning)
-                _server.ManualUpdate(dInMs);
+            {
+                if (_threadedSockets)
+                    _server.TriggerUpdate();
+                else
+                    _server.ManualUpdate(dInMs);
+            }
 
             if (_client.IsRunning)
                 _client.ManualUpdate(dInMs);
@@ -383,7 +434,11 @@ namespace PurrNet.Transports
 
             TriggerConnectionStateEvent(false);
 
-            _client.StartInManualMode(0);
+            _client.ManualLogic = _threadedSockets;
+            if (_threadedSockets)
+                _client.Start(0);
+            else
+                _client.StartInManualMode(0);
             _client.Connect(ip, port, "PurrNet");
             TriggerConnectionStateEvent(false);
         }
@@ -403,6 +458,7 @@ namespace PurrNet.Transports
             TriggerConnectionStateEvent(false);
         }
 
+        [StripInClientOnlyBuild]
         public void Listen(ushort port)
         {
             NetDebug.Logger = this;
@@ -412,7 +468,7 @@ namespace PurrNet.Transports
                 listenerState = ConnectionState.Connecting;
                 TriggerConnectionStateEvent(true);
 
-                if (_server.StartInManualMode(port))
+                if (_threadedSockets ? _server.Start(port) : _server.StartInManualMode(port))
                 {
                     listenerState = ConnectionState.Connected;
                     TriggerConnectionStateEvent(true);
